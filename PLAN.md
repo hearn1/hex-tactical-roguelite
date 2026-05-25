@@ -24,6 +24,7 @@ This is the canonical plan for incremental implementation of the prototype. **Fu
 
 Per `CLAUDE.md`, these are authoritative. If they conflict, `SCOPE.md` and the current `ROADMAP.md` milestone win.
 
+- `ARCHITECTURE.md` — **read first.** Locks the stack, folder layout, coordinate system, RNG, state model, and naming conventions. All features defer to this for *how* things are built.
 - `SCOPE.md` — what is and is not in the prototype.
 - `IMPLEMENTATION_PLAN.md` — phases.
 - `ROADMAP.md` — sub-milestones (M0.x – M7.x).

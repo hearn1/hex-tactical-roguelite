@@ -1,32 +1,78 @@
 # Feature 17 — Meta Upgrade Menu (M6.2)
 
 ## Goal
-Add a meta-upgrade menu accessible from the main menu where the player spends Renown on permanent starting bonuses applied to each new run.
+Add a meta-upgrade menu accessible from the main menu where the player spends Renown on permanent starting bonuses. New runs apply purchased upgrades.
 
 ## Source Docs
-- `PROGRESSION_AND_REWARDS.md`
-- `CONTENT_CATALOG.md` (Permanent Upgrades table)
+- `PROGRESSION_AND_REWARDS.md` § Upgrade Categories
+- `CONTENT_CATALOG.md` § Permanent Upgrades
+- `DATA_MODEL.md` § UpgradeDef
 - `ROADMAP.md` (M6.2)
 
 ## Includes
-- Implement the 5 starter upgrades from `CONTENT_CATALOG.md`:
-  - Coin Purse I (5R, +5 starting gold)
-  - Coin Purse II (10R, +5 more starting gold)
-  - Training Manual I (8R, +10 starting XP)
-  - Potion Belt I (8R, +1 Healing Potion at start)
-  - Veteran Guardian (12R, Guardian +1 Might)
-  - (Apprentice Kit can be a stretch.)
-- Meta-upgrade menu screen reachable from main menu.
-- Purchased upgrades stored in `MetaProgressionState`.
-- New runs apply purchased upgrades to starting state (gold, party XP, party items, party stats).
+
+### Upgrade defs (`src/data/upgrades.ts`)
+Implement these from `CONTENT_CATALOG.md` (treat as canonical for prototype; cross-check with `PROGRESSION_AND_REWARDS.md` ranks):
+
+```ts
+upgrade.starting_gold.rank1     | cost 5  | +5 starting gold      | maxRank 5, +5 per rank
+upgrade.starting_xp.rank1       | cost 8  | +10 starting XP / hero | maxRank 5, +10 per rank
+upgrade.potion_belt.rank1       | cost 8  | start with +1 Healing Potion | maxRank 2
+upgrade.veteran_guardian        | cost 12 | Guardian starts with +1 Might | maxRank 1
+upgrade.apprentice_kit          | cost 12 | Arcanist may choose to start with Apprentice Wand equipped | maxRank 1
+```
+
+`UpgradeDef` shape per `DATA_MODEL.md` § UpgradeDef. Use rank-based upgrades: `purchasedUpgradeIds` stores ranked-up ids (e.g., `upgrade.starting_gold.rank3` means purchased ranks 1, 2, 3). Or store `upgradeRanks: { "upgrade.starting_gold": 3 }` — pick the second representation since it matches `TECH_PLAN.md`'s save schema.
+
+### Upgrade application (`src/meta/Upgrades.ts`)
+```ts
+export function applyMetaUpgradesToFreshRun(run: RunState, meta: MetaProgressionState): void;
+```
+
+Effects map:
+- `starting_gold` rank R: `run.inventory.gold += 5 * R`
+- `starting_xp` rank R: each hero `xp += 10 * R`; then `applyXp(hero, 0)` to roll up level-ups if any. (Actually call `applyXp(hero, 10*R)` to award and roll up.)
+- `potion_belt` rank R: `run.inventory.potions.push("potion.healing")` R times
+- `veteran_guardian` rank 1: Guardian hero `bonusStats.might += 1`
+- `apprentice_kit` rank 1: equip `item.apprentice_wand` on the Arcanist if not already equipped (and remove existing weapon to inventory)
+
+### Purchase logic
+```ts
+export function canPurchase(upgradeId: string, meta: MetaProgressionState): { ok: true } | { ok: false; reason: string };
+export function purchase(upgradeId: string, meta: MetaProgressionState): void;
+```
+
+Failure reasons: "Not enough Renown", "Max rank reached".
+
+### MetaUpgrades screen (`src/ui/screens/MetaUpgrades.ts`)
+- Reached from main menu.
+- Shows current Renown.
+- Lists every upgrade with: name, current rank / max rank, next-rank cost, effect description, "Buy" button.
+- "Back" returns to main menu.
+- Buying immediately mutates `MetaProgressionState` (persistence comes in Feature 18 — for now changes do NOT survive page reload).
+
+### New-run wiring
+- "New Run" on the main menu, **before** building the initial `RunState`, calls `applyMetaUpgradesToFreshRun`.
+
+### Tests (`src/meta/Upgrades.test.ts`)
+- Buying `starting_gold` rank 1 with 5 Renown reduces Renown to 0 and sets `upgradeRanks["upgrade.starting_gold"] === 1`.
+- `applyMetaUpgradesToFreshRun` with `starting_gold` rank 2 adds 10 gold to a fresh run.
+- `starting_xp` rank 1 grants 10 XP to every hero (verify by hero count).
+- `canPurchase` returns `{ ok: false, reason: "Not enough Renown" }` when broke.
+- `veteran_guardian` is one-shot (cannot be purchased twice).
 
 ## Out of Scope
-- Save/load to disk (Feature 18).
+- Persisting to disk (Feature 18).
+- Refund mechanic.
+- Pet/Recruit Network upgrades (deferred).
 
 ## Acceptance Criteria
-- Player can buy at least one upgrade after a run that earned enough Renown.
-- New runs reflect the upgrade.
-- Insufficient Renown disables a purchase with a clear reason.
+- Meta menu reachable from main menu, showing current Renown and all upgrades.
+- Buying an upgrade deducts Renown and increments rank.
+- A new run after purchase visibly reflects the upgrade (starting gold higher, starting XP higher, etc.).
+- All upgrade tests pass.
 
 ## Suggested Session Prompt
-> Implement Feature 17 — Meta Upgrade Menu. Read `PROGRESSION_AND_REWARDS.md`, `CONTENT_CATALOG.md`, `ROADMAP.md` (M6.2). Add the upgrade catalog, a purchase UI, and apply purchased upgrades to new-run starting state.
+> Implement https://github.com/hearn1/hex-tactical-roguelite/issues/19 (Feature 17 — Meta Upgrades).
+>
+> Read `PROGRESSION_AND_REWARDS.md` § Upgrade Categories, `CONTENT_CATALOG.md` § Permanent Upgrades, `DATA_MODEL.md` § UpgradeDef, and `ROADMAP.md` (M6.2). Add `src/data/upgrades.ts` with the 5 listed upgrades using rank-based storage (`upgradeRanks` map), implement `purchase`/`canPurchase`/`applyMetaUpgradesToFreshRun`, render `MetaUpgrades` screen reachable from main menu, wire new-run application, and pass the listed tests.
