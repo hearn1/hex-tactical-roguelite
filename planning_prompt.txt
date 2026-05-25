@@ -1,0 +1,120 @@
+You are a game systems architect planning the implementation of DnRogueLite — a 5E-inspired hex-grid tactical roguelite prototype.
+
+## Context
+
+Read ALL of the following files to understand the full scope, design, and current state:
+
+1. README.md — project overview and documentation map
+2. SCOPE.md — prototype must-haves, hard cuts, complexity budget
+3. IMPLEMENTATION_PLAN.md — 7-phase implementation outline
+4. ROADMAP.md — M0 through M7 milestone breakdown
+5. VERTICALS.md — 8 implementable verticals with acceptance criteria
+6. COMBAT_DESIGN.md — hex grid, turn structure, actions, stats, AI
+7. DATA_MODEL.md — data shapes for all definitions and runtime state
+8. CONTENT_CATALOG.md — starter classes, enemies, items, potions, encounters, upgrades
+9. MAP_AND_NODES.md — branching map, node types, act structure
+10. PROGRESSION_AND_REWARDS.md — two-tier progression model
+11. TECH_PLAN.md — stack options, architecture modules, save design
+12. TEST_PLAN.md — manual smoke tests and automated test candidates
+13. GAME_DESIGN.md — core pillars, game loop, party model
+14. CLAUDE.md — implementation rules, constraints, end-of-session reporting
+15. SRD_LICENSE_NOTE.md — licensing guardrails
+16. VERTICALS.md — the vertical-slice breakdown
+
+Then inspect the current state of the repository (files, code, tests, package.json, etc.) to understand what has already been built.
+
+## Goal
+
+Decompose the full prototype into a set of **independently implementable features**, each defined in its own `feature_x.md` file. A future session agent should be able to pick up `feature_x.md` and implement, test, and raise a pull request for that feature with no other context.
+
+## Output Requirements
+
+Produce one markdown file per feature. Name them sequentially:
+
+```
+feature_01_hex_grid_sandbox.md
+feature_02_class_and_item_actions.md
+feature_03_post_combat_rewards.md
+feature_04_branching_map_and_flow.md
+feature_05_shops_camps_recruits.md
+feature_06_permanent_meta_progression.md
+feature_07_data_driven_content.md
+feature_08_content_expansion_and_balance.md
+```
+
+Name each file to match the feature it describes. Use two-digit zero-padded numbers for ordering.
+
+## Feature File Template
+
+Each `feature_x.md` must contain the following sections:
+
+### 1. Feature Identity
+- **Title**: Short name
+- **Phase**: Which implementation phase (from IMPLEMENTATION_PLAN.md)
+- **Dependencies**: Which feature files must be implemented before this one (reference by filename)
+- **Estimated session scope**: One sentence describing if this fits in one session or needs sub-splitting
+
+### 2. Goal
+A single clear statement of what this feature proves when done.
+
+### 3. Related Design Documents
+List the specific design docs and sections that define this feature's requirements. Be precise enough that the implementation agent knows exactly which docs to re-read.
+
+### 4. Acceptance Criteria
+Bullet list of concrete, testable outcomes. These must be verifiable by running the prototype or tests. Number them.
+
+### 5. Data / Content Changes
+What new definitions must be added or modified in data files (classes, actions, items, enemies, encounters, nodes, upgrades, etc.). Include specific IDs and values from CONTENT_CATALOG.md or note where new content must be created.
+
+### 6. New Files to Create
+List every new file that must be created with a 1-line description of its responsibility. Example:
+- `src/HexGrid.ts` — axial coordinate system, neighbor lookup, distance, movement range
+
+### 7. Existing Files to Modify
+List every existing file that will change and why. Be specific about what changes. Example:
+- `src/CombatManager.ts` — add end-turn logic and victory/defeat detection
+
+### 8. Testing Strategy
+- Which automated tests to add or update
+- Which manual smoke tests to perform (reference TEST_PLAN.md items by number)
+- Any specific edge cases to cover
+
+### 9. Implementation Notes
+- Architectural decisions unique to this feature
+- Hardcoded vs. data-driven tradeoffs allowed in this feature
+- Any placeholder/stub behavior acceptable for now
+- Specific gotchas or ordering constraints within the feature
+
+### 10. Definition of Done
+A repeatable checklist the implementation agent must run through before raising a PR:
+- [ ] All acceptance criteria pass
+- [ ] Tests pass (automated)
+- [ ] Manual smoke test passes
+- [ ] No compiler/build errors
+- [ ] Existing features still work (no regressions)
+- [ ] End-of-session report written in PR description
+
+## Decomposition Rules
+
+1. **Dependency ordering**: A feature must only depend on features that come before it in the numbering. If a later feature needs something from an earlier feature, that earlier feature must already be built.
+
+2. **One session per file**: Each feature file should fit in one LLM coding session (roughly 30-90 minutes of implementation). If a feature is too large, split it. If two features are small enough, merge them.
+
+3. **All content from CONTENT_CATALOG.md**: Spread the content catalog across features so that by feature_08, all catalog entries are implemented. Never add content in a later feature that an earlier feature's acceptance criteria would logically require.
+
+4. **Each feature is independently PR-able**: Every feature file should produce a working, testable increment. The game should compile and run after each feature, even if the full loop isn't complete.
+
+5. **Test growth**: Each feature should add tests for its new logic and include a regression note. By feature_08, the test plan is fully covered.
+
+6. **Existing code**: Analyze the current repo state and generate the feature files from scratch based on the design docs. Do not assume any implementation exists unless you verify it in the repo. If partial implementation exists, each feature file should account for the current state and describe only the remaining work.
+
+## Critical Constraints
+
+- Do NOT write any code. This is a planning session only.
+- Do NOT produce a single monolithic plan. Produce separate files.
+- Do NOT skip acceptance criteria — they are the contract the implementation agent fulfills.
+- Keep files focused. If feature_01's notes say "stub this for now", feature_02's notes must say "replace the stub".
+- Reference files by their exact paths (e.g., `COMBAT_DESIGN.md:95-110` not "the combat doc").
+- If the current repo already has a data folder structure or code patterns, reflect that in the file paths used in each feature file.
+
+End by writing all feature files into the repo root. Confirm which files were written and summarize the total feature dependency graph.

@@ -1,0 +1,50 @@
+You are implementing the initial prototype for DnRogueLite, a D&D-inspired tactical roguelite.
+
+First, read the project documentation in this order:
+
+1. README.md
+2. CLAUDE.md
+3. GAME_DESIGN.md
+4. SCOPE.md
+5. VERTICALS.md
+6. COMBAT_DESIGN.md
+7. DATA_MODEL.md
+8. IMPLEMENTATION_PLAN.md
+9. ROADMAP.md
+10. NEXT_SESSION.md
+
+Your goal for this session is to complete the first implementation milestone described in NEXT_SESSION.md.
+
+Important constraints:
+
+- Do not try to build the entire game.
+- Focus on the first playable vertical slice only.
+- Favor simple, working systems over complex architecture.
+- Use data-driven structures where reasonable so classes, items, enemies, maps, and rewards can be extended later.
+- Keep the game 5E-inspired / tabletop-inspired, but avoid copying protected D&D-specific names, lore, monsters, settings, or non-SRD material.
+- If a design detail is unclear, make a reasonable prototype decision and document it.
+- Do not spend time polishing art or UI beyond what is needed to test gameplay.
+- Prefer placeholder shapes/text/icons over external assets unless the docs explicitly call for assets.
+- Add or update documentation when implementation decisions differ from the design docs.
+
+Session tasks:
+
+1. Inspect the existing repo/files.
+2. Summarize the relevant docs and current implementation state.
+3. Create a short implementation plan for this session.
+4. Implement the milestone from NEXT_SESSION.md.
+5. Add any needed test/demo data.
+6. Run the project/tests/lint/build commands that are available.
+7. Fix obvious bugs found during validation.
+8. End with a concise report covering:
+   - What was implemented
+   - Files changed
+   - How to run/test it
+   - Any incomplete items
+   - Recommended next milestone
+
+Prototype priority:
+
+The game should become playable as quickly as possible. The first target is a functional hex-grid combat sandbox with a small party, a small enemy group, basic movement, basic attacks/abilities, turn flow, health/death handling, and win/loss detection.
+
+Begin by reading the docs and repo, then proceed with implementation.
