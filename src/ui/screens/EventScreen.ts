@@ -58,6 +58,8 @@ export class EventScreen {
       contBtn.textContent = "Continue";
       contBtn.style.cssText = "padding:10px 32px;font-size:16px;margin-top:12px;";
       contBtn.addEventListener("click", () => {
+        const run = gameState.run;
+        if (run) run.mapState.nodesCleared++;
         gameState.screen = "map";
         this.app.render();
       });

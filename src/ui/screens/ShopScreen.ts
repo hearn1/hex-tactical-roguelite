@@ -86,6 +86,8 @@ export class ShopScreen {
     leaveBtn.textContent = "Leave Shop";
     leaveBtn.style.cssText = "padding:10px 32px;font-size:16px;margin-top:12px;";
     leaveBtn.addEventListener("click", () => {
+      const run = gameState.run;
+      if (run) run.mapState.nodesCleared++;
       gameState.screen = "map";
       this.app.render();
     });

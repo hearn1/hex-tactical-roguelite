@@ -44,6 +44,8 @@ export class CampScreen {
       contBtn.textContent = "Continue";
       contBtn.style.cssText = "padding:10px 32px;font-size:16px;";
       contBtn.addEventListener("click", () => {
+        const run = gameState.run;
+        if (run) run.mapState.nodesCleared++;
         gameState.screen = "map";
         this.app.render();
       });
@@ -79,6 +81,8 @@ export class CampScreen {
     leaveBtn.textContent = "Leave";
     leaveBtn.style.cssText = "padding:10px 24px;font-size:14px;width:250px;";
     leaveBtn.addEventListener("click", () => {
+      const run = gameState.run;
+      if (run) run.mapState.nodesCleared++;
       gameState.screen = "map";
       this.app.render();
     });

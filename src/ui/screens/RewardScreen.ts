@@ -253,6 +253,7 @@ export class RewardScreen {
         if (nd?.type === "elite") {
           run.mapState.elitesDefeated++;
         }
+        run.mapState.nodesCleared++;
       }
 
   gameState.combat = null;

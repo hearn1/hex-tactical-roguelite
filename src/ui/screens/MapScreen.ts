@@ -189,7 +189,6 @@ export class MapScreen {
     if (!nodeDef) return;
 
     visitNode(mapState, nodeId);
-    mapState.nodesCleared++;
 
     if (nodeDef.type === "combat" || nodeDef.type === "boss" || nodeDef.type === "elite") {
       if (nodeDef.encounterId) {
