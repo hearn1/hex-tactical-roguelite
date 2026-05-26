@@ -16,6 +16,8 @@ function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: 
     conditions: [],
     movePointsRemaining: 3,
     hasActed: false,
+    equippedItemIds: { weapon: null, armor: null, trinket: null },
+    bonusStats: {},
     ...overrides,
   };
 }

@@ -3,7 +3,11 @@ import type { ScreenId, CombatState } from "./types.ts";
 import { hexesWithinRange, hexKey } from "../core/hex.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
+import { ITEM_REGISTRY } from "../data/items.ts";
 import type { Team, Hex, UnitInstance } from "./types.ts";
+import type { InventoryState } from "../run/Inventory.ts";
+import { createInventory } from "../run/Inventory.ts";
+import { computeStats } from "../combat/Stats.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -13,11 +17,26 @@ export interface GameState {
   rng: () => number;
   rngSeed: number;
   combat: CombatState | null;
+  inventory: InventoryState;
+}
+
+function equipStartingItems(unit: UnitInstance): void {
+  const classDef = CLASS_REGISTRY[unit.defId];
+  if (!classDef?.startingItems) return;
+  for (const itemId of classDef.startingItems) {
+    const itemDef = ITEM_REGISTRY[itemId];
+    if (!itemDef) continue;
+    if (itemDef.slot === "weapon" || itemDef.slot === "armor" || itemDef.slot === "trinket") {
+      if (!unit.equippedItemIds[itemDef.slot]) {
+        unit.equippedItemIds[itemDef.slot] = itemId;
+      }
+    }
+  }
 }
 
 function createHeroInstance(instanceId: string, classId: ClassId, name: string, pos: Hex): UnitInstance {
   const def = CLASS_REGISTRY[classId];
-  return {
+  const unit: UnitInstance = {
     instanceId,
     defId: classId,
     displayName: name,
@@ -30,7 +49,13 @@ function createHeroInstance(instanceId: string, classId: ClassId, name: string, 
     conditions: [],
     movePointsRemaining: 0,
     hasActed: false,
+    equippedItemIds: { weapon: null, armor: null, trinket: null },
+    bonusStats: {},
   };
+  equipStartingItems(unit);
+  unit.stats = computeStats(unit);
+  unit.hp = unit.stats.maxHp;
+  return unit;
 }
 
 function createEnemyInstance(instanceId: string, enemyId: EnemyId, name: string, pos: Hex): UnitInstance {
@@ -49,6 +74,8 @@ function createEnemyInstance(instanceId: string, enemyId: EnemyId, name: string,
     conditions: [],
     movePointsRemaining: 0,
     hasActed: false,
+    equippedItemIds: { weapon: null, armor: null, trinket: null },
+    bonusStats: {},
   };
 }
 
@@ -107,6 +134,7 @@ function createGameState(): GameState {
     rng: createRng(seed),
     rngSeed: seed,
     combat: null,
+    inventory: createInventory(),
   };
 }
 

@@ -12,6 +12,8 @@ export type ScreenId =
 
 export type Team = "hero" | "enemy";
 
+export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed";
+
 export interface UnitStats {
   maxHp: number;
   armor: number;
@@ -22,9 +24,8 @@ export interface UnitStats {
 }
 
 export interface Condition {
-  id: string;
-  displayName: string;
-  duration: number;
+  id: ConditionId;
+  remainingTurns: number;
 }
 
 export interface Hex {
@@ -45,6 +46,8 @@ export interface UnitInstance {
   conditions: Condition[];
   movePointsRemaining: number;
   hasActed: boolean;
+  equippedItemIds: { weapon: string | null; armor: string | null; trinket: string | null };
+  bonusStats: Partial<UnitStats>;
 }
 
 export interface CombatLogEntry {

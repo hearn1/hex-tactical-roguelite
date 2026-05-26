@@ -3,12 +3,13 @@ export interface ActionDef {
   displayName: string;
   description: string;
   source: "class" | "item" | "enemy";
-  targetType: "enemy" | "ally" | "self";
+  targetType: "enemy" | "ally" | "self" | "ally_or_self";
   range: number;
   accuracyStat?: "might" | "agility" | "spirit";
   effect:
-    | { type: "damage"; formula: string }
-    | { type: "heal"; formula: string };
+    | { type: "damage"; formula: string; applyCondition?: { id: string; duration: number } }
+    | { type: "heal"; formula: string }
+    | { type: "applyCondition"; conditionId: string; duration: number };
 }
 
 export const ACTION_REGISTRY: Record<string, ActionDef> = {
@@ -101,5 +102,72 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     range: 3,
     accuracyStat: "spirit",
     effect: { type: "heal", formula: "1d4 + spirit" },
+  },
+  "action.shield_bash": {
+    id: "action.shield_bash",
+    displayName: "Shield Bash",
+    description: "A heavy shield strike that weakens the target.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "might",
+    effect: { type: "damage", formula: "1d4 + might", applyCondition: { id: "weakened", duration: 1 } },
+  },
+  "action.guard": {
+    id: "action.guard",
+    displayName: "Guard",
+    description: "Raise your guard, reducing next incoming damage by 50%.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    effect: { type: "applyCondition", conditionId: "guarded", duration: 1 },
+  },
+  "action.mace_strike": {
+    id: "action.mace_strike",
+    displayName: "Mace Strike",
+    description: "A solid blow with a mace.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "might",
+    effect: { type: "damage", formula: "1d6 + might" },
+  },
+  "action.bless": {
+    id: "action.bless",
+    displayName: "Bless",
+    description: "Bless an ally, granting +2 to their next attack or heal.",
+    source: "class",
+    targetType: "ally",
+    range: 3,
+    effect: { type: "applyCondition", conditionId: "blessed", duration: 2 },
+  },
+  "action.frost_shard": {
+    id: "action.frost_shard",
+    displayName: "Frost Shard",
+    description: "A shard of ice that slows the target.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "spirit",
+    effect: { type: "damage", formula: "1d6 + spirit", applyCondition: { id: "slowed", duration: 1 } },
+  },
+  "action.arcane_ward": {
+    id: "action.arcane_ward",
+    displayName: "Arcane Ward",
+    description: "Shield an ally with a protective ward.",
+    source: "class",
+    targetType: "ally_or_self",
+    range: 3,
+    effect: { type: "applyCondition", conditionId: "guarded", duration: 1 },
+  },
+  "action.arrow_shot": {
+    id: "action.arrow_shot",
+    displayName: "Arrow Shot",
+    description: "A precise ranged shot.",
+    source: "item",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "agility",
+    effect: { type: "damage", formula: "1d6 + agility" },
   },
 };
