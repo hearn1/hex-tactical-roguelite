@@ -72,4 +72,24 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     rarity: "uncommon",
     statBonuses: { maxHp: 2 },
   },
+  "item.ember_staff": {
+    id: "item.ember_staff",
+    displayName: "Ember Staff",
+    slot: "weapon",
+    rarity: "uncommon",
+    statBonuses: { spirit: 1 },
+  },
+  "item.owl_feather": {
+    id: "item.owl_feather",
+    displayName: "Owl Feather",
+    slot: "trinket",
+    rarity: "uncommon",
+  },
+  "item.runed_robe": {
+    id: "item.runed_robe",
+    displayName: "Runed Robe",
+    slot: "armor",
+    rarity: "uncommon",
+    statBonuses: { spirit: 1, maxHp: 1 },
+  },
 };

@@ -1,6 +1,6 @@
 export interface NodeDef {
   id: string;
-  type: "start" | "combat" | "elite" | "boss" | "shop" | "camp" | "event" | "recruit";
+  type: "start" | "combat" | "elite" | "boss" | "shop" | "camp" | "event" | "recruit" | "pet";
   title: string;
   description: string;
   layer: number;

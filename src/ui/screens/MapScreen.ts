@@ -200,6 +200,12 @@ export class MapScreen {
       return;
     }
 
+    if (nodeDef.type === "shop" || nodeDef.type === "camp" || nodeDef.type === "event" || nodeDef.type === "recruit" || nodeDef.type === "pet") {
+      gameState.screen = nodeDef.type;
+      this.app.render();
+      return;
+    }
+
     this.app.render();
   }
 }

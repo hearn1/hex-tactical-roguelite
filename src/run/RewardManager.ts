@@ -1,4 +1,5 @@
 import type { EncounterDef } from "../data/encounters.ts";
+import type { RunModifier } from "../state/types.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { roll } from "../core/dice.ts";
 
@@ -64,6 +65,16 @@ export function generateReward(encounter: EncounterDef, rng: () => number): Comb
   ];
 
   return { xpPerHero, gold, cards };
+}
+
+export function applyGoldModifiers(gold: number, modifiers: RunModifier[]): number {
+  let result = gold;
+  for (const mod of modifiers) {
+    if (mod.kind === "gold_multiplier") {
+      result = Math.floor(result * mod.value);
+    }
+  }
+  return result;
 }
 
 export function generateRewardWithInventory(
