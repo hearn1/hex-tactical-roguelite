@@ -31,6 +31,19 @@ export interface ShopInventory {
 export function rollShopInventory(rng: () => number, pools: { common: string[]; uncommon: string[]; potions: string[] }): ShopInventory;
 ```
 
+**Where pools come from at this feature:** hardcode the arrays at the top of `src/run/Shop.ts` for now. These will move into `RewardPoolDef` / the `DataRepository` in Feature 19 — leave a `// TODO(F19): move to repo` comment so the refactor is easy to find.
+
+```ts
+const COMMON_ITEMS = [
+  "item.iron_sword", "item.wooden_shield", "item.apprentice_wand",
+  "item.hunter_bow", "item.padded_armor", "item.soldier_badge",
+];
+const UNCOMMON_ITEMS = ["item.ember_staff", "item.bloodstone", "item.owl_feather"];
+const POTION_POOL = ["potion.healing", "potion.focus", "potion.fire_flask"];
+```
+
+Feature 20 adds the uncommon item defs; in Feature 13 the uncommon list may dereference ids that don't exist yet — guard `rollShopInventory` so unknown ids are filtered out, falling back to common picks.
+
 Composition per `CONTENT_CATALOG.md` § Shops:
 - 2 random common items.
 - 1 random uncommon item.

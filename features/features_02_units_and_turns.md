@@ -53,9 +53,10 @@ Hardcode the 3 hero classes and at least 3 enemies (Goblin Skirmisher, Wolf, one
 
 ### Spawning
 - On entering combat from main menu, build a fresh `CombatState`:
-  - 3 heroes: Guardian at `{q:-3,r:0}`, Acolyte at `{q:-3,r:1}`, Arcanist at `{q:-3,r:2}` (clamp into grid; pick alternatives if invalid).
-  - 2–3 enemies on the right side, e.g. Goblin at `{q:+3,r:-1}`, Wolf at `{q:+2,r:+1}`, Goblin at `{q:+3,r:+1}`.
+  - 3 heroes with fixed display names: Guardian = "Mara", Acolyte = "Sable", Arcanist = "Eldra". Positions: Mara at `{q:-3,r:0}`, Sable at `{q:-3,r:1}`, Eldra at `{q:-3,r:2}` (clamp into grid; pick alternatives if invalid).
+  - 2–3 enemies on the right side, e.g. Goblin at `{q:+3,r:-1}`, Wolf at `{q:+2,r:+1}`, Goblin at `{q:+3,r:+1}`. Enemy display names = `EnemyDef.displayName` from `CONTENT_CATALOG.md`; if multiple of the same type, suffix with an index ("Goblin Skirmisher 1", "Goblin Skirmisher 2").
   - All units at full HP. Hero level = 1.
+- Export a `HERO_DEFAULT_NAMES: Record<ClassId, string>` constant for reuse (Feature 15's Recruit may extend with a name pool — for the prototype, recruits get a generic "Recruit (Guardian)" style label until a fancier pool lands).
 
 ### Initiative
 - For each unit roll `d20 + agility` once (use `gameState.rng`). Sort descending; ties broken by team (heroes first), then by `instanceId`.

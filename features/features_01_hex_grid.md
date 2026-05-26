@@ -43,7 +43,7 @@ Inverse via cube-rounding (look up "pixel to hex pointy-top axial" — Red Blob 
 ### Rendering
 - Create `src/ui/HexRenderer.ts` exporting `renderGrid(ctx, hexes, options)` and `renderHexOutline(ctx, hex, color)`.
 - Build a grid of `hexesWithinRange({q:0,r:0}, 3)` (37 cells, hex radius 3 per `COMBAT_DESIGN.md`).
-- Add `src/ui/screens/CombatScreen.ts` that creates a `<canvas width=640 height=480>` and renders the grid centered around `GRID_ORIGIN = { x: 320, y: 240 }`.
+- Add `src/ui/screens/CombatScreen.ts` that creates a `<canvas width=640 height=480>` and renders the grid centered around `GRID_ORIGIN = { x: 280, y: 220 }` (matches `ARCHITECTURE.md`). Export the constant from `src/core/hex.ts`.
 - Wire the main-menu button from Feature 00 to set `gameState.screen = "combat"` and re-render. Add `"combat"` to the App router.
 
 ### Interaction

@@ -27,13 +27,15 @@ Do not switch stacks mid-project. If a hard blocker appears, raise it as an issu
 ├── vite.config.ts
 ├── src/
 │   ├── main.ts                 # entry, mounts UI, runs game loop
-│   ├── data/                   # static content (Feature 19 moves to JSON)
+│   ├── data/                   # static content (Feature 19 centralizes loading)
 │   │   ├── classes.ts
 │   │   ├── actions.ts
 │   │   ├── items.ts
+│   │   ├── potions.ts          # added by Feature 08
 │   │   ├── enemies.ts
 │   │   ├── encounters.ts
 │   │   ├── nodes.ts
+│   │   ├── events.ts           # added by Feature 14
 │   │   ├── rewards.ts
 │   │   └── upgrades.ts
 │   ├── core/                   # pure logic, framework-agnostic, fully tested
@@ -188,12 +190,15 @@ const isAutoMiss = d20 === 1;
 const hit = !isAutoMiss && (isCrit || total >= target.armor);
 
 if (hit) {
-  const dmg = roll(action.formula, rng).total + stat; // stat already in formula? See note.
+  // Action.ts pre-substitutes "+ might" / "+ agility" / "+ spirit" in action.formula
+  // with the attacker's stat value, so roll() only sees numeric modifiers (e.g., "1d6+3").
+  // Do NOT add `stat` again here.
+  const dmg = roll(rewriteFormula(action.formula, attacker), rng).total;
   target.hp -= isCrit ? dmg * 2 : dmg;
 }
 ```
 
-Note: action formulas in `CONTENT_CATALOG.md` are written like `"1d6 + might"`. The resolver substitutes `might/agility/spirit` with the attacker stat before rolling. Keep that substitution in `Action.ts` to avoid scattering it.
+Note: action formulas in `CONTENT_CATALOG.md` are written like `"1d6 + might"`. The resolver substitutes `might/agility/spirit` with the attacker stat *before* calling `roll()`. Keep that substitution in `Action.ts` (`rewriteFormula` or inline) so it lives in exactly one place.
 
 ## Combat Log
 
@@ -223,12 +228,13 @@ A `CombatLogEntry[]` on `CombatState.log`. Each entry has `{ kind, text, turn }`
 type SaveV1 = {
   schemaVersion: 1;
   renown: number;
-  purchasedUpgradeIds: string[];
-  upgradeRanks: Record<string, number>;
+  upgradeRanks: Record<string, number>;   // e.g. { "upgrade.starting_gold": 3 }
   completedRuns: number;
   bossWins: number;
 };
 ```
+
+`upgradeRanks` is the single source of truth for purchased upgrades (no separate `purchasedUpgradeIds` array — rank > 0 means owned).
 
 Version mismatch → log a warning and reset to defaults. Save on (a) run end, (b) upgrade purchase.
 
