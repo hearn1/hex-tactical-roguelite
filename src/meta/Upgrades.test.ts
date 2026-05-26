@@ -34,6 +34,8 @@ function makeRun(): RunState {
     shopStates: {},
     recruitOffers: {},
     runModifiers: [],
+    difficulty: "normal",
+    eventSelections: {},
   };
 }
 

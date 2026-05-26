@@ -1,7 +1,7 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { CombatReward, RewardCard } from "../../run/RewardManager.ts";
-import { generateReward, applyGoldModifiers, applyDifficultyToReward } from "../../run/RewardManager.ts";
+import { generateReward, applyGoldModifiers, applyDifficultyToReward, applyDifficultyToXp } from "../../run/RewardManager.ts";
 import { applyXp } from "../../run/Leveling.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
@@ -46,6 +46,7 @@ export class RewardScreen {
     if (run) {
       this.reward.gold = applyGoldModifiers(this.reward.gold, run.runModifiers);
       this.reward.gold = applyDifficultyToReward(this.reward.gold, run.difficulty);
+      this.reward.xpPerHero = applyDifficultyToXp(this.reward.xpPerHero, run.difficulty);
     }
     inv.gold += this.reward.gold;
     if (run) run.gold += this.reward.gold;
@@ -248,6 +249,9 @@ export class RewardScreen {
         if (nd?.type === "boss") {
           run.mapState.bossDefeated = true;
           run.runStatus = "won";
+        }
+        if (nd?.type === "elite") {
+          run.mapState.elitesDefeated++;
         }
       }
 

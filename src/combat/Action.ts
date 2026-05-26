@@ -4,6 +4,7 @@ import { distance, hexKey } from "../core/hex.ts";
 import { roll } from "../core/dice.ts";
 import { applyCondition } from "./Condition.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
+import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 
 export function validTargets(
   action: ActionDef,
@@ -152,6 +153,10 @@ export function resolveAction(
   const result = roll(formula, rng);
   let damage = result.total;
   if (isCrit) damage *= 2;
+  if (attacker.team === "enemy") {
+    const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
+    damage += dc.enemyDamageBonus;
+  }
 
   const guardedIdx = target.conditions.findIndex((c) => c.id === "guarded");
   if (guardedIdx >= 0) {
@@ -230,6 +235,10 @@ function resolvePrimaryPlusAdjacent(
     const result = roll(formula, rng);
     let damage = result.total;
     if (isCrit) damage *= 2;
+    if (attacker.team === "enemy") {
+      const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
+      damage += dc.enemyDamageBonus;
+    }
     const beforeHp = target.hp;
     target.hp = Math.max(0, target.hp - damage);
     const dealt = beforeHp - target.hp;
@@ -267,6 +276,10 @@ function resolvePrimaryPlusAdjacent(
       const res = roll(formula, rng);
       let dmg = res.total;
       if (crit) dmg *= 2;
+      if (attacker.team === "enemy") {
+        const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
+        dmg += dc.enemyDamageBonus;
+      }
       const before = hero.hp;
       hero.hp = Math.max(0, hero.hp - dmg);
       const dealt = before - hero.hp;

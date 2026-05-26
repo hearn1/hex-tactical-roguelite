@@ -7,7 +7,7 @@ import { CLASS_REGISTRY, HERO_DEFAULT_NAMES } from "../../data/classes.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { computeStats } from "../../combat/Stats.ts";
 import { applyMetaUpgradesToFreshRun } from "../../meta/Upgrades.ts";
-import { DIFFICULTY_CONFIG } from "../../data/difficulty.ts";
+
 
 function createStartingParty(): PartyMember[] {
   const classIds = ["class.guardian", "class.acolyte", "class.arcanist"];
@@ -41,8 +41,7 @@ function createStartingParty(): PartyMember[] {
 
 function initNewRun(difficulty: Difficulty = "normal"): RunState {
   const party = createStartingParty();
-  const diffConfig = DIFFICULTY_CONFIG[difficulty];
-  const startingGold = Math.floor(30 * diffConfig.startingGoldMultiplier);
+  const startingGold = 30;
   return {
     seed: Date.now(),
     gold: startingGold,
