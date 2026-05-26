@@ -59,6 +59,8 @@ export class RecruitScreen {
       contBtn.textContent = "Continue";
       contBtn.style.cssText = "padding:10px 32px;font-size:16px;";
       contBtn.addEventListener("click", () => {
+        const run = gameState.run;
+        if (run) run.mapState.nodesCleared++;
         gameState.screen = "map";
         this.app.render();
       });
@@ -118,6 +120,8 @@ export class RecruitScreen {
     skipBtn.textContent = "Skip";
     skipBtn.style.cssText = "padding:10px 32px;font-size:16px;margin-top:12px;";
     skipBtn.addEventListener("click", () => {
+      const run = gameState.run;
+      if (run) run.mapState.nodesCleared++;
       gameState.screen = "map";
       this.app.render();
     });
