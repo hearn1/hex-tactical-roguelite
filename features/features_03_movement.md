@@ -12,7 +12,7 @@ Let the active hero move on valid hexes within their `move` stat. Enemies still 
 ## Includes
 
 ### Movement model
-- At turn start, set `unit.movePointsRemaining = unit.stats.move` (add field to `UnitInstance` — replaces/augments `hasMoved`).
+- At turn start, set `unit.movePointsRemaining = unit.stats.move` (add field to `UnitInstance`; **remove** the placeholder `hasMoved` boolean from Feature 02 — `movePointsRemaining === 0` is the new "has moved" signal).
 - Movement consumes 1 point per hex stepped through (not a single "teleport to any reachable").
 - A unit may move multiple times in one turn until points are exhausted, but does **not** need to commit to a full path — clicking a reachable hex pathfinds and moves.
 - A unit cannot move into a hex occupied by another living unit. The unit's own current hex does not block.
@@ -41,10 +41,11 @@ Also expose `findPath(start, end, ...)` returning a list of hexes for animation/
 - `[T2] Mara moves to (-1, 0). 1 move remaining.`
 
 ### Tests (`src/combat/Movement.test.ts`)
-- A unit with 3 move on an open grid reaches exactly 19 hexes (radius-3 BFS minus blocked hexes outside the playable grid — verify count assuming a radius-3 grid; if center, all 19 of radius ≤ 3 from center).
-- Occupied hexes are excluded from reachable.
+- A unit at center `{q:0,r:0}` with **2** move points on the radius-3 grid reaches exactly **19** hexes (the full radius-2 disk, including the start hex). This isolates the BFS-by-cost math from grid-edge clipping.
+- A unit at center with **3** move points on the same grid reaches all **37** hexes of the radius-3 disk.
+- Occupied hexes are excluded from reachable destinations.
 - An occupied hex blocks **movement through** it (no path goes through occupied hexes).
-- A unit with 0 move points reaches only itself (or empty set — pick one and document; recommend: empty set, since the unit's current position isn't a "destination").
+- A unit with 0 move points reaches an empty set (the unit's current position isn't a valid "destination" — document this choice in `Movement.ts`).
 
 ## Out of Scope
 - Enemy movement (Feature 05).

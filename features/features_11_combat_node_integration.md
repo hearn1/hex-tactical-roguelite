@@ -27,11 +27,12 @@ Enemy positions: distribute across the right side of the grid (`q ∈ [+1, +3]`)
   - Sets `gameState.combat = createCombat(encounter, party)`.
   - Navigates to `screen = "combat"`.
 - `createCombat(encounter, party)`:
-  - Builds `UnitInstance` for each hero from current `RunState.party` (carrying HP, XP, level, equipment).
+  - Builds `UnitInstance` for each hero from current `RunState.party` (carrying HP, XP, level, equipment, **and `bonusStats`** — event/level-up gains must persist between fights).
   - Spawns enemies per the encounter's enemy list.
   - Rolls initiative, builds turn queue.
   - **HP carries over** from prior fights — no auto-heal.
   - **Conditions are cleared** at the end of each combat (already true by default since `UnitInstance` is rebuilt from `RunState.party`, which does not store conditions).
+- Document the canonical hero shape stored on `RunState.party`: a `PartyMember` record holding `{ instanceId, classId, displayName, level, xp, currentHp, bonusStats, equippedItemIds }`. `createCombat` materializes this into a fresh `UnitInstance` (resolving `stats` via `resolveStats`) on each entry; the reverse mapping on combat exit writes `currentHp`, `xp`, `level`, and `bonusStats` back.
 - Heroes who died in a prior fight stay dead **only if** the entire combat was lost (then the run ends — see Defeat below). Since defeat ends the run, a hero who died but the team won is **revived to 1 HP** at the end of combat. Add this revive in the victory→reward transition. Document the choice in the combat log.
 
 ### Reward → map flow

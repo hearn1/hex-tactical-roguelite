@@ -60,10 +60,10 @@ Renown earned: 11
 Plus, after a win, increment `MetaProgressionState.renown += total` and (if applicable) `bossWins += 1`, `completedRuns += 1`. After a loss, increment `renown += total` and `completedRuns += 1`.
 
 ### Tests (`src/meta/Renown.test.ts`)
-- Empty run (no nodes cleared, no boss, no levels) → 1 on loss, 0 on win.
-- 4 nodes cleared, 1 elite, no boss, 3 chars leveled → `8 + 5 + 0 + 3 = 16`.
-- 6 nodes cleared, 1 elite, boss defeated, 4 chars leveled → `12 + 5 + 15 + 4 = 36`.
-- The minimum-1-on-loss rule is applied only on loss.
+- Empty lost run (no nodes cleared, no boss, no levels, `runStatus = "lost"`) → total = 1 (minimum applied, `minimumApplied = true`).
+- 4 nodes cleared, 1 elite, no boss, 3 chars leveled, `runStatus = "lost"` → `8 + 5 + 0 + 3 = 16`, `minimumApplied = false`.
+- 6 nodes cleared, 1 elite, boss defeated, 4 chars leveled, `runStatus = "won"` → `12 + 5 + 15 + 4 = 36`, `minimumApplied = false`.
+- Policy assertion: with `runStatus = "won"` the minimum-1 rule does NOT apply (i.e. a hypothetical 0-everything win returns total = 0). A real win always defeats the boss for +15, so this case is theoretical — keep the assertion to lock the policy.
 
 ## Out of Scope
 - Saving Renown to disk (Feature 18).

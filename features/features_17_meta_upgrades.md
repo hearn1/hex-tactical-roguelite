@@ -12,17 +12,19 @@ Add a meta-upgrade menu accessible from the main menu where the player spends Re
 ## Includes
 
 ### Upgrade defs (`src/data/upgrades.ts`)
-Implement these from `CONTENT_CATALOG.md` (treat as canonical for prototype; cross-check with `PROGRESSION_AND_REWARDS.md` ranks):
+Implement these 5 upgrades from `CONTENT_CATALOG.md` (treat as canonical for prototype). **Note on `veteran_guardian`:** `CONTENT_CATALOG.md` defines this as "Guardian +1 Might"; `PROGRESSION_AND_REWARDS.md` describes a more general "Veteran Start" (any hero +1 level). The prototype follows `CONTENT_CATALOG.md` — Guardian-specific, +1 Might.
 
-```ts
-upgrade.starting_gold.rank1     | cost 5  | +5 starting gold      | maxRank 5, +5 per rank
-upgrade.starting_xp.rank1       | cost 8  | +10 starting XP / hero | maxRank 5, +10 per rank
-upgrade.potion_belt.rank1       | cost 8  | start with +1 Healing Potion | maxRank 2
-upgrade.veteran_guardian        | cost 12 | Guardian starts with +1 Might | maxRank 1
-upgrade.apprentice_kit          | cost 12 | Arcanist may choose to start with Apprentice Wand equipped | maxRank 1
-```
+| Upgrade id | maxRank | Cost per rank | Effect per rank |
+|---|---:|---|---|
+| `upgrade.starting_gold` | 5 | `5, 8, 11, 14, 17` (i.e., `5 + 3 * (rank - 1)`) | +5 starting gold |
+| `upgrade.starting_xp` | 5 | `8, 12, 16, 20, 24` (i.e., `8 + 4 * (rank - 1)`) | +10 starting XP per hero |
+| `upgrade.potion_belt` | 2 | `8, 14` | +1 starting Healing Potion |
+| `upgrade.veteran_guardian` | 1 | `12` | Guardian `bonusStats.might += 1` |
+| `upgrade.apprentice_kit` | 1 | `12` | Arcanist starts with `item.apprentice_wand` equipped |
 
-`UpgradeDef` shape per `DATA_MODEL.md` § UpgradeDef. Use rank-based upgrades: `purchasedUpgradeIds` stores ranked-up ids (e.g., `upgrade.starting_gold.rank3` means purchased ranks 1, 2, 3). Or store `upgradeRanks: { "upgrade.starting_gold": 3 }` — pick the second representation since it matches `TECH_PLAN.md`'s save schema.
+Encode the cost ladder as an array on the def: `costRenownPerRank: number[]` (length = `maxRank`). Lookup is `def.costRenownPerRank[nextRank - 1]`. Single-rank upgrades use a length-1 array.
+
+`UpgradeDef` shape otherwise per `DATA_MODEL.md` § UpgradeDef. Storage uses `upgradeRanks: Record<string, number>` (matches `TECH_PLAN.md`'s save schema, e.g. `{ "upgrade.starting_gold": 3 }`).
 
 ### Upgrade application (`src/meta/Upgrades.ts`)
 ```ts

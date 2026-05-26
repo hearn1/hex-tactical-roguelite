@@ -66,9 +66,13 @@ Stub a party-shared bag:
 
 ```ts
 export interface InventoryState { items: string[]; potions: string[]; gold: number; }
+
+export function createInventory(): InventoryState {
+  return { items: [], potions: [], gold: 0 };
+}
 ```
 
-For this feature, the bag is empty at run start (rewards will populate it in Feature 08).
+For this feature, the bag is empty at run start with `gold = 0`. Rewards populate it from Feature 08; meta-upgrade `starting_gold` (Feature 17) adds to it before the map opens.
 
 ### Item-granted actions
 - When computing a hero's available actions, append `grantedActionIds` from each equipped item.

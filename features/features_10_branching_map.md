@@ -44,7 +44,13 @@ Combat nodes reference these encounters (defined in `src/data/encounters.ts`):
 - `combat_d` → `encounter.cult_ritual`
 - `boss` → `encounter.boss_ogre_hexbreaker`
 
-Encounter definitions follow `CONTENT_CATALOG.md` § Encounters. Use the existing enemy defs from Feature 02 plus any new ones (`enemy.skeleton_archer`, `enemy.bandit_brute`, `enemy.cult_acolyte`) — for nodes whose encounters use enemies that don't exist yet, add stub enemy defs with sensible stats per `CONTENT_CATALOG.md`. Boss def itself is fully wired in Feature 12; for this feature, a stub OgreHexbreaker (HP 42, Move 3, one melee action) is enough so the map renders.
+Encounter definitions follow `CONTENT_CATALOG.md` § Encounters. Use the existing enemy defs from Feature 02 plus the new ones (`enemy.skeleton_archer`, `enemy.bandit_brute`, `enemy.cult_acolyte`). Use the **exact stats from `CONTENT_CATALOG.md`** for the new enemies:
+
+- `enemy.skeleton_archer` — HP 9, Armor 12, Move 3, agility 3; `actionIds: ["action.bone_arrow"]` (Bone Arrow already defined in Feature 04).
+- `enemy.bandit_brute` — HP 16, Armor 13, Move 3, might 3; `actionIds: ["action.heavy_club"]` — add `action.heavy_club` to `src/data/actions.ts` (range 1, might, `1d8 + might`).
+- `enemy.cult_acolyte` — HP 12, Armor 11, Move 3, spirit 2; `actionIds: ["action.dark_bolt", "action.minor_heal"]` — add both: Dark Bolt (range 4, spirit, `1d6 + spirit` dmg) and Minor Heal (range 3, spirit, heal `1d4 + spirit`).
+
+Boss def itself is fully wired in Feature 12; for this feature, a stub OgreHexbreaker (HP 42, Move 3, one melee action — reuse `action.heavy_club`) is enough so the map renders.
 
 ### Map graph (`src/run/MapGraph.ts`)
 ```ts

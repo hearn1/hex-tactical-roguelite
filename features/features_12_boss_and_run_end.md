@@ -27,16 +27,17 @@ enemy.ogre_hexbreaker:
 `resolveAction` needs to support multi-target effects. Extend `ActionDef.effect` with `targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster"` and adjust the resolver accordingly.
 
 ### Boss AI (`src/combat/EnemyAI.ts`)
-Add the `"boss"` branch:
+Add the `"boss"` branch. Use a fixed rotation list indexed by `combatState.bossActionIndex` (initialized to 0 in `createCombat`):
 
-```
-Each turn the boss picks an action by rotation, skipping any with no valid target:
-  turn 1 mod 3 → Roar (if any hero in range 3) else Massive Swing
-  turn 2 mod 3 → Massive Swing (close to nearest hero first)
-  turn 0 mod 3 → Ground Slam (close to nearest hero first)
+```ts
+const BOSS_ROTATION = ["action.roar", "action.massive_swing", "action.ground_slam"] as const;
+const actionId = BOSS_ROTATION[combatState.bossActionIndex % 3];
+// resolve actionId; if it has no valid target (e.g. Roar with no hero in range 3),
+// fall back to Massive Swing (closing to melee if needed).
+combatState.bossActionIndex += 1;   // always advance, even on fallback
 ```
 
-Track rotation per-boss in `combatState.bossActionIndex` (default 0). Increment after each attack.
+So the first boss turn uses Roar (`index=0`), second Massive Swing, third Ground Slam, fourth Roar again. The index lives on `CombatState` so it survives action resolution but resets between encounters.
 
 ### Reinforcement trigger
 - On any damage application to the boss, check: if HP just crossed below 50% AND `combatState.bossReinforcementSpawned !== true`:
@@ -71,7 +72,7 @@ Shows:
 - "Return to Main Menu" button → clears `gameState.run`.
 
 ### Tests (`src/combat/Boss.test.ts`)
-- Boss rotation: turns 1, 2, 3, 4 produce Roar, Massive Swing, Ground Slam, Roar (assuming valid targets).
+- Boss rotation: with `bossActionIndex` starting at 0 and all targets valid, sequential `takeEnemyTurn` calls produce Roar, Massive Swing, Ground Slam, Roar (i.e., index 0, 1, 2, 3 → Roar, Massive Swing, Ground Slam, Roar).
 - Reinforcement triggers exactly once when boss HP first crosses below 21 (50% of 42).
 - Ground Slam hits primary + all adjacent heroes.
 
