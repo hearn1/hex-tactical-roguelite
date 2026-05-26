@@ -7,9 +7,9 @@ export interface ActionDef {
   range: number;
   accuracyStat?: "might" | "agility" | "spirit";
   effect:
-    | { type: "damage"; formula: string; applyCondition?: { id: string; duration: number } }
+    | { type: "damage"; formula: string; applyCondition?: { id: string; duration: number }; targetMode?: "single" | "primary_plus_adjacent" }
     | { type: "heal"; formula: string }
-    | { type: "applyCondition"; conditionId: string; duration: number };
+    | { type: "applyCondition"; conditionId: string; duration: number; targetMode?: "single" | "aoe_around_caster" };
 }
 
 export const ACTION_REGISTRY: Record<string, ActionDef> = {
@@ -169,5 +169,34 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     range: 4,
     accuracyStat: "agility",
     effect: { type: "damage", formula: "1d6 + agility" },
+  },
+  "action.massive_swing": {
+    id: "action.massive_swing",
+    displayName: "Massive Swing",
+    description: "A devastating two-handed blow.",
+    source: "enemy",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "might",
+    effect: { type: "damage", formula: "2d6 + might" },
+  },
+  "action.ground_slam": {
+    id: "action.ground_slam",
+    displayName: "Ground Slam",
+    description: "Smashes the ground, damaging all nearby foes.",
+    source: "enemy",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "might",
+    effect: { type: "damage", formula: "1d8 + might", targetMode: "primary_plus_adjacent" },
+  },
+  "action.roar": {
+    id: "action.roar",
+    displayName: "Roar",
+    description: "A terrifying roar that weakens nearby heroes.",
+    source: "enemy",
+    targetType: "enemy",
+    range: 3,
+    effect: { type: "applyCondition", conditionId: "weakened", duration: 2, targetMode: "aoe_around_caster" },
   },
 };

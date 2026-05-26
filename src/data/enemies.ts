@@ -44,4 +44,11 @@ export const ENEMY_REGISTRY: Record<string, EnemyDef> = {
     baseStats: { maxHp: 12, armor: 11, move: 3, might: 0, agility: 1, spirit: 3 },
     actionIds: ["action.dark_bolt", "action.minor_heal"],
   },
+  "enemy.ogre_hexbreaker": {
+    id: "enemy.ogre_hexbreaker",
+    displayName: "Ogre Hexbreaker",
+    aiTag: "boss",
+    baseStats: { maxHp: 42, armor: 13, move: 3, might: 4, agility: 0, spirit: 1 },
+    actionIds: ["action.massive_swing", "action.ground_slam", "action.roar"],
+  },
 };

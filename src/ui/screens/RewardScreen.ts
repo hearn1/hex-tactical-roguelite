@@ -7,13 +7,14 @@ import { ITEM_REGISTRY } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import type { UnitInstance } from "../../state/types.ts";
+import { visitNode } from "../../run/MapGraph.ts";
+import { NODE_REGISTRY } from "../../data/nodes.ts";
 
 export class RewardScreen {
   private app: App;
   private reward: CombatReward | null = null;
   private chosenCardIndex: number | null = null;
   private equipPhase: boolean = false;
-  private equipTargetHeroId: string | null = null;
   private levelUpTexts: string[] = [];
 
   constructor(app: App) {
@@ -28,6 +29,9 @@ export class RewardScreen {
       return document.createElement("div");
     }
 
+    const run = gameState.run;
+    const inv = run ? run.inventory : gameState.inventory;
+
     const numEnemies = cs.units.filter((u) => u.team === "enemy").length;
     const encounterPlaceholder = {
       id: "encounter._reward",
@@ -39,8 +43,8 @@ export class RewardScreen {
     };
 
     this.reward = generateReward(encounterPlaceholder, gameState.rng);
-
-    gameState.inventory.gold += this.reward.gold;
+    inv.gold += this.reward.gold;
+    if (run) run.gold += this.reward.gold;
 
     const survivors = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
     for (const hero of survivors) {
@@ -74,7 +78,7 @@ export class RewardScreen {
     }
 
     const goldLine = document.createElement("div");
-    goldLine.textContent = `Gold +${this.reward.gold} (total: ${gameState.inventory.gold})`;
+    goldLine.textContent = `Gold +${this.reward.gold} (total: ${inv.gold})`;
     container.appendChild(goldLine);
 
     const cardLabel = document.createElement("div");
@@ -134,17 +138,18 @@ export class RewardScreen {
 
   private onCardClick(card: RewardCard, index: number): void {
     this.chosenCardIndex = index;
+    const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
 
     if (card.kind === "item") {
       this.equipPhase = true;
-      this.equipTargetHeroId = null;
       this.renderEquipPhase(card.itemId);
     } else if (card.kind === "potion") {
-      gameState.inventory.potions.push(card.potionId);
+      inv.potions.push(card.potionId);
       this.equipPhase = false;
       this.renderContinue();
     } else {
-      gameState.inventory.gold += card.amount;
+      inv.gold += card.amount;
+      if (gameState.run) gameState.run.gold += card.amount;
       this.equipPhase = false;
       this.renderContinue();
     }
@@ -179,7 +184,8 @@ export class RewardScreen {
     const stashBtn = document.createElement("button");
     stashBtn.textContent = "Stash";
     stashBtn.addEventListener("click", () => {
-      gameState.inventory.items.push(itemId);
+      const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
+      inv.items.push(itemId);
       this.equipPhase = false;
       this.renderContinue();
       this.app.render();
@@ -196,7 +202,8 @@ export class RewardScreen {
     const prevItemId = hero.equippedItemIds[slot];
     hero.equippedItemIds[slot] = newItemId;
     if (prevItemId) {
-      gameState.inventory.items.push(prevItemId);
+      const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
+      inv.items.push(prevItemId);
     }
 
     const cs = gameState.combat;
@@ -221,11 +228,33 @@ export class RewardScreen {
     btn.textContent = "Continue";
     btn.style.cssText = "padding:10px 32px;font-size:16px;";
     btn.addEventListener("click", () => {
+      const run = gameState.run;
+      const cs = gameState.combat;
+
+      if (run && cs) {
+        for (const pm of run.party) {
+          const unit = cs.units.find((u) => u.instanceId === pm.instanceId);
+          if (unit) {
+            pm.hp = unit.hp > 0 ? unit.hp : 1;
+            pm.xp = unit.xp;
+            pm.level = unit.level;
+          }
+        }
+        const nd = NODE_REGISTRY[run.mapState.currentNodeId];
+        if (nd?.type === "boss") {
+          run.mapState.bossDefeated = true;
+          run.runStatus = "won";
+        }
+      }
+
       gameState.combat = null;
-      gameState.screen = "main_menu";
+      if (run) {
+        gameState.screen = "map";
+      } else {
+        gameState.screen = "main_menu";
+      }
       this.app.render();
     });
     area.appendChild(btn);
   }
-
 }

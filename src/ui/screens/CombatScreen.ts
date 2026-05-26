@@ -1,5 +1,6 @@
 import type { App } from "../App.ts";
 import { gameState, initCombatState } from "../../state/GameState.ts";
+import { syncPartyFromCombat } from "../../state/GameState.ts";
 import type { CombatState, UnitInstance, Hex } from "../../state/types.ts";
 import { hexKey, parseHexKey, pixelToHex, hexEquals } from "../../core/hex.ts";
 import { renderHexOutline, fillHex } from "../HexRenderer.ts";
@@ -10,6 +11,7 @@ import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueu
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
 import { processTurnStart } from "../../combat/Condition.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
+import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 
 const HERO_COLOR = "#4488ff";
 const ENEMY_COLOR = "#ff4444";
@@ -140,7 +142,7 @@ export class CombatScreen {
     const cs = gameState.combat;
     if (!cs) return;
     const heroes = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
-    const inv = gameState.inventory;
+    const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
     const itemsHtml = heroes.map((h) => {
       const w = h.equippedItemIds.weapon ? ITEM_REGISTRY[h.equippedItemIds.weapon]?.displayName ?? h.equippedItemIds.weapon : "(none)";
       const a = h.equippedItemIds.armor ? ITEM_REGISTRY[h.equippedItemIds.armor]?.displayName ?? h.equippedItemIds.armor : "(none)";
@@ -465,6 +467,7 @@ export class CombatScreen {
   }
 
   private getActionIds(unit: UnitInstance): string[] {
+    const enemyDef = unit.team === "enemy" ? null : null;
     const classDef = CLASS_REGISTRY[unit.defId];
     const classActions = classDef ? classDef.actionIds : [];
     const grantedActions: string[] = [];
@@ -560,7 +563,17 @@ export class CombatScreen {
 
   private showBanner(text: string): void {
     if (text === "Victory!") {
+      if (gameState.run) {
+        syncPartyFromCombat(gameState.combat!, gameState.run);
+      }
       gameState.screen = "reward";
+      this.app.render();
+      return;
+    }
+
+    if (text === "Defeat" && gameState.run) {
+      gameState.run.runStatus = "lost";
+      gameState.screen = "run_summary";
       this.app.render();
       return;
     }

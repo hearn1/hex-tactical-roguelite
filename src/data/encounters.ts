@@ -29,4 +29,19 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
       { enemyId: "enemy.goblin_skirmisher", count: 2 },
     ],
   },
+  "encounter.cult_ritual": {
+    id: "encounter.cult_ritual",
+    displayName: "Cult Ritual",
+    enemyGroups: [
+      { enemyId: "enemy.cult_acolyte", count: 1 },
+      { enemyId: "enemy.skeleton_archer", count: 2 },
+    ],
+  },
+  "encounter.boss_ogre_hexbreaker": {
+    id: "encounter.boss_ogre_hexbreaker",
+    displayName: "Ogre Hexbreaker",
+    enemyGroups: [
+      { enemyId: "enemy.ogre_hexbreaker", count: 1 },
+    ],
+  },
 };

@@ -65,4 +65,7 @@ export interface CombatState {
   status: "active" | "victory" | "defeat";
   gridKeys: string[];
   targetingActionId: string | null;
+  bossActionIndex?: number;
+  bossReinforcementSpawned?: boolean;
+  encounterId?: string;
 }
