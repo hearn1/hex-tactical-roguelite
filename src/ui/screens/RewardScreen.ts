@@ -1,7 +1,7 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { CombatReward, RewardCard } from "../../run/RewardManager.ts";
-import { generateReward } from "../../run/RewardManager.ts";
+import { generateReward, applyGoldModifiers } from "../../run/RewardManager.ts";
 import { applyXp } from "../../run/Leveling.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
@@ -43,6 +43,9 @@ export class RewardScreen {
     };
 
     this.reward = generateReward(encounterPlaceholder, gameState.rng);
+    if (run && run.runModifiers.length > 0) {
+      this.reward.gold = applyGoldModifiers(this.reward.gold, run.runModifiers);
+    }
     inv.gold += this.reward.gold;
     if (run) run.gold += this.reward.gold;
 

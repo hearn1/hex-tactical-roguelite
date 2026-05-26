@@ -5,12 +5,14 @@ import { CombatScreen } from "./screens/CombatScreen.ts";
 import { RewardScreen } from "./screens/RewardScreen.ts";
 import { MapScreen } from "./screens/MapScreen.ts";
 import { RunSummary } from "./screens/RunSummary.ts";
-
-type AnyScreen = MainMenu | CombatScreen | RewardScreen | MapScreen | RunSummary;
+import { ShopScreen } from "./screens/ShopScreen.ts";
+import { CampScreen } from "./screens/CampScreen.ts";
+import { EventScreen } from "./screens/EventScreen.ts";
+import { RecruitScreen } from "./screens/RecruitScreen.ts";
+import { PetScreen } from "./screens/PetScreen.ts";
 
 export class App {
   private root: HTMLElement;
-  private screenCache: Map<string, AnyScreen> = new Map();
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -23,41 +25,30 @@ export class App {
   }
 
   private renderScreen(screenId: ScreenId): HTMLElement {
-    if (screenId === "main_menu") {
-      this.screenCache.clear();
-      const screen = new MainMenu(this);
-      this.screenCache.set("main_menu", screen);
-      return screen.render();
+    this.root.innerHTML = "";
+    switch (screenId) {
+      case "main_menu":
+        return new MainMenu(this).render();
+      case "map":
+        return new MapScreen(this).render();
+      case "combat":
+        return new CombatScreen(this).render();
+      case "reward":
+        return new RewardScreen(this).render();
+      case "shop":
+        return new ShopScreen(this).render();
+      case "camp":
+        return new CampScreen(this).render();
+      case "event":
+        return new EventScreen(this).render();
+      case "recruit":
+        return new RecruitScreen(this).render();
+      case "pet":
+        return new PetScreen(this).render();
+      case "run_summary":
+        return new RunSummary(this).render();
+      default:
+        return new MainMenu(this).render();
     }
-    if (screenId === "map") {
-      this.screenCache.clear();
-      const screen = new MapScreen(this);
-      this.screenCache.set("map", screen);
-      return screen.render();
-    }
-    if (screenId === "combat") {
-      let screen = this.screenCache.get("combat") as CombatScreen | undefined;
-      if (!screen) {
-        screen = new CombatScreen(this);
-        this.screenCache.set("combat", screen);
-      }
-      return screen.render();
-    }
-    if (screenId === "reward") {
-      this.screenCache.clear();
-      const screen = new RewardScreen(this);
-      this.screenCache.set("reward", screen);
-      return screen.render();
-    }
-    if (screenId === "run_summary") {
-      this.screenCache.clear();
-      const screen = new RunSummary(this);
-      this.screenCache.set("run_summary", screen);
-      return screen.render();
-    }
-    this.screenCache.clear();
-    const screen = new MainMenu(this);
-    this.screenCache.set("main_menu", screen);
-    return screen.render();
   }
 }

@@ -52,6 +52,9 @@ function initNewRun(): RunState {
       bossDefeated: false,
     },
     runStatus: "active",
+    shopStates: {},
+    recruitOffers: {},
+    runModifiers: [],
   };
 }
 

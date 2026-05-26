@@ -8,6 +8,7 @@ export type ScreenId =
   | "camp"
   | "event"
   | "recruit"
+  | "pet"
   | "run_summary";
 
 export type Team = "hero" | "enemy";
@@ -55,6 +56,17 @@ export interface CombatLogEntry {
   text: string;
   round: number;
 }
+
+export interface ShopInventory {
+  items: { itemId: string; sold: boolean }[];
+  potions: { potionId: string; sold: boolean }[];
+  healServiceUsed: boolean;
+}
+
+export type RunModifier =
+  | { kind: "gold_multiplier"; value: number }
+  | { kind: "global_stat"; stat: keyof UnitStats; value: number }
+  | { kind: "first_hit_bonus_damage"; amount: number };
 
 export interface CombatState {
   round: number;

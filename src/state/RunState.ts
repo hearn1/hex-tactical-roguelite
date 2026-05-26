@@ -1,5 +1,5 @@
 import type { MapState } from "../run/MapGraph.ts";
-import type { UnitStats } from "./types.ts";
+import type { UnitStats, ShopInventory, RunModifier } from "./types.ts";
 import type { InventoryState } from "../run/Inventory.ts";
 
 export interface PartyMember {
@@ -25,4 +25,7 @@ export interface RunState {
   inventory: InventoryState;
   mapState: MapState;
   runStatus: "active" | "won" | "lost";
+  shopStates: Record<string, ShopInventory>;
+  recruitOffers: Record<string, PartyMember[]>;
+  runModifiers: RunModifier[];
 }
