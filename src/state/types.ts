@@ -9,3 +9,57 @@ export type ScreenId =
   | "event"
   | "recruit"
   | "run_summary";
+
+export type Team = "hero" | "enemy";
+
+export interface UnitStats {
+  maxHp: number;
+  armor: number;
+  move: number;
+  might: number;
+  agility: number;
+  spirit: number;
+}
+
+export interface Condition {
+  id: string;
+  displayName: string;
+  duration: number;
+}
+
+export interface Hex {
+  q: number;
+  r: number;
+}
+
+export interface UnitInstance {
+  instanceId: string;
+  defId: string;
+  displayName: string;
+  team: Team;
+  level: number;
+  xp: number;
+  stats: UnitStats;
+  hp: number;
+  pos: Hex;
+  conditions: Condition[];
+  movePointsRemaining: number;
+  hasActed: boolean;
+}
+
+export interface CombatLogEntry {
+  kind: "initiative" | "turn_start" | "move" | "action" | "defeat" | "victory" | "defeat_squad";
+  text: string;
+  round: number;
+}
+
+export interface CombatState {
+  round: number;
+  activeIndex: number;
+  turnQueue: string[];
+  units: UnitInstance[];
+  log: CombatLogEntry[];
+  status: "active" | "victory" | "defeat";
+  gridKeys: string[];
+  targetingActionId: string | null;
+}

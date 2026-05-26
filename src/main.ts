@@ -1,3 +1,4 @@
+import "./ui/styles.css";
 import { App } from "./ui/App.ts";
 
 const root = document.getElementById("app");
