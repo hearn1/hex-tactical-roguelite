@@ -10,6 +10,7 @@ import { CampScreen } from "./screens/CampScreen.ts";
 import { EventScreen } from "./screens/EventScreen.ts";
 import { RecruitScreen } from "./screens/RecruitScreen.ts";
 import { PetScreen } from "./screens/PetScreen.ts";
+import { MetaUpgrades } from "./screens/MetaUpgrades.ts";
 
 export class App {
   private root: HTMLElement;
@@ -29,6 +30,8 @@ export class App {
     switch (screenId) {
       case "main_menu":
         return new MainMenu(this).render();
+      case "meta_upgrades":
+        return new MetaUpgrades(this).render();
       case "map":
         return new MapScreen(this).render();
       case "combat":

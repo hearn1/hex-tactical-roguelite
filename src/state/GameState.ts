@@ -10,6 +10,8 @@ import type { RunState, PartyMember } from "./RunState.ts";
 import type { InventoryState } from "../run/Inventory.ts";
 import { createInventory } from "../run/Inventory.ts";
 import { computeStats } from "../combat/Stats.ts";
+import type { MetaProgressionState } from "../meta/MetaProgression.ts";
+import { createDefaultMetaProgression } from "../meta/MetaProgression.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -21,6 +23,7 @@ export interface GameState {
   combat: CombatState | null;
   run: RunState | null;
   inventory: InventoryState;
+  meta: MetaProgressionState;
 }
 
 function equipStartingItems(unit: UnitInstance): void {
@@ -279,6 +282,7 @@ function createGameState(): GameState {
     combat: null,
     run: null,
     inventory: createInventory(),
+    meta: createDefaultMetaProgression(),
   };
 }
 

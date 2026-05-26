@@ -250,12 +250,16 @@ export class RewardScreen {
         }
       }
 
-      gameState.combat = null;
-      if (run) {
-        gameState.screen = "map";
-      } else {
-        gameState.screen = "main_menu";
-      }
+  gameState.combat = null;
+  if (run) {
+    if (run.runStatus === "won") {
+      gameState.screen = "run_summary";
+    } else {
+      gameState.screen = "map";
+    }
+  } else {
+    gameState.screen = "main_menu";
+  }
       this.app.render();
     });
     area.appendChild(btn);

@@ -6,6 +6,7 @@ import { createInventory } from "../../run/Inventory.ts";
 import { CLASS_REGISTRY, HERO_DEFAULT_NAMES } from "../../data/classes.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { computeStats } from "../../combat/Stats.ts";
+import { applyMetaUpgradesToFreshRun } from "../../meta/Upgrades.ts";
 
 function createStartingParty(): PartyMember[] {
   const classIds = ["class.guardian", "class.acolyte", "class.arcanist"];
@@ -77,12 +78,23 @@ export class MainMenu {
     newRunBtn.textContent = "New Run";
     newRunBtn.style.cssText = "padding:10px 24px;font-size:16px;";
     newRunBtn.addEventListener("click", () => {
-      gameState.run = initNewRun();
+      const run = initNewRun();
+      applyMetaUpgradesToFreshRun(run, gameState.meta);
+      gameState.run = run;
       gameState.combat = null;
       gameState.screen = "map";
       this.app.render();
     });
     container.appendChild(newRunBtn);
+
+    const metaBtn = document.createElement("button");
+    metaBtn.textContent = "Meta Upgrades";
+    metaBtn.style.cssText = "padding:10px 24px;font-size:16px;";
+    metaBtn.addEventListener("click", () => {
+      gameState.screen = "meta_upgrades";
+      this.app.render();
+    });
+    container.appendChild(metaBtn);
 
     const devLink = document.createElement("a");
     devLink.textContent = "Dev: Combat Sandbox";
