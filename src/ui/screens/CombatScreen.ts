@@ -8,6 +8,8 @@ import { ACTION_REGISTRY } from "../../data/actions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "../../combat/Action.ts";
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
+import { processTurnStart } from "../../combat/Condition.ts";
+import { ITEM_REGISTRY } from "../../data/items.ts";
 
 const HERO_COLOR = "#4488ff";
 const ENEMY_COLOR = "#ff4444";
@@ -56,11 +58,13 @@ export class CombatScreen {
     const actionBar = this.buildActionBar();
     const logPanel = this.buildLogPanel();
     const endTurnBar = this.buildEndTurnBar();
+    const inventoryPanel = this.buildInventoryPanel();
 
     this.container.appendChild(topRow);
     this.container.appendChild(actionBar);
     this.container.appendChild(logPanel);
     this.container.appendChild(endTurnBar);
+    this.container.appendChild(inventoryPanel);
 
     this.canvas.addEventListener("mousemove", (e) => this.onMouseMove(e));
     this.canvas.addEventListener("click", (e) => this.onCanvasClick(e));
@@ -108,7 +112,43 @@ export class CombatScreen {
     endBtn.id = "end-turn-btn";
     endBtn.addEventListener("click", () => this.onEndTurn());
     bar.appendChild(endBtn);
+    const invBtn = document.createElement("button");
+    invBtn.textContent = "Inventory";
+    invBtn.id = "inventory-toggle-btn";
+    invBtn.addEventListener("click", () => this.toggleInventory());
+    bar.appendChild(invBtn);
     return bar;
+  }
+
+  private toggleInventory(): void {
+    const panel = document.getElementById("inventory-panel");
+    if (panel) {
+      panel.style.display = panel.style.display === "none" ? "block" : "none";
+    }
+  }
+
+  private buildInventoryPanel(): HTMLElement {
+    const panel = document.createElement("div");
+    panel.id = "inventory-panel";
+    panel.style.cssText = "display:none;border:1px solid #444;background:#1a1a2e;padding:8px;margin-top:4px;";
+    return panel;
+  }
+
+  private updateInventoryPanel(): void {
+    const panel = document.getElementById("inventory-panel") as HTMLElement;
+    if (!panel) return;
+    const cs = gameState.combat;
+    if (!cs) return;
+    const heroes = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
+    const inv = gameState.inventory;
+    const itemsHtml = heroes.map((h) => {
+      const w = h.equippedItemIds.weapon ? ITEM_REGISTRY[h.equippedItemIds.weapon]?.displayName ?? h.equippedItemIds.weapon : "(none)";
+      const a = h.equippedItemIds.armor ? ITEM_REGISTRY[h.equippedItemIds.armor]?.displayName ?? h.equippedItemIds.armor : "(none)";
+      const t = h.equippedItemIds.trinket ? ITEM_REGISTRY[h.equippedItemIds.trinket]?.displayName ?? h.equippedItemIds.trinket : "(none)";
+      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b><br/>Weapon: ${w}<br/>Armor: ${a}<br/>Trinket: ${t}</div>`;
+    }).join("");
+    const bagHtml = `<div><b>Bag</b><br/>Items: ${inv.items.join(", ") || "(empty)"}<br/>Potions: ${inv.potions.join(", ") || "(empty)"}<br/>Gold: ${inv.gold}</div>`;
+    panel.innerHTML = `<h3 style="margin:0 0 6px;font-size:14px;">Inventory</h3>${itemsHtml}<hr style="border-color:#444;">${bagHtml}`;
   }
 
   private getActiveUnit(): UnitInstance | null {
@@ -205,6 +245,21 @@ export class CombatScreen {
     ctx.fillRect(barX, barY, barW, barH);
     ctx.fillStyle = hpPct > 0.5 ? "#4a4" : "#a44";
     ctx.fillRect(barX, barY, barW * Math.max(0, hpPct), barH);
+
+    const condLabels: string[] = [];
+    for (const c of unit.conditions) {
+      if (c.id === "guarded") condLabels.push("G");
+      else if (c.id === "weakened") condLabels.push("W");
+      else if (c.id === "blessed") condLabels.push("B");
+      else if (c.id === "slowed") condLabels.push("S");
+    }
+    if (condLabels.length > 0) {
+      ctx.fillStyle = "#ffcc00";
+      ctx.font = "bold 10px sans-serif";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(condLabels.join(""), px + 13, py + 12);
+    }
   }
 
   private onMouseMove(e: MouseEvent): void {
@@ -299,6 +354,14 @@ export class CombatScreen {
     if (active) {
       active.movePointsRemaining = active.stats.move;
       active.hasActed = false;
+      const expired = processTurnStart(active);
+      for (const condId of expired) {
+        cs.log.push({
+          kind: "turn_start",
+          text: `[T${cs.round}] ${active.displayName}'s ${condId} expired.`,
+          round: cs.round,
+        });
+      }
       cs.log.push({
         kind: "turn_start",
         text: `[T${cs.round}] ${active.displayName}'s turn begins.`,
@@ -368,6 +431,7 @@ export class CombatScreen {
     this.updateActionBar();
     this.updateLogPanel();
     this.updateEndTurnButton();
+    this.updateInventoryPanel();
   }
 
   private updateTurnPanel(): void {
@@ -400,6 +464,25 @@ export class CombatScreen {
     }
   }
 
+  private getActionIds(unit: UnitInstance): string[] {
+    const classDef = CLASS_REGISTRY[unit.defId];
+    const classActions = classDef ? classDef.actionIds : [];
+    const grantedActions: string[] = [];
+    for (const slot of ["weapon", "armor", "trinket"] as const) {
+      const itemId = unit.equippedItemIds[slot];
+      if (!itemId) continue;
+      const itemDef = ITEM_REGISTRY[itemId];
+      if (itemDef?.grantedActionIds) {
+        for (const aid of itemDef.grantedActionIds) {
+          if (!grantedActions.includes(aid)) {
+            grantedActions.push(aid);
+          }
+        }
+      }
+    }
+    return [...classActions, ...grantedActions];
+  }
+
   private updateActionBar(): void {
     const bar = document.getElementById("action-bar");
     if (!bar) return;
@@ -411,15 +494,17 @@ export class CombatScreen {
     const activeUnit = this.getActiveUnit();
     if (!activeUnit || activeUnit.team !== "hero") return;
 
-    const classDef = CLASS_REGISTRY[activeUnit.defId];
-    if (!classDef) return;
+    const actionIds = this.getActionIds(activeUnit);
 
-    for (const actionId of classDef.actionIds) {
+    for (const actionId of actionIds) {
       const actionDef = ACTION_REGISTRY[actionId];
       if (!actionDef) continue;
       const btn = document.createElement("button");
       btn.className = "action-btn";
       btn.textContent = actionDef.displayName;
+
+      const rangeInfo = actionDef.targetType === "self" ? "Self" : `Range ${actionDef.range}`;
+      btn.title = `${actionDef.displayName} — ${rangeInfo}. ${actionDef.description}`;
 
       if (cs.targetingActionId === actionId) {
         btn.classList.add("targeting");
