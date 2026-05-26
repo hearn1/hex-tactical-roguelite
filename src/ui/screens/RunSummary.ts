@@ -1,5 +1,7 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
+import { computeRenown } from "../../meta/Renown.ts";
+import { saveMetaProgression } from "../../meta/SaveLoad.ts";
 
 export class RunSummary {
   private app: App;
@@ -21,22 +23,30 @@ export class RunSummary {
     banner.textContent = won ? "Victory!" : "Defeat";
     container.appendChild(banner);
 
-    const nodesCleared = run?.mapState.nodesCleared ?? 0;
-    const elitesDefeated = run?.mapState.elitesDefeated ?? 0;
-    const bossDefeated = run?.mapState.bossDefeated ?? false;
     const gold = run?.gold ?? 0;
 
-    const heroesLeveled = run?.party.filter((p) => p.level >= 2).length ?? 0;
-    const renown = nodesCleared * 2 + elitesDefeated * 5 + (bossDefeated ? 15 : 0);
+    const breakdown = run ? computeRenown(run) : null;
 
     const lines = [
-      `Nodes Cleared: ${nodesCleared}`,
-      `Elites Defeated: ${elitesDefeated}`,
-      `Boss Defeated: ${bossDefeated ? "Yes" : "No"}`,
-      `Heroes Leveled: ${heroesLeveled}`,
       `Gold Accumulated: ${gold}`,
-      `Renown Earned: ${renown}`,
     ];
+
+    if (breakdown) {
+      lines.push("");
+      lines.push(`Renown Earned: ${breakdown.total}`);
+      lines.push(`  Nodes cleared (×2): ${breakdown.nodes}`);
+      lines.push(`  Elites (×5): ${breakdown.elites}`);
+      lines.push(`  Boss (×15): ${breakdown.boss}`);
+      lines.push(`  Characters leveled (×1): ${breakdown.characters}`);
+      if (breakdown.minimumApplied) {
+        lines.push("  (Minimum failed-run reward applied)");
+      }
+
+      gameState.meta.renown += breakdown.total;
+      gameState.meta.completedRuns++;
+      if (won) gameState.meta.bossWins++;
+      saveMetaProgression(gameState.meta);
+    }
 
     for (const line of lines) {
       const el = document.createElement("div");
