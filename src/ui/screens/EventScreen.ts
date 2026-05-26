@@ -24,7 +24,14 @@ export class EventScreen {
       return document.createElement("div");
     }
 
-    const eventId = "event.strange_shrine";
+    const EVENT_POOL = ["event.strange_shrine", "event.rogue_trader", "event.healing_spring"];
+    const nodeId = run.mapState.currentNodeId;
+    if (!run.eventSelections[nodeId]) {
+      const unvisited = EVENT_POOL.filter((eid) => !Object.values(run.eventSelections).includes(eid));
+      const pool = unvisited.length > 0 ? unvisited : EVENT_POOL;
+      run.eventSelections[nodeId] = pool[Math.floor(gameState.rng() * pool.length)];
+    }
+    const eventId = run.eventSelections[nodeId];
     const eventDef = EVENT_REGISTRY[eventId];
 
     const container = document.createElement("div");

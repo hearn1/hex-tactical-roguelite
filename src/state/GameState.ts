@@ -12,6 +12,7 @@ import { createInventory } from "../run/Inventory.ts";
 import { computeStats } from "../combat/Stats.ts";
 import type { MetaProgressionState } from "../meta/MetaProgression.ts";
 import { createDefaultMetaProgression } from "../meta/MetaProgression.ts";
+import { DIFFICULTY_CONFIG, scaleStat } from "../data/difficulty.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -195,6 +196,8 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
   const encounterDef = ENCOUNTER_REGISTRY[encounterId];
   if (!encounterDef) throw new Error(`Unknown encounter: ${encounterId}`);
 
+  const diffConfig = DIFFICULTY_CONFIG[run.difficulty ?? "normal"];
+
   const gridKeys = hexesWithinRange({ q: 0, r: 0 }, 3).map(hexKey);
   const units: UnitInstance[] = [];
 
@@ -208,13 +211,17 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
   for (const group of encounterDef.enemyGroups) {
     const enemyDef = ENEMY_REGISTRY[group.enemyId];
     if (!enemyDef) continue;
-    const positions = scatterEnemyPositions(group.count);
-    for (let i = 0; i < group.count; i++) {
+    const actualCount = group.count + (diffConfig.enemyCountBonus > 0 ? 1 : 0);
+    const positions = scatterEnemyPositions(actualCount);
+    for (let i = 0; i < actualCount; i++) {
       enemyCount++;
       const pos = positions[i] ?? { q: 2, r: enemyCount };
-      const name = group.count > 1 ? `${enemyDef.displayName} ${i + 1}` : enemyDef.displayName;
+      const name = actualCount > 1 ? `${enemyDef.displayName} ${i + 1}` : enemyDef.displayName;
       const instId = `enemy_${enemyDef.id}_${enemyCount}`;
-      units.push(createEnemyInstance(instId, group.enemyId as EnemyId, name, pos));
+      const inst = createEnemyInstance(instId, group.enemyId as EnemyId, name, pos);
+      inst.stats.maxHp = scaleStat(inst.stats.maxHp, diffConfig.enemyHpMultiplier);
+      inst.hp = inst.stats.maxHp;
+      units.push(inst);
     }
   }
 
