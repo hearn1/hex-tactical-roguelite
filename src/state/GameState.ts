@@ -211,7 +211,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
   for (const group of encounterDef.enemyGroups) {
     const enemyDef = ENEMY_REGISTRY[group.enemyId];
     if (!enemyDef) continue;
-    const actualCount = group.count + (diffConfig.enemyCountBonus > 0 ? 1 : 0);
+    const actualCount = group.count;
     const positions = scatterEnemyPositions(actualCount);
     for (let i = 0; i < actualCount; i++) {
       enemyCount++;
@@ -246,6 +246,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     bossActionIndex: isBoss ? 0 : undefined,
     bossReinforcementSpawned: isBoss ? false : undefined,
     encounterId,
+    difficulty: run.difficulty,
   };
 }
 

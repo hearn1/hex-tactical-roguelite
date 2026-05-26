@@ -20,9 +20,6 @@ export function visitNode(mapState: MapState, nodeId: string): void {
   if (!available.includes(nodeId)) return;
   mapState.currentNodeId = nodeId;
   mapState.visitedNodeIds.push(nodeId);
-  if (nodeId === "node.boss") {
-    mapState.bossDefeated = true;
-  }
 }
 
 export function bfsReachesBoss(): boolean {

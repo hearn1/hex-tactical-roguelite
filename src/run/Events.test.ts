@@ -40,6 +40,8 @@ const makeRun = (party: PartyMember[]): RunState => ({
   shopStates: {},
   recruitOffers: {},
   runModifiers: [],
+  difficulty: "normal",
+  eventSelections: {},
 });
 
 describe("restParty", () => {

@@ -3,6 +3,7 @@ import type { RunModifier } from "../state/types.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { REWARD_REGISTRY } from "../data/rewards.ts";
 import { roll } from "../core/dice.ts";
+import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 
 export type RewardCard =
   | { kind: "item"; itemId: string }
@@ -121,8 +122,13 @@ export function applyGoldModifiers(gold: number, modifiers: RunModifier[]): numb
 }
 
 export function applyDifficultyToReward(gold: number, difficulty: string): number {
-  const mult = difficulty === "hard" ? 0.75 : 1.0;
-  return Math.floor(gold * mult);
+  const config = DIFFICULTY_CONFIG[difficulty as keyof typeof DIFFICULTY_CONFIG] ?? DIFFICULTY_CONFIG.normal;
+  return Math.floor(gold * config.rewardGoldMultiplier);
+}
+
+export function applyDifficultyToXp(xp: number, difficulty: string): number {
+  const config = DIFFICULTY_CONFIG[difficulty as keyof typeof DIFFICULTY_CONFIG] ?? DIFFICULTY_CONFIG.normal;
+  return Math.floor(xp * config.rewardXpMultiplier);
 }
 
 export function generateRewardWithInventory(

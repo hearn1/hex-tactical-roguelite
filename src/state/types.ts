@@ -80,4 +80,5 @@ export interface CombatState {
   bossActionIndex?: number;
   bossReinforcementSpawned?: boolean;
   encounterId?: string;
+  difficulty?: "normal" | "hard";
 }

@@ -25,6 +25,8 @@ function makeRunState(overrides: {
     shopStates: {},
     recruitOffers: {},
     runModifiers: [],
+    difficulty: "normal",
+    eventSelections: {},
   };
 }
 
