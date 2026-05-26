@@ -23,6 +23,23 @@ export function applyEventChoiceEffects(choice: EventChoice, run: RunState, rng:
       run.gold += effect.amount;
       run.inventory.gold += effect.amount;
       messages.push(`Party gains ${effect.amount} gold.`);
+    } else if (effect.type === "gold_cost") {
+      const cost = Math.min(effect.amount, run.gold);
+      run.gold -= cost;
+      run.inventory.gold -= cost;
+      messages.push(`Party spends ${cost} gold.`);
+    } else if (effect.type === "item") {
+      run.inventory.items.push(effect.itemId);
+      messages.push(`Gained ${effect.itemId}.`);
+    } else if (effect.type === "heal_party") {
+      let healedCount = 0;
+      for (const pm of run.party) {
+        if (pm.hp <= 0) continue;
+        const healAmount = Math.max(1, Math.floor(pm.maxHp * effect.percent / 100));
+        pm.hp = Math.min(pm.maxHp, pm.hp + healAmount);
+        healedCount++;
+      }
+      messages.push(`Healed ${healedCount} party members.`);
     } else if (effect.type === "hp_damage") {
       const living = run.party.filter((p) => p.hp > 0);
       if (living.length > 0 && effect.target === "random_hero") {

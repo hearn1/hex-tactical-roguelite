@@ -2,6 +2,7 @@ export interface EncounterDef {
   id: string;
   displayName: string;
   enemyGroups: { enemyId: string; count: number }[];
+  rewardPoolId?: string;
 }
 
 export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
@@ -36,6 +37,25 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
       { enemyId: "enemy.cult_acolyte", count: 1 },
       { enemyId: "enemy.skeleton_archer", count: 2 },
     ],
+    rewardPoolId: "reward.uncommon",
+  },
+  "encounter.wolf_pack": {
+    id: "encounter.wolf_pack",
+    displayName: "Ravenous Swarm",
+    enemyGroups: [
+      { enemyId: "enemy.wolf", count: 3 },
+      { enemyId: "enemy.bandit_brute", count: 1 },
+    ],
+  },
+  "encounter.broken_banner_elite": {
+    id: "encounter.broken_banner_elite",
+    displayName: "Broken Banner Company",
+    enemyGroups: [
+      { enemyId: "enemy.bandit_brute", count: 1 },
+      { enemyId: "enemy.cult_acolyte", count: 1 },
+      { enemyId: "enemy.goblin_skirmisher", count: 2 },
+    ],
+    rewardPoolId: "reward.uncommon",
   },
   "encounter.boss_ogre_hexbreaker": {
     id: "encounter.boss_ogre_hexbreaker",

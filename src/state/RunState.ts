@@ -18,6 +18,8 @@ export interface PartyMember {
   };
 }
 
+export type Difficulty = "normal" | "hard";
+
 export interface RunState {
   seed: number;
   gold: number;
@@ -28,4 +30,6 @@ export interface RunState {
   shopStates: Record<string, ShopInventory>;
   recruitOffers: Record<string, PartyMember[]>;
   runModifiers: RunModifier[];
+  difficulty: Difficulty;
+  eventSelections: Record<string, string>;
 }
