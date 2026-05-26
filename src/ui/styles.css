@@ -1,0 +1,178 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #1a1a2e;
+  color: #e0e0e0;
+}
+
+h1, h2, h3 {
+  font-weight: 600;
+}
+
+button {
+  padding: 6px 14px;
+  border: 1px solid #555;
+  background: #2a2a4a;
+  color: #e0e0e0;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+button:hover {
+  background: #3a3a6a;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.combat-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.combat-top {
+  display: flex;
+}
+
+.combat-canvas-wrap {
+  border: 1px solid #444;
+  background: #16213e;
+}
+
+.turn-panel {
+  width: 200px;
+  padding: 8px;
+  border-left: 1px solid #444;
+  background: #1a1a2e;
+}
+
+.turn-panel h3 {
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #aaa;
+}
+
+.turn-entry {
+  padding: 3px 6px;
+  font-size: 12px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+}
+
+.turn-entry.active {
+  background: #2a5a3a;
+  font-weight: bold;
+}
+
+.turn-entry.hero {
+  color: #6cf;
+}
+
+.turn-entry.enemy {
+  color: #f66;
+}
+
+.action-bar {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  background: #1a1a2e;
+  border: 1px solid #444;
+  border-top: none;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.action-btn {
+  padding: 6px 12px;
+  border: 1px solid #555;
+  background: #2a2a4a;
+  color: #e0e0e0;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.action-btn:hover {
+  background: #3a3a6a;
+}
+
+.action-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.action-btn.targeting {
+  background: #5a3a2a;
+  border-color: #fa0;
+}
+
+.log-panel {
+  height: 130px;
+  overflow-y: auto;
+  border: 1px solid #444;
+  padding: 6px;
+  font-family: 'Consolas', 'Courier New', monospace;
+  font-size: 11px;
+  background: #0d0d1a;
+  line-height: 1.5;
+}
+
+.end-turn-bar {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  background: #1a1a2e;
+  align-items: center;
+}
+
+.banner-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.7);
+  z-index: 10;
+}
+
+.banner {
+  padding: 24px 48px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.banner.victory {
+  background: #1a3a2a;
+  border: 2px solid #4a8;
+}
+
+.banner.defeat {
+  background: #3a1a1a;
+  border: 2px solid #c44;
+}
+
+.banner h2 {
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+
+.banner button {
+  padding: 8px 24px;
+  font-size: 16px;
+  margin-top: 8px;
+}
