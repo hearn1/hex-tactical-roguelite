@@ -22,11 +22,13 @@ export interface ActionDef {
   source: "class" | "item" | "enemy";
   targetType: "enemy" | "ally" | "self";
   range: number;                    // hex distance; 1 = melee adjacent
-  accuracyStat: "might" | "agility" | "spirit";
+  accuracyStat?: "might" | "agility" | "spirit";  // optional — buff-only actions (added in Feature 06) have no to-hit roll
   effect:
     | { type: "damage"; formula: string }     // e.g., "1d6 + might"
     | { type: "heal";   formula: string };
 }
+
+Note: `ARCHITECTURE.md` § Attack Resolution treats `accuracyStat` as optional (`action.accuracyStat ?? "might"`). All Feature 04 actions specify it, but the field is declared optional now so Feature 06's `applyCondition` effects (Guard, Bless, Arcane Ward) can omit it without a type widening.
 ```
 
 Implement these specific actions (per `CONTENT_CATALOG.md`):

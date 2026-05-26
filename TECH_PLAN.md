@@ -109,12 +109,13 @@ Save fields:
 ```json
 {
   "renown": 0,
-  "purchasedUpgradeIds": [],
   "upgradeRanks": {},
   "completedRuns": 0,
   "bossWins": 0
 }
 ```
+
+`upgradeRanks` is the single source of truth for purchased upgrades (rank > 0 means owned). See `ARCHITECTURE.md` § Save Schema.
 
 ## UI Priorities
 
