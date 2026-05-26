@@ -1,0 +1,28 @@
+import type { MapState } from "../run/MapGraph.ts";
+import type { UnitStats } from "./types.ts";
+import type { InventoryState } from "../run/Inventory.ts";
+
+export interface PartyMember {
+  instanceId: string;
+  classId: string;
+  displayName: string;
+  level: number;
+  xp: number;
+  hp: number;
+  maxHp: number;
+  bonusStats: Partial<UnitStats>;
+  equippedItemIds: {
+    weapon: string | null;
+    armor: string | null;
+    trinket: string | null;
+  };
+}
+
+export interface RunState {
+  seed: number;
+  gold: number;
+  party: PartyMember[];
+  inventory: InventoryState;
+  mapState: MapState;
+  runStatus: "active" | "won" | "lost";
+}

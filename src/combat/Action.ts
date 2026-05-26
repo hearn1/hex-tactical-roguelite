@@ -1,8 +1,9 @@
 import type { ActionDef } from "../data/actions.ts";
-import type { UnitInstance, CombatState, CombatLogEntry, ConditionId } from "../state/types.ts";
-import { distance } from "../core/hex.ts";
+import type { UnitInstance, CombatState, ConditionId } from "../state/types.ts";
+import { distance, hexKey } from "../core/hex.ts";
 import { roll } from "../core/dice.ts";
 import { applyCondition } from "./Condition.ts";
+import { ENEMY_REGISTRY } from "../data/enemies.ts";
 
 export function validTargets(
   action: ActionDef,
@@ -41,17 +42,33 @@ export function resolveAction(
   target: UnitInstance,
   state: CombatState,
   rng: () => number,
+  skipHasActed?: boolean,
 ): void {
   const round = state.round;
 
   if (action.effect.type === "applyCondition") {
+    if (action.effect.targetMode === "aoe_around_caster") {
+      const affected = state.units.filter(
+        (u) => u.team !== attacker.team && u.hp > 0 && distance(attacker.pos, u.pos) <= action.range,
+      );
+      for (const u of affected) {
+        applyCondition(u, action.effect.conditionId as ConditionId, action.effect.duration);
+      }
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — Weakened applied to ${affected.length} heroes.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return;
+    }
     applyCondition(target, action.effect.conditionId as ConditionId, action.effect.duration);
     state.log.push({
       kind: "action",
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — ${action.effect.conditionId} applied.`,
       round,
     });
-    attacker.hasActed = true;
+    if (!skipHasActed) attacker.hasActed = true;
     return;
   }
 
@@ -79,7 +96,12 @@ export function resolveAction(
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — heal ${actual}. ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
       round,
     });
-    attacker.hasActed = true;
+    if (!skipHasActed) attacker.hasActed = true;
+    return;
+  }
+
+  if (action.effect.type === "damage" && action.effect.targetMode === "primary_plus_adjacent") {
+    resolvePrimaryPlusAdjacent(action, attacker, target, state, rng, skipHasActed);
     return;
   }
 
@@ -122,7 +144,7 @@ export function resolveAction(
         round,
       });
     }
-    attacker.hasActed = true;
+    if (!skipHasActed) attacker.hasActed = true;
     return;
   }
 
@@ -170,6 +192,8 @@ export function resolveAction(
     });
   }
 
+  checkBossReinforcement(target, state);
+
   if (target.hp <= 0) {
     state.log.push({
       kind: "defeat",
@@ -178,7 +202,148 @@ export function resolveAction(
     });
   }
 
-  attacker.hasActed = true;
+  if (!skipHasActed) attacker.hasActed = true;
+}
+
+function resolvePrimaryPlusAdjacent(
+  action: ActionDef,
+  attacker: UnitInstance,
+  target: UnitInstance,
+  state: CombatState,
+  rng: () => number,
+  skipHasActed?: boolean,
+): void {
+  const round = state.round;
+  const attackStat = action.accuracyStat ?? "might";
+  const stat = attacker.stats[attackStat];
+  const proficiency = 2 + Math.floor((attacker.level - 1) / 3);
+  const dmgFormula = (action.effect as { formula: string }).formula;
+
+  const d20 = Math.floor(rng() * 20) + 1;
+  const attackTotal = d20 + stat + proficiency;
+  const isCrit = d20 === 20;
+  const isAutoMiss = d20 === 1;
+  const hit = !isAutoMiss && (isCrit || attackTotal >= target.stats.armor);
+
+  if (hit) {
+    const formula = rewriteFormula(dmgFormula, attacker);
+    const result = roll(formula, rng);
+    let damage = result.total;
+    if (isCrit) damage *= 2;
+    const beforeHp = target.hp;
+    target.hp = Math.max(0, target.hp - damage);
+    const dealt = beforeHp - target.hp;
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${target.stats.armor} → hit, ${dealt} dmg.`,
+      round,
+    });
+    if (target.hp <= 0) {
+      state.log.push({
+        kind: "defeat",
+        text: `[T${round}] ${target.displayName} is defeated.`,
+        round,
+      });
+    }
+  } else {
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${target.stats.armor} → miss.`,
+      round,
+    });
+  }
+
+  const adjacentHeroes = state.units.filter(
+    (u) => u.team === "hero" && u.hp > 0 && u.instanceId !== target.instanceId && distance(attacker.pos, u.pos) === 1,
+  );
+  for (const hero of adjacentHeroes) {
+    const d20s = Math.floor(rng() * 20) + 1;
+    const attTotal = d20s + stat + proficiency;
+    const crit = d20s === 20;
+    const autoMiss = d20s === 1;
+    const hits = !autoMiss && (crit || attTotal >= hero.stats.armor);
+    if (hits) {
+      const formula = rewriteFormula(dmgFormula, attacker);
+      const res = roll(formula, rng);
+      let dmg = res.total;
+      if (crit) dmg *= 2;
+      const before = hero.hp;
+      hero.hp = Math.max(0, hero.hp - dmg);
+      const dealt = before - hero.hp;
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] Ground Slam hits ${hero.displayName} — ${dealt} dmg.`,
+        round,
+      });
+      if (hero.hp <= 0) {
+        state.log.push({
+          kind: "defeat",
+          text: `[T${round}] ${hero.displayName} is defeated.`,
+          round,
+        });
+      }
+    } else {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] Ground Slam misses ${hero.displayName}.`,
+        round,
+      });
+    }
+  }
+
+  checkBossReinforcement(target, state);
+  if (!skipHasActed) attacker.hasActed = true;
+}
+
+function checkBossReinforcement(target: UnitInstance, state: CombatState): void {
+  if (state.bossReinforcementSpawned) return;
+  const enemyDef = ENEMY_REGISTRY[target.defId];
+  if (!enemyDef || enemyDef.aiTag !== "boss") return;
+  if (target.hp > Math.floor(target.stats.maxHp / 2)) return;
+
+  state.bossReinforcementSpawned = true;
+  const occupied = new Set(state.units.filter((u) => u.hp > 0).map((u) => hexKey(u.pos)));
+  const candidates: { q: number; r: number }[] = [
+    { q: 3, r: -2 }, { q: 3, r: -1 }, { q: 3, r: 0 },
+    { q: 4, r: -2 }, { q: 4, r: -1 }, { q: 4, r: 0 },
+  ];
+  let spawnPos: { q: number; r: number } | null = null;
+  for (const pos of candidates) {
+    const key = hexKey(pos);
+    if (!occupied.has(key) && state.gridKeys.includes(key)) {
+      spawnPos = pos;
+      break;
+    }
+  }
+  if (!spawnPos) return;
+
+  const archerStats = { maxHp: 9, armor: 12, move: 3, might: 1, agility: 2, spirit: 0 };
+  const archer: UnitInstance = {
+    instanceId: "enemy_reinforcement",
+    defId: "enemy.skeleton_archer",
+    displayName: "Skeleton Archer",
+    team: "enemy",
+    level: 1,
+    xp: 0,
+    stats: { ...archerStats },
+    hp: 9,
+    pos: spawnPos,
+    conditions: [],
+    movePointsRemaining: 0,
+    hasActed: false,
+    equippedItemIds: { weapon: null, armor: null, trinket: null },
+    bonusStats: {},
+  };
+  state.units.push(archer);
+  const bossIdx = state.turnQueue.indexOf(target.instanceId);
+  const insertAt = bossIdx >= 0 ? bossIdx + 1 : state.turnQueue.length;
+  state.turnQueue.splice(insertAt, 0, archer.instanceId);
+
+  state.log.push({
+    kind: "action",
+    text: `[T${state.round}] The Hexbreaker calls reinforcement — a Skeleton Archer joins!`,
+    round: state.round,
+  });
 }
 
 export function checkVictoryDefeat(state: CombatState): void {

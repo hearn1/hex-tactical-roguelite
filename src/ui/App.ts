@@ -3,8 +3,10 @@ import type { ScreenId } from "../state/types.ts";
 import { MainMenu } from "./screens/MainMenu.ts";
 import { CombatScreen } from "./screens/CombatScreen.ts";
 import { RewardScreen } from "./screens/RewardScreen.ts";
+import { MapScreen } from "./screens/MapScreen.ts";
+import { RunSummary } from "./screens/RunSummary.ts";
 
-type AnyScreen = MainMenu | CombatScreen | RewardScreen;
+type AnyScreen = MainMenu | CombatScreen | RewardScreen | MapScreen | RunSummary;
 
 export class App {
   private root: HTMLElement;
@@ -27,6 +29,12 @@ export class App {
       this.screenCache.set("main_menu", screen);
       return screen.render();
     }
+    if (screenId === "map") {
+      this.screenCache.clear();
+      const screen = new MapScreen(this);
+      this.screenCache.set("map", screen);
+      return screen.render();
+    }
     if (screenId === "combat") {
       let screen = this.screenCache.get("combat") as CombatScreen | undefined;
       if (!screen) {
@@ -39,6 +47,12 @@ export class App {
       this.screenCache.clear();
       const screen = new RewardScreen(this);
       this.screenCache.set("reward", screen);
+      return screen.render();
+    }
+    if (screenId === "run_summary") {
+      this.screenCache.clear();
+      const screen = new RunSummary(this);
+      this.screenCache.set("run_summary", screen);
       return screen.render();
     }
     this.screenCache.clear();
