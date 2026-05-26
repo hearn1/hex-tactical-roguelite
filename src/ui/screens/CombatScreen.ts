@@ -559,11 +559,17 @@ export class CombatScreen {
   }
 
   private showBanner(text: string): void {
+    if (text === "Victory!") {
+      gameState.screen = "reward";
+      this.app.render();
+      return;
+    }
+
     const overlay = document.createElement("div");
     overlay.className = "banner-overlay";
 
     const banner = document.createElement("div");
-    banner.className = `banner ${text === "Victory!" ? "victory" : "defeat"}`;
+    banner.className = "banner defeat";
 
     const title = document.createElement("h2");
     title.textContent = text;
