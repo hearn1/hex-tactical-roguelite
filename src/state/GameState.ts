@@ -13,6 +13,7 @@ import { computeStats } from "../combat/Stats.ts";
 import type { MetaProgressionState } from "../meta/MetaProgression.ts";
 import { createDefaultMetaProgression } from "../meta/MetaProgression.ts";
 import { DIFFICULTY_CONFIG, scaleStat } from "../data/difficulty.ts";
+import { resetRewardScreenState } from "../ui/screens/RewardScreen.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -303,6 +304,7 @@ export function resetGameState(seed?: number): void {
   gameState.run = null;
   gameState.inventory = createInventory();
   gameState.meta = createDefaultMetaProgression();
+  resetRewardScreenState();
 }
 
 export const gameState: GameState = createGameState();

@@ -10,12 +10,20 @@ import type { UnitInstance } from "../../state/types.ts";
 import { visitNode } from "../../run/MapGraph.ts";
 import { NODE_REGISTRY } from "../../data/nodes.ts";
 
+let rewardCache: CombatReward | null = null;
+let chosenCardIndex: number | null = null;
+let equipPhase: boolean = false;
+let levelUpTexts: string[] = [];
+
+export function resetRewardScreenState(): void {
+  rewardCache = null;
+  chosenCardIndex = null;
+  equipPhase = false;
+  levelUpTexts = [];
+}
+
 export class RewardScreen {
   private app: App;
-  private reward: CombatReward | null = null;
-  private chosenCardIndex: number | null = null;
-  private equipPhase: boolean = false;
-  private levelUpTexts: string[] = [];
 
   constructor(app: App) {
     this.app = app;
@@ -32,35 +40,37 @@ export class RewardScreen {
     const run = gameState.run;
     const inv = run ? run.inventory : gameState.inventory;
 
-    const numEnemies = cs.units.filter((u) => u.team === "enemy").length;
-    const encounterPlaceholder = {
-      id: "encounter._reward",
-      displayName: "Combat",
-      enemyGroups: cs.units.filter((u) => u.team === "enemy").map((u) => ({
-        enemyId: u.defId,
-        count: 1,
-      })),
-    };
+    if (!rewardCache) {
+      const numEnemies = cs.units.filter((u) => u.team === "enemy").length;
+      const encounterPlaceholder = {
+        id: "encounter._reward",
+        displayName: "Combat",
+        enemyGroups: cs.units.filter((u) => u.team === "enemy").map((u) => ({
+          enemyId: u.defId,
+          count: 1,
+        })),
+      };
 
-    this.reward = generateReward(encounterPlaceholder, gameState.rng);
-    if (run) {
-      this.reward.gold = applyGoldModifiers(this.reward.gold, run.runModifiers);
-      this.reward.gold = applyDifficultyToReward(this.reward.gold, run.difficulty);
-      this.reward.xpPerHero = applyDifficultyToXp(this.reward.xpPerHero, run.difficulty);
-    }
-    inv.gold += this.reward.gold;
-    if (run) run.gold += this.reward.gold;
+      rewardCache = generateReward(encounterPlaceholder, gameState.rng);
+      if (run) {
+        rewardCache.gold = applyGoldModifiers(rewardCache.gold, run.runModifiers);
+        rewardCache.gold = applyDifficultyToReward(rewardCache.gold, run.difficulty);
+        rewardCache.xpPerHero = applyDifficultyToXp(rewardCache.xpPerHero, run.difficulty);
+      }
+      inv.gold += rewardCache.gold;
+      if (run) run.gold += rewardCache.gold;
 
-    const survivors = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
-    for (const hero of survivors) {
-      hero.xp += this.reward.xpPerHero;
-      const result = applyXp(hero, this.reward.xpPerHero);
-      if (result.leveledUp) {
-        const gainStr = Object.entries(result.gains)
-          .filter(([, v]) => v !== undefined && v > 0)
-          .map(([k, v]) => `+${v} ${k}`)
-          .join(", ");
-        this.levelUpTexts.push(`${hero.displayName} reaches Level ${result.newLevel}! (${gainStr})`);
+      const survivors = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
+      for (const hero of survivors) {
+        hero.xp += rewardCache.xpPerHero;
+        const result = applyXp(hero, rewardCache.xpPerHero);
+        if (result.leveledUp) {
+          const gainStr = Object.entries(result.gains)
+            .filter(([, v]) => v !== undefined && v > 0)
+            .map(([k, v]) => `+${v} ${k}`)
+            .join(", ");
+          levelUpTexts.push(`${hero.displayName} reaches Level ${result.newLevel}! (${gainStr})`);
+        }
       }
     }
 
@@ -72,10 +82,10 @@ export class RewardScreen {
     container.appendChild(title);
 
     const xpLine = document.createElement("div");
-    xpLine.textContent = `XP +${this.reward.xpPerHero} per surviving hero`;
+    xpLine.textContent = `XP +${rewardCache.xpPerHero} per surviving hero`;
     container.appendChild(xpLine);
 
-    for (const ltxt of this.levelUpTexts) {
+    for (const ltxt of levelUpTexts) {
       const lEl = document.createElement("div");
       lEl.style.cssText = "color:#4f4;font-weight:bold;";
       lEl.textContent = ltxt;
@@ -83,23 +93,25 @@ export class RewardScreen {
     }
 
     const goldLine = document.createElement("div");
-    goldLine.textContent = `Gold +${this.reward.gold} (total: ${inv.gold})`;
+    goldLine.textContent = `Gold +${rewardCache.gold} (total: ${inv.gold})`;
     container.appendChild(goldLine);
 
-    const cardLabel = document.createElement("div");
-    cardLabel.style.cssText = "font-size:14px;color:#aaa;margin-top:12px;";
-    cardLabel.textContent = "Choose one reward:";
-    container.appendChild(cardLabel);
+    if (chosenCardIndex === null) {
+      const cardLabel = document.createElement("div");
+      cardLabel.style.cssText = "font-size:14px;color:#aaa;margin-top:12px;";
+      cardLabel.textContent = "Choose one reward:";
+      container.appendChild(cardLabel);
 
-    const cardsRow = document.createElement("div");
-    cardsRow.style.cssText = "display:flex;gap:12px;flex-wrap:wrap;justify-content:center;";
+      const cardsRow = document.createElement("div");
+      cardsRow.style.cssText = "display:flex;gap:12px;flex-wrap:wrap;justify-content:center;";
 
-    for (let i = 0; i < this.reward.cards.length; i++) {
-      const card = this.reward.cards[i];
-      const cardEl = this.buildCard(card, i);
-      cardsRow.appendChild(cardEl);
+      for (let i = 0; i < rewardCache.cards.length; i++) {
+        const card = rewardCache.cards[i];
+        const cardEl = this.buildCard(card, i);
+        cardsRow.appendChild(cardEl);
+      }
+      container.appendChild(cardsRow);
     }
-    container.appendChild(cardsRow);
 
     const equipArea = document.createElement("div");
     equipArea.id = "equip-area";
@@ -110,6 +122,17 @@ export class RewardScreen {
     continueArea.id = "continue-area";
     continueArea.style.cssText = "min-height:40px;";
     container.appendChild(continueArea);
+
+    if (chosenCardIndex !== null) {
+      if (equipPhase) {
+        const chosenCard = rewardCache.cards[chosenCardIndex];
+        if (chosenCard && chosenCard.kind === "item") {
+          this.renderEquipPhase(chosenCard.itemId, equipArea);
+        }
+      } else {
+        this.renderContinue(continueArea);
+      }
+    }
 
     return container;
   }
@@ -129,10 +152,10 @@ export class RewardScreen {
       el.innerHTML = `<div style="font-weight:bold;color:#ff8;">Gold</div><div style="font-size:13px;margin-top:4px;">+${card.amount}</div>`;
     }
 
-    if (this.chosenCardIndex !== null && this.chosenCardIndex !== index) {
+    if (chosenCardIndex !== null && chosenCardIndex !== index) {
       el.style.opacity = "0.4";
       el.style.cursor = "default";
-    } else if (this.chosenCardIndex === index) {
+    } else if (chosenCardIndex === index) {
       el.style.borderColor = "#fa0";
       el.style.background = "#3a3a5a";
     } else {
@@ -143,35 +166,35 @@ export class RewardScreen {
   }
 
   private onCardClick(card: RewardCard, index: number): void {
-    this.chosenCardIndex = index;
+    chosenCardIndex = index;
     const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
 
     if (card.kind === "item") {
-      this.equipPhase = true;
+      equipPhase = true;
       this.renderEquipPhase(card.itemId);
     } else if (card.kind === "potion") {
       inv.potions.push(card.potionId);
-      this.equipPhase = false;
+      equipPhase = false;
       this.renderContinue();
     } else {
       inv.gold += card.amount;
       if (gameState.run) gameState.run.gold += card.amount;
-      this.equipPhase = false;
+      equipPhase = false;
       this.renderContinue();
     }
 
     this.app.render();
   }
 
-  private renderEquipPhase(itemId: string): void {
-    const area = document.getElementById("equip-area");
-    if (!area) return;
-    area.innerHTML = "";
+  private renderEquipPhase(itemId: string, area?: HTMLElement): void {
+    const target = area ?? document.getElementById("equip-area");
+    if (!target) return;
+    target.innerHTML = "";
 
     const label = document.createElement("div");
     label.style.cssText = "margin-bottom:8px;font-size:14px;";
     label.textContent = `Equip ${ITEM_REGISTRY[itemId]?.displayName ?? itemId} to:`;
-    area.appendChild(label);
+    target.appendChild(label);
 
     const cs = gameState.combat;
     if (!cs) return;
@@ -193,13 +216,13 @@ export class RewardScreen {
     stashBtn.addEventListener("click", () => {
       const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
       inv.items.push(itemId);
-      this.equipPhase = false;
+      equipPhase = false;
       this.renderContinue();
       this.app.render();
     });
     buttonsDiv.appendChild(stashBtn);
 
-    area.appendChild(buttonsDiv);
+    target.appendChild(buttonsDiv);
   }
 
   private onEquipToHero(hero: UnitInstance, newItemId: string): void {
@@ -221,15 +244,15 @@ export class RewardScreen {
       }
     }
 
-    this.equipPhase = false;
+    equipPhase = false;
     this.renderContinue();
     this.app.render();
   }
 
-  private renderContinue(): void {
-    const area = document.getElementById("continue-area");
-    if (!area) return;
-    area.innerHTML = "";
+  private renderContinue(area?: HTMLElement): void {
+    const target = area ?? document.getElementById("continue-area");
+    if (!target) return;
+    target.innerHTML = "";
 
     const btn = document.createElement("button");
     btn.textContent = "Continue";
@@ -270,6 +293,6 @@ export class RewardScreen {
   }
       this.app.render();
     });
-    area.appendChild(btn);
+    target.appendChild(btn);
   }
 }
