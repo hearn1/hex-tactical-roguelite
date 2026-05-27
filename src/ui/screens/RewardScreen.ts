@@ -291,6 +291,7 @@ export class RewardScreen {
   } else {
     gameState.screen = "main_menu";
   }
+      resetRewardScreenState();
       this.app.render();
     });
     target.appendChild(btn);

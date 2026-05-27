@@ -100,6 +100,38 @@ describe("screen-transitions", () => {
     expect(gameState.combat).toBeNull();
   });
 
+  it('Reward: fresh gold/XP and cards for each combat', () => {
+    const { app, root } = mountApp();
+    setupDefaultRun();
+
+    gameState.combat = createCombatFromRun(gameState.run!, "encounter.road_ambush", gameState.rng);
+    gameState.screen = "reward";
+    const goldBefore1 = gameState.run!.gold;
+    app.render();
+    const goldAfter1 = gameState.run!.gold;
+    expect(goldAfter1).toBeGreaterThan(goldBefore1);
+
+    const cards1 = root.querySelectorAll('[data-testid^="reward-card-"]');
+    expect(cards1.length).toBeGreaterThan(0);
+    (cards1[0] as HTMLElement).click();
+    const stash1 = root.querySelector('[data-testid="stash-btn"]');
+    if (stash1) (stash1 as HTMLElement).click();
+    app.render();
+    const continue1 = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Continue");
+    expect(continue1).toBeTruthy();
+    continue1!.click();
+
+    gameState.combat = createCombatFromRun(gameState.run!, "encounter.road_ambush", gameState.rng);
+    gameState.screen = "reward";
+    const goldBefore2 = gameState.run!.gold;
+    app.render();
+    const goldAfter2 = gameState.run!.gold;
+    expect(goldAfter2).toBeGreaterThan(goldBefore2);
+
+    const cards2 = root.querySelectorAll('[data-testid^="reward-card-"]');
+    expect(cards2.length).toBeGreaterThan(0);
+  });
+
   it('RunSummary (won): clicking "Return to Main Menu" transitions to main_menu', () => {
     const { app, getScreen, clickButton } = mountApp();
     setupWonRun();
