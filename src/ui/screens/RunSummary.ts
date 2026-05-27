@@ -42,10 +42,13 @@ export class RunSummary {
         lines.push("  (Minimum failed-run reward applied)");
       }
 
-      gameState.meta.renown += breakdown.total;
-      gameState.meta.completedRuns++;
-      if (won) gameState.meta.bossWins++;
-      saveMetaProgression(gameState.meta);
+      if (run && !run.summaryApplied) {
+        gameState.meta.renown += breakdown.total;
+        gameState.meta.completedRuns++;
+        if (won) gameState.meta.bossWins++;
+        saveMetaProgression(gameState.meta);
+        run.summaryApplied = true;
+      }
     }
 
     for (const line of lines) {

@@ -116,6 +116,7 @@ export class RewardScreen {
 
   private buildCard(card: RewardCard, index: number): HTMLElement {
     const el = document.createElement("div");
+    el.setAttribute("data-testid", `reward-card-${index}`);
     el.style.cssText = "border:2px solid #555;border-radius:8px;padding:16px 24px;cursor:pointer;background:#2a2a4a;text-align:center;min-width:140px;";
 
     if (card.kind === "item") {

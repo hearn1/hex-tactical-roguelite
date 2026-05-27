@@ -32,4 +32,5 @@ export interface RunState {
   runModifiers: RunModifier[];
   difficulty: Difficulty;
   eventSelections: Record<string, string>;
+  summaryApplied?: boolean;
 }
