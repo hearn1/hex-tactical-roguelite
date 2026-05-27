@@ -76,6 +76,7 @@ export class EventScreen {
     for (const choice of eventDef.choices) {
       const card = document.createElement("div");
       card.style.cssText = "border:1px solid #555;border-radius:8px;padding:16px 24px;cursor:pointer;background:#2a2a4a;text-align:center;min-width:280px;";
+      card.setAttribute("data-testid", `event-choice-${choice.label.replace(/\s+/g, "-").toLowerCase()}`);
       card.innerHTML = `<div style="font-weight:bold;font-size:15px;">${choice.label}</div><div style="font-size:12px;color:#aaa;margin-top:4px;">${choice.description}</div>`;
       card.addEventListener("click", () => this.onChoiceClick(eventDef, choice));
       card.addEventListener("mouseenter", () => { card.style.background = "#3a3a5a"; });
