@@ -4,18 +4,49 @@ import type { PartyMember } from "../../state/RunState.ts";
 import { restParty, trainPartyMember } from "../../run/Events.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 
+// Module-level state persists across CampScreen instances created by App.render()
+let phase: "menu" | "result" = "menu";
+let resultText: string = "";
+let pickingHero: boolean = false;
+let actionType: "rest" | "train" | null = null;
+let lastNodeId: string | null = null;
+let lastNodesCleared: number = 0;
+
+function resetState(): void {
+  phase = "menu";
+  resultText = "";
+  pickingHero = false;
+  actionType = null;
+  lastNodeId = null;
+  lastNodesCleared = 0;
+}
+
+export function resetCampScreenState(): void {
+  resetState();
+}
+
 export class CampScreen {
   private app: App;
-  private phase: "menu" | "result" = "menu";
-  private resultText: string = "";
-  private pickingHero: boolean = false;
-  private actionType: "rest" | "train" | null = null;
 
   constructor(app: App) {
     this.app = app;
   }
 
+  private checkFreshVisit(): void {
+    const run = gameState.run;
+    if (!run) { resetState(); return; }
+    const nd = run.mapState.currentNodeId;
+    const nc = run.mapState.nodesCleared;
+    if (nd !== lastNodeId || nc !== lastNodesCleared) {
+      resetState();
+      lastNodeId = nd;
+      lastNodesCleared = nc;
+    }
+  }
+
   render(): HTMLElement {
+    this.checkFreshVisit();
+
     const container = document.createElement("div");
     container.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:20px;max-width:600px;margin:0 auto;";
 
@@ -28,16 +59,16 @@ export class CampScreen {
     desc.style.cssText = "color:#aaa;font-size:14px;";
     container.appendChild(desc);
 
-    if (this.pickingHero && this.actionType === "train") {
+    if (pickingHero && actionType === "train") {
       const picker = this.renderHeroPicker();
       container.appendChild(picker);
       return container;
     }
 
-    if (this.phase === "result") {
+    if (phase === "result") {
       const resultEl = document.createElement("div");
       resultEl.style.cssText = "font-size:16px;color:#4f4;font-weight:bold;margin:12px 0;";
-      resultEl.textContent = this.resultText;
+      resultEl.textContent = resultText;
       container.appendChild(resultEl);
 
       const contBtn = document.createElement("button");
@@ -61,8 +92,8 @@ export class CampScreen {
       const before = run.party.map((p) => p.hp);
       restParty(run.party);
       const messages = run.party.map((p, i) => `${p.displayName}: ${before[i]} → ${p.hp} HP`);
-      this.resultText = `Party rested! ${messages.join(", ")}`;
-      this.phase = "result";
+      resultText = `Party rested! ${messages.join(", ")}`;
+      phase = "result";
       this.app.render();
     });
     container.appendChild(restBtn);
@@ -71,8 +102,8 @@ export class CampScreen {
     trainBtn.textContent = "Train (+5 XP to a hero)";
     trainBtn.style.cssText = "padding:10px 24px;font-size:14px;width:250px;";
     trainBtn.addEventListener("click", () => {
-      this.pickingHero = true;
-      this.actionType = "train";
+      pickingHero = true;
+      actionType = "train";
       this.app.render();
     });
     container.appendChild(trainBtn);
@@ -112,10 +143,10 @@ export class CampScreen {
         if (result.leveledUp) {
           msg += ` Reaches Level ${result.newLevel}!`;
         }
-        this.resultText = msg;
-        this.phase = "result";
-        this.pickingHero = false;
-        this.actionType = null;
+        resultText = msg;
+        phase = "result";
+        pickingHero = false;
+        actionType = null;
         this.app.render();
       });
       wrap.appendChild(btn);
@@ -125,8 +156,8 @@ export class CampScreen {
     cancelBtn.textContent = "Cancel";
     cancelBtn.style.cssText = "padding:8px 16px;font-size:13px;margin-top:8px;";
     cancelBtn.addEventListener("click", () => {
-      this.pickingHero = false;
-      this.actionType = null;
+      pickingHero = false;
+      actionType = null;
       this.app.render();
     });
     wrap.appendChild(cancelBtn);

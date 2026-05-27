@@ -213,10 +213,15 @@ export function autoPlayNonCombatScreen(root: HTMLElement): void {
       break;
     }
     case "camp": {
+      // Phase 1: menu — click Rest to heal
+      const restBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Rest (Heal 40% max HP)");
+      if (restBtn) { restBtn.click(); break; }
+      // Phase 2: result — click Continue to leave
+      const continueBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Continue");
+      if (continueBtn) { continueBtn.click(); break; }
+      // Fallback: Leave button (only if Rest/Continue unavailable)
       const leaveBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Leave");
-      if (leaveBtn) {
-        leaveBtn.click();
-      }
+      if (leaveBtn) { leaveBtn.click(); }
       break;
     }
     case "event": {
