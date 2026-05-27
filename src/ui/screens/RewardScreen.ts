@@ -189,6 +189,7 @@ export class RewardScreen {
 
     const stashBtn = document.createElement("button");
     stashBtn.textContent = "Stash";
+    stashBtn.setAttribute("data-testid", "stash-btn");
     stashBtn.addEventListener("click", () => {
       const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
       inv.items.push(itemId);

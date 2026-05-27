@@ -1,14 +1,13 @@
-import { gameState, syncPartyFromCombat, createCombatFromRun } from "../../../src/state/GameState.ts";
+import { gameState, syncPartyFromCombat } from "../../../src/state/GameState.ts";
 import { ACTION_REGISTRY } from "../../../src/data/actions.ts";
 import { CLASS_REGISTRY } from "../../../src/data/classes.ts";
 import { ITEM_REGISTRY } from "../../../src/data/items.ts";
 import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "../../../src/combat/Action.ts";
 import { takeEnemyTurn } from "../../../src/combat/EnemyAI.ts";
 import { processTurnStart } from "../../../src/combat/Condition.ts";
-import { availableNextNodes, visitNode } from "../../../src/run/MapGraph.ts";
-import { NODE_REGISTRY } from "../../../src/data/nodes.ts";
-import { distance, findPath, hexKey } from "../../../src/core/hex.ts";
+import { availableNextNodes } from "../../../src/run/MapGraph.ts";
 import type { CombatState, UnitInstance } from "../../../src/state/types.ts";
+import type { App } from "../../../src/ui/App.ts";
 
 function getActionIds(unit: UnitInstance): string[] {
   const classDef = CLASS_REGISTRY[unit.defId];
@@ -27,10 +26,15 @@ function getActionIds(unit: UnitInstance): string[] {
   return [...classActions, ...grantedActions];
 }
 
+function getActiveUnit(cs: CombatState): UnitInstance | null {
+  const id = cs.turnQueue[cs.activeIndex];
+  return cs.units.find((u) => u.instanceId === id) ?? null;
+}
+
 function advanceTurn(cs: CombatState): void {
   cs.activeIndex = (cs.activeIndex + 1) % cs.turnQueue.length;
   if (cs.activeIndex === 0) cs.round++;
-  const active = cs.units.find((u) => u.instanceId === cs.turnQueue[cs.activeIndex]);
+  const active = getActiveUnit(cs);
   if (active) {
     active.movePointsRemaining = active.stats.move;
     active.hasActed = false;
@@ -38,7 +42,18 @@ function advanceTurn(cs: CombatState): void {
   }
 }
 
-export function autoPlayCombat(): void {
+function buildDiagnostics(cs: CombatState): string {
+  const lines: string[] = [`Round: ${cs.round}, Status: ${cs.status}`];
+  for (const u of cs.units) {
+    lines.push(`${u.displayName} (${u.team}): HP ${u.hp}/${u.stats.maxHp}`);
+  }
+  const lastLog = cs.log.slice(-5).map((e) => e.text).join("\n");
+  lines.push("Last log entries:");
+  lines.push(lastLog);
+  return lines.join("\n");
+}
+
+export function autoPlayCombat(app: App): void {
   const cs = gameState.combat;
   if (!cs) return;
 
@@ -46,57 +61,65 @@ export function autoPlayCombat(): void {
   while (cs.status === "active" && safety < 500) {
     safety++;
     if (cs.round > 30) {
-      cs.status = "victory";
-      break;
+      throw new Error(`Combat stalemate - round > 30 with no resolution.\n${buildDiagnostics(cs)}`);
     }
-    const activeId = cs.turnQueue[cs.activeIndex];
-    const unit = cs.units.find((u) => u.instanceId === activeId);
+
+    const unit = getActiveUnit(cs);
     if (!unit || unit.hp <= 0) { advanceTurn(cs); continue; }
 
     if (unit.team === "hero") {
-      const actionIds = getActionIds(unit);
-      let acted = false;
+      app.render();
+      const root = document.getElementById("app")!;
 
-      for (const actionId of actionIds) {
-        const actionDef = ACTION_REGISTRY[actionId];
-        if (!actionDef) continue;
-        const targets = validTargets(actionDef, unit, cs);
-        if (targets.length > 0) {
-          resolveAction(actionDef, unit, targets[0], cs, gameState.rng);
-          acted = true;
-          break;
-        }
+      const actionBtns = root.querySelectorAll<HTMLButtonElement>(".action-btn:not(.disabled)");
+      let acted = false;
+      let clickedBtn = false;
+
+      for (const btn of actionBtns) {
+        if (btn.disabled) continue;
+        btn.click();
+        clickedBtn = true;
+        break;
       }
-      if (!acted && unit.movePointsRemaining > 0) {
-        const enemies = cs.units.filter((u) => u.team === "enemy" && u.hp > 0);
-        if (enemies.length > 0) {
-          const nearest = enemies.reduce((a, b) => {
-            const da = distance(unit.hex, a.hex);
-            const db = distance(unit.hex, b.hex);
-            return da < db ? a : b;
-          });
-          const occupiedKeys = new Set(cs.units.filter((u) => u.hp > 0).map((u) => hexKey(u.hex)));
-          const gridKeys = new Set(cs.mapHexes.map((h) => hexKey(h)));
-          gridKeys.delete(hexKey(unit.hex));
-          const path = findPath(unit.hex, nearest.hex, occupiedKeys, gridKeys, unit.movePointsRemaining);
-          if (path && path.length > 0) {
-            const dest = path[path.length - 1];
-            unit.hex = dest;
-            unit.movePointsRemaining = 0;
-            unit.hasActed = true;
+
+      if (clickedBtn) {
+        const actionIds = getActionIds(unit);
+        for (const actionId of actionIds) {
+          const actionDef = ACTION_REGISTRY[actionId];
+          if (!actionDef) continue;
+          const targets = validTargets(actionDef, unit, cs);
+          if (targets.length > 0) {
+            const target = targets[Math.floor(gameState.rng() * targets.length)];
+            resolveAction(actionDef, unit, target, cs, gameState.rng);
             acted = true;
+            break;
           }
         }
       }
-      if (!acted) {
-        unit.hasActed = true;
-      }
+
       checkVictoryDefeat(cs);
       removeDefeatedFromQueue(cs);
       if (cs.status !== "active") break;
-      advanceTurn(cs);
-    } else {
-      takeEnemyTurn(unit, cs, gameState.rng);
+
+      if (acted) {
+        advanceTurn(cs);
+      } else {
+        const endBtn = root.querySelector<HTMLButtonElement>("#end-turn-btn");
+        if (endBtn && !endBtn.disabled) {
+          endBtn.click();
+        } else {
+          advanceTurn(cs);
+        }
+      }
+    }
+
+    if (cs.status !== "active") break;
+
+    while (cs.status === "active") {
+      const next = getActiveUnit(cs);
+      if (!next || next.hp <= 0) { advanceTurn(cs); continue; }
+      if (next.team === "hero") break;
+      takeEnemyTurn(next, cs, gameState.rng);
       checkVictoryDefeat(cs);
       removeDefeatedFromQueue(cs);
       if (cs.status !== "active") break;
@@ -117,63 +140,47 @@ export function autoPlayCombat(): void {
   }
 }
 
-export function autoPlayMapNode(): void {
+export function autoPlayMapNode(app: App): void {
   const run = gameState.run;
   if (!run) return;
+  app.render();
+  const root = document.getElementById("app")!;
   const available = availableNextNodes(run.mapState);
   if (available.length === 0) return;
   const nodeId = available[0];
-  const nodeDef = NODE_REGISTRY[nodeId];
-  if (!nodeDef) return;
-
-  visitNode(run.mapState, nodeId);
-
-  if (nodeDef.type === "combat" || nodeDef.type === "boss" || nodeDef.type === "elite") {
-    if (nodeDef.encounterId) {
-      gameState.combat = createCombatFromRun(run, nodeDef.encounterId, gameState.rng);
-      gameState.screen = "combat";
-    }
-    return;
-  }
-
-  if (nodeDef.type === "shop" || nodeDef.type === "camp" || nodeDef.type === "event" || nodeDef.type === "recruit" || nodeDef.type === "pet") {
-    gameState.screen = nodeDef.type;
-  }
+  const nodeEl = root.querySelector(`[data-testid="map-node-${nodeId}"]`);
+  if (!nodeEl) return;
+  nodeEl.dispatchEvent(new MouseEvent("click", { bubbles: true }));
 }
 
-export function autoPlayReward(): void {
+export function autoPlayReward(app: App): void {
   const run = gameState.run;
-  const cs = gameState.combat;
-  if (!run || !cs) { gameState.screen = "map"; return; }
+  if (!run) return;
 
-  for (const pm of run.party) {
-    const unit = cs.units.find((u) => u.instanceId === pm.instanceId);
-    if (unit) {
-      pm.hp = unit.hp > 0 ? unit.hp : 1;
-      pm.xp = unit.xp;
-      pm.level = unit.level;
-    }
-  }
-  const nd = NODE_REGISTRY[run.mapState.currentNodeId];
-  if (nd?.type === "boss") {
-    run.mapState.bossDefeated = true;
-    run.runStatus = "won";
-  }
-  if (nd?.type === "elite") {
-    run.mapState.elitesDefeated++;
-  }
-  run.mapState.nodesCleared++;
-  gameState.combat = null;
+  app.render();
+  const root = document.getElementById("app")!;
 
-  if (run.runStatus === "won") {
-    gameState.screen = "run_summary";
-  } else {
-    gameState.screen = "map";
+  const cards = root.querySelectorAll('[data-testid^="reward-card-"]');
+  if (cards.length > 0) {
+    (cards[0] as HTMLElement).click();
+  }
+
+  app.render();
+
+  const stashBtn = root.querySelector('[data-testid="stash-btn"]') as HTMLElement;
+  if (stashBtn) {
+    stashBtn.click();
+    app.render();
+  }
+
+  const continueBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Continue");
+  if (continueBtn) {
+    continueBtn.click();
   }
 }
 
 export function autoPlayEvent(root: HTMLElement): void {
-  const cards = root.querySelectorAll('[style*="cursor:pointer"]');
+  const cards = root.querySelectorAll('[data-testid^="event-choice-"]');
   if (cards.length > 0) {
     (cards[0] as HTMLElement).click();
   }
@@ -209,9 +216,6 @@ export function autoPlayNonCombatScreen(root: HTMLElement): void {
       const leaveBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Leave");
       if (leaveBtn) {
         leaveBtn.click();
-      } else {
-        if (gameState.run) gameState.run.mapState.nodesCleared++;
-        gameState.screen = "map";
       }
       break;
     }

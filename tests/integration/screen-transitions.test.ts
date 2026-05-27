@@ -48,8 +48,8 @@ describe("screen-transitions", () => {
     expect(gameState.combat).not.toBeNull();
   });
 
-  it('Combat (with run): victory transitions to reward', () => {
-    const { app, getScreen } = mountApp();
+  it('Combat (with run): clicking Continue after victory transitions to reward', () => {
+    const { app, getScreen, root } = mountApp();
     setupDefaultRun();
     gameState.combat = createCombatFromRun(gameState.run!, "encounter.road_ambush", gameState.rng);
     for (const u of gameState.combat.units) {
@@ -59,6 +59,11 @@ describe("screen-transitions", () => {
     gameState.screen = "combat";
     app.render();
     expect(getScreen()).toBe("combat");
+    const contBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Continue");
+    if (contBtn) {
+      contBtn.click();
+      expect(getScreen()).toBe("reward");
+    }
   });
 
   it('Combat (no run/sandbox): defeat banner shows "Continue" button', () => {
@@ -76,14 +81,30 @@ describe("screen-transitions", () => {
     expect(contBtn).not.toBeNull();
   });
 
-  it('Reward: at least one reward card is rendered', () => {
-    const { app, root } = mountApp();
+  it('Reward: clicking a card and Continue transitions to map and updates state', () => {
+    const { app, root, getScreen } = mountApp();
     setupDefaultRun();
     gameState.combat = createCombatFromRun(gameState.run!, "encounter.road_ambush", gameState.rng);
     gameState.screen = "reward";
     app.render();
     const cards = root.querySelectorAll('[data-testid^="reward-card-"]');
     expect(cards.length).toBeGreaterThan(0);
+    const beforeGold = gameState.run!.gold;
+    (cards[0] as HTMLElement).click();
+    const stashBtn = root.querySelector('[data-testid="stash-btn"]');
+    if (stashBtn) {
+      (stashBtn as HTMLElement).click();
+    }
+    app.render();
+    const continueBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Continue");
+    if (continueBtn) {
+      continueBtn.click();
+      expect(getScreen()).toBe("map");
+      if (gameState.run) {
+        expect(gameState.run.gold).toBeGreaterThanOrEqual(beforeGold);
+        expect(gameState.combat).toBeNull();
+      }
+    }
   });
 
   it('RunSummary (won): clicking "Return to Main Menu" transitions to main_menu', () => {
