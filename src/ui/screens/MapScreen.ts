@@ -129,6 +129,7 @@ export class MapScreen {
       circle.setAttribute("stroke", stroke);
       circle.setAttribute("stroke-width", String(strokeWidth));
       circle.setAttribute("style", `cursor:${cursor};`);
+      circle.setAttribute("data-testid", `map-node-${node.id}`);
 
       if (isAvailable && !isCurrent) {
         circle.addEventListener("click", () => this.onNodeClick(node.id));

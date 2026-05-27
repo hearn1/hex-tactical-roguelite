@@ -294,4 +294,15 @@ function createGameState(): GameState {
   };
 }
 
+export function resetGameState(seed?: number): void {
+  const actualSeed = seed ?? Date.now();
+  gameState.screen = "main_menu";
+  gameState.rng = createRng(actualSeed);
+  gameState.rngSeed = actualSeed;
+  gameState.combat = null;
+  gameState.run = null;
+  gameState.inventory = createInventory();
+  gameState.meta = createDefaultMetaProgression();
+}
+
 export const gameState: GameState = createGameState();

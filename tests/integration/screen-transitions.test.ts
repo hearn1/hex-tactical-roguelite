@@ -1,0 +1,144 @@
+// @vitest-environment happy-dom
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { mountApp, cleanup } from "./helpers/mountApp.ts";
+import { gameState, resetGameState } from "../../src/state/GameState.ts";
+import { initCombatState, createCombatFromRun } from "../../src/state/GameState.ts";
+import { setupDefaultRun, setupWonRun, setupLostRun, setupActiveRun } from "./helpers/seededRun.ts";
+
+describe("screen-transitions", () => {
+  beforeEach(() => {
+    resetGameState();
+  });
+
+  afterEach(() => {
+    cleanup();
+  });
+
+  it('MainMenu: "New Run" transitions to map', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    gameState.screen = "main_menu";
+    app.render();
+    clickButton("New Run");
+    expect(getScreen()).toBe("map");
+    expect(gameState.run).not.toBeNull();
+  });
+
+  it('MainMenu: "Meta Upgrades" transitions to meta_upgrades', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    gameState.screen = "main_menu";
+    app.render();
+    clickButton("Meta Upgrades");
+    expect(getScreen()).toBe("meta_upgrades");
+  });
+
+  it('MetaUpgrades: "Back to Main Menu" transitions to main_menu', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    gameState.screen = "meta_upgrades";
+    app.render();
+    clickButton("Back to Main Menu");
+    expect(getScreen()).toBe("main_menu");
+  });
+
+  it('Map: clicking an available node transitions to combat', () => {
+    const { app, getScreen, clickTestId } = mountApp();
+    setupActiveRun();
+    app.render();
+    clickTestId("map-node-node.combat_a");
+    expect(getScreen()).toBe("combat");
+    expect(gameState.combat).not.toBeNull();
+  });
+
+  it('Combat (with run): victory transitions to reward', () => {
+    const { app, getScreen } = mountApp();
+    setupDefaultRun();
+    gameState.combat = createCombatFromRun(gameState.run!, "encounter.road_ambush", gameState.rng);
+    for (const u of gameState.combat.units) {
+      if (u.team === "enemy") u.hp = 0;
+    }
+    gameState.combat.status = "victory";
+    gameState.screen = "combat";
+    app.render();
+    expect(getScreen()).toBe("combat");
+  });
+
+  it('Combat (no run/sandbox): defeat banner shows "Continue" button', () => {
+    const { app, root } = mountApp();
+    gameState.run = null;
+    gameState.combat = initCombatState(gameState.rng);
+    const cs = gameState.combat;
+    for (const u of cs.units) {
+      if (u.team === "hero") u.hp = 0;
+    }
+    cs.status = "defeat";
+    gameState.screen = "combat";
+    app.render();
+    const contBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Continue");
+    expect(contBtn).not.toBeNull();
+  });
+
+  it('Reward: at least one reward card is rendered', () => {
+    const { app, root } = mountApp();
+    setupDefaultRun();
+    gameState.combat = createCombatFromRun(gameState.run!, "encounter.road_ambush", gameState.rng);
+    gameState.screen = "reward";
+    app.render();
+    const cards = root.querySelectorAll('[data-testid^="reward-card-"]');
+    expect(cards.length).toBeGreaterThan(0);
+  });
+
+  it('RunSummary (won): clicking "Return to Main Menu" transitions to main_menu', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    setupWonRun();
+    gameState.screen = "run_summary";
+    app.render();
+    clickButton("Return to Main Menu");
+    expect(getScreen()).toBe("main_menu");
+    expect(gameState.run).toBeNull();
+  });
+
+  it('RunSummary (lost): clicking "Return to Main Menu" transitions to main_menu', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    setupLostRun();
+    gameState.screen = "run_summary";
+    app.render();
+    clickButton("Return to Main Menu");
+    expect(getScreen()).toBe("main_menu");
+    expect(gameState.run).toBeNull();
+  });
+
+  it('Shop: "Leave Shop" transitions to map', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    setupDefaultRun();
+    gameState.screen = "shop";
+    app.render();
+    clickButton("Leave Shop");
+    expect(getScreen()).toBe("map");
+  });
+
+  it('Camp: "Leave" transitions to map', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    setupDefaultRun();
+    gameState.screen = "camp";
+    app.render();
+    clickButton("Leave");
+    expect(getScreen()).toBe("map");
+  });
+
+  it('Recruit: "Skip" transitions to map', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    setupDefaultRun();
+    gameState.screen = "recruit";
+    app.render();
+    clickButton("Skip");
+    expect(getScreen()).toBe("map");
+  });
+
+  it('Pet: "Leave" transitions to map', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    setupDefaultRun();
+    gameState.screen = "pet";
+    app.render();
+    clickButton("Leave");
+    expect(getScreen()).toBe("map");
+  });
+});
