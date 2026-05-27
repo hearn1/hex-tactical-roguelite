@@ -28,6 +28,12 @@ export class CombatScreen {
   private ctx!: CanvasRenderingContext2D;
   private hoveredHex: Hex | null = null;
   private enemyProcessing = false;
+  private actionBarEl!: HTMLElement;
+  private turnPanelEl!: HTMLElement;
+  private logPanelEl!: HTMLElement;
+  private endTurnBtn!: HTMLButtonElement;
+  private inventoryPanelEl!: HTMLElement;
+  private invToggleBtn!: HTMLButtonElement;
 
   constructor(app: App) {
     this.app = app;
@@ -53,20 +59,20 @@ export class CombatScreen {
     this.ctx = this.canvas.getContext("2d")!;
     canvasWrap.appendChild(this.canvas);
 
-    const turnPanel = this.buildTurnPanel();
+    this.turnPanelEl = this.buildTurnPanel();
     topRow.appendChild(canvasWrap);
-    topRow.appendChild(turnPanel);
+    topRow.appendChild(this.turnPanelEl);
 
-    const actionBar = this.buildActionBar();
-    const logPanel = this.buildLogPanel();
+    this.actionBarEl = this.buildActionBar();
+    this.logPanelEl = this.buildLogPanel();
     const endTurnBar = this.buildEndTurnBar();
-    const inventoryPanel = this.buildInventoryPanel();
+    this.inventoryPanelEl = this.buildInventoryPanel();
 
     this.container.appendChild(topRow);
-    this.container.appendChild(actionBar);
-    this.container.appendChild(logPanel);
+    this.container.appendChild(this.actionBarEl);
+    this.container.appendChild(this.logPanelEl);
     this.container.appendChild(endTurnBar);
-    this.container.appendChild(inventoryPanel);
+    this.container.appendChild(this.inventoryPanelEl);
 
     this.canvas.addEventListener("mousemove", (e) => this.onMouseMove(e));
     this.canvas.addEventListener("click", (e) => this.onCanvasClick(e));
@@ -109,23 +115,22 @@ export class CombatScreen {
     const bar = document.createElement("div");
     bar.className = "end-turn-bar";
     bar.id = "end-turn-bar";
-    const endBtn = document.createElement("button");
-    endBtn.textContent = "End Turn";
-    endBtn.id = "end-turn-btn";
-    endBtn.addEventListener("click", () => this.onEndTurn());
-    bar.appendChild(endBtn);
-    const invBtn = document.createElement("button");
-    invBtn.textContent = "Inventory";
-    invBtn.id = "inventory-toggle-btn";
-    invBtn.addEventListener("click", () => this.toggleInventory());
-    bar.appendChild(invBtn);
+    this.endTurnBtn = document.createElement("button");
+    this.endTurnBtn.textContent = "End Turn";
+    this.endTurnBtn.id = "end-turn-btn";
+    this.endTurnBtn.addEventListener("click", () => this.onEndTurn());
+    bar.appendChild(this.endTurnBtn);
+    this.invToggleBtn = document.createElement("button");
+    this.invToggleBtn.textContent = "Inventory";
+    this.invToggleBtn.id = "inventory-toggle-btn";
+    this.invToggleBtn.addEventListener("click", () => this.toggleInventory());
+    bar.appendChild(this.invToggleBtn);
     return bar;
   }
 
   private toggleInventory(): void {
-    const panel = document.getElementById("inventory-panel");
-    if (panel) {
-      panel.style.display = panel.style.display === "none" ? "block" : "none";
+    if (this.inventoryPanelEl) {
+      this.inventoryPanelEl.style.display = this.inventoryPanelEl.style.display === "none" ? "block" : "none";
     }
   }
 
@@ -137,8 +142,7 @@ export class CombatScreen {
   }
 
   private updateInventoryPanel(): void {
-    const panel = document.getElementById("inventory-panel") as HTMLElement;
-    if (!panel) return;
+    const panel = this.inventoryPanelEl;
     const cs = gameState.combat;
     if (!cs) return;
     const heroes = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
@@ -420,8 +424,7 @@ export class CombatScreen {
   }
 
   private setControlsEnabled(enabled: boolean): void {
-    const endBtn = document.getElementById("end-turn-btn") as HTMLButtonElement;
-    if (endBtn) endBtn.disabled = !enabled;
+    if (this.endTurnBtn) this.endTurnBtn.disabled = !enabled;
     const actionBtns = this.container.querySelectorAll(".action-btn");
     for (const btn of actionBtns) {
       (btn as HTMLButtonElement).disabled = !enabled;
@@ -437,7 +440,7 @@ export class CombatScreen {
   }
 
   private updateTurnPanel(): void {
-    const panel = document.getElementById("turn-panel");
+    const panel = this.turnPanelEl;
     if (!panel) return;
     const cs = gameState.combat;
     if (!cs) return;
@@ -487,7 +490,7 @@ export class CombatScreen {
   }
 
   private updateActionBar(): void {
-    const bar = document.getElementById("action-bar");
+    const bar = this.actionBarEl;
     if (!bar) return;
     bar.innerHTML = "";
 
@@ -541,7 +544,7 @@ export class CombatScreen {
   }
 
   private updateLogPanel(): void {
-    const panel = document.getElementById("log-panel");
+    const panel = this.logPanelEl;
     if (!panel) return;
     const cs = gameState.combat;
     if (!cs) return;
@@ -550,7 +553,7 @@ export class CombatScreen {
   }
 
   private updateEndTurnButton(): void {
-    const btn = document.getElementById("end-turn-btn") as HTMLButtonElement;
+    const btn = this.endTurnBtn;
     if (!btn) return;
     const cs = gameState.combat;
     if (!cs || cs.status !== "active") {
