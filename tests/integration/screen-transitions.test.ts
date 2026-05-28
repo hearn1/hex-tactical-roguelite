@@ -4,6 +4,7 @@ import { mountApp, cleanup } from "./helpers/mountApp.ts";
 import { gameState, resetGameState } from "../../src/state/GameState.ts";
 import { initCombatState, createCombatFromRun } from "../../src/state/GameState.ts";
 import { setupDefaultRun, setupWonRun, setupLostRun, setupActiveRun } from "./helpers/seededRun.ts";
+import { ITEM_PRICE } from "../../src/run/Shop.ts";
 
 describe("screen-transitions", () => {
   beforeEach(() => {
@@ -159,6 +160,68 @@ describe("screen-transitions", () => {
     app.render();
     clickButton("Leave Shop");
     expect(getScreen()).toBe("map");
+  });
+
+  it("Shop: buying an item can stash it and keeps the slot sold", () => {
+    const { app, root, getScreen } = mountApp();
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.mapState.currentNodeId = "node.shop_1";
+    run.shopStates["node.shop_1"] = {
+      items: [{ itemId: "item.padded_armor", sold: false }],
+      potions: [],
+      healServiceUsed: false,
+    };
+    gameState.screen = "shop";
+    app.render();
+
+    const beforeGold = run.gold;
+    (root.querySelector('[data-testid="shop-buy-item-0"]') as HTMLButtonElement).click();
+
+    expect(run.gold).toBe(beforeGold - ITEM_PRICE.common);
+    expect(run.inventory.gold).toBe(run.gold);
+    expect(run.shopStates["node.shop_1"].items[0].sold).toBe(true);
+    expect(root.querySelector('[data-testid="shop-equip-panel"]')).not.toBeNull();
+
+    (root.querySelector('[data-testid="shop-stash-btn"]') as HTMLButtonElement).click();
+
+    expect(run.inventory.items).toEqual(["item.padded_armor"]);
+    expect(root.querySelector('[data-testid="shop-equip-panel"]')).toBeNull();
+
+    const leave = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Leave Shop");
+    expect(leave).toBeTruthy();
+    leave!.click();
+    expect(getScreen()).toBe("map");
+
+    gameState.screen = "shop";
+    app.render();
+    expect(root.textContent).toContain("Sold");
+    expect(root.querySelector('[data-testid="shop-buy-item-0"]')).toBeNull();
+  });
+
+  it("Shop: buying an item can equip it to party and next combat sees the equipment", () => {
+    const { app, root } = mountApp();
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.mapState.currentNodeId = "node.shop_1";
+    run.shopStates["node.shop_1"] = {
+      items: [{ itemId: "item.soldier_badge", sold: false }],
+      potions: [],
+      healServiceUsed: false,
+    };
+    gameState.screen = "shop";
+    app.render();
+
+    (root.querySelector('[data-testid="shop-buy-item-0"]') as HTMLButtonElement).click();
+    (root.querySelector('[data-testid="shop-equip-hero_001"]') as HTMLButtonElement).click();
+
+    expect(run.party[0].equippedItemIds.trinket).toBe("item.soldier_badge");
+    expect(run.inventory.items).toEqual([]);
+
+    const combat = createCombatFromRun(run, "encounter.road_ambush", gameState.rng);
+    const guardian = combat.units.find((u) => u.instanceId === "hero_001")!;
+    expect(guardian.equippedItemIds.trinket).toBe("item.soldier_badge");
+    expect(guardian.stats.might).toBe(4);
   });
 
   it('Camp: "Leave" transitions to map', () => {

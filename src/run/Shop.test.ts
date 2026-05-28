@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { rollShopInventory, buyShopItem, buyShopPotion, useHealService, ITEM_PRICE, POTION_PRICE, HEAL_SERVICE_PRICE } from "./Shop.ts";
+import { rollShopInventory, buyShopItem, buyShopPotion, useHealService, stashShopItem, equipShopItem, ITEM_PRICE, POTION_PRICE, HEAL_SERVICE_PRICE } from "./Shop.ts";
 import { createRng } from "../core/rng.ts";
 import type { PartyMember } from "../state/RunState.ts";
+import { createInventory } from "./Inventory.ts";
 
 const makeParty = (): PartyMember[] => [
   {
@@ -100,6 +101,39 @@ describe("buyShopPotion", () => {
     const result = buyShopPotion(shop, 0);
     expect(result).toBe(true);
     expect(shop.potions[0].sold).toBe(true);
+  });
+});
+
+describe("shop item resolution", () => {
+  it("stashes a purchased item", () => {
+    const inventory = createInventory();
+
+    stashShopItem(inventory, "item.hunter_bow");
+
+    expect(inventory.items).toEqual(["item.hunter_bow"]);
+  });
+
+  it("equips a purchased item to the item's slot", () => {
+    const inventory = createInventory();
+    const [guardian] = makeParty();
+    guardian.equippedItemIds.weapon = null;
+
+    const replaced = equipShopItem(guardian, "item.hunter_bow", inventory);
+
+    expect(replaced).toBeNull();
+    expect(guardian.equippedItemIds.weapon).toBe("item.hunter_bow");
+    expect(inventory.items).toEqual([]);
+  });
+
+  it("stashes the replaced item when equipping into an occupied slot", () => {
+    const inventory = createInventory();
+    const [guardian] = makeParty();
+
+    const replaced = equipShopItem(guardian, "item.hunter_bow", inventory);
+
+    expect(replaced).toBe("item.iron_sword");
+    expect(guardian.equippedItemIds.weapon).toBe("item.hunter_bow");
+    expect(inventory.items).toEqual(["item.iron_sword"]);
   });
 });
 
