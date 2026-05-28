@@ -90,7 +90,6 @@ export function autoPlayCombat(app: App): void {
         if (btn.disabled) continue;
         const actionId = cs.targetingActionId;
         if (actionId) {
-          // Already in targeting mode from a previous loop? Clear and retry.
           cs.targetingActionId = null;
         }
         btn.click();
@@ -98,7 +97,6 @@ export function autoPlayCombat(app: App): void {
         if (!targetedId) continue;
         const actionDef = ACTION_REGISTRY[targetedId];
         if (!actionDef) { cs.targetingActionId = null; continue; }
-        // Skip self-buffs if enemies still exist — prefer damage/heal actions
         if (enemiesExist && actionDef.targetType === "self") { cs.targetingActionId = null; continue; }
         const targets = validTargets(actionDef, unit, cs);
         if (targets.length === 0) { cs.targetingActionId = null; continue; }
@@ -253,10 +251,15 @@ export function autoPlayNonCombatScreen(root: HTMLElement): void {
       break;
     }
     case "camp": {
+      // Phase 1: menu — click Rest to heal
+      const restBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Rest (Heal 40% max HP)");
+      if (restBtn) { restBtn.click(); break; }
+      // Phase 2: result — click Continue to leave
+      const continueBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Continue");
+      if (continueBtn) { continueBtn.click(); break; }
+      // Fallback: Leave button (only if Rest/Continue unavailable)
       const leaveBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Leave");
-      if (leaveBtn) {
-        leaveBtn.click();
-      }
+      if (leaveBtn) { leaveBtn.click(); }
       break;
     }
     case "event": {
