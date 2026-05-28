@@ -244,9 +244,19 @@ export function autoPlayNonCombatScreen(root: HTMLElement): void {
 
   switch (gameState.screen) {
     case "shop": {
+      const stashBtn = root.querySelector<HTMLButtonElement>('[data-testid="shop-stash-btn"]');
+      if (stashBtn && !stashBtn.disabled) {
+        stashBtn.click();
+        break;
+      }
       const buyBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Buy" && !b.disabled);
-      if (buyBtn) buyBtn.click();
-      const leaveBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Leave Shop");
+      if (buyBtn) {
+        buyBtn.click();
+        const pendingStashBtn = root.querySelector<HTMLButtonElement>('[data-testid="shop-stash-btn"]');
+        if (pendingStashBtn && !pendingStashBtn.disabled) pendingStashBtn.click();
+        break;
+      }
+      const leaveBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Leave Shop" && !b.disabled);
       if (leaveBtn) leaveBtn.click();
       break;
     }

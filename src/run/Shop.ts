@@ -1,5 +1,6 @@
 import type { ShopInventory } from "../state/types.ts";
 import type { PartyMember } from "../state/RunState.ts";
+import type { InventoryState } from "./Inventory.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 
 export const ITEM_PRICE: Record<string, number> = {
@@ -72,6 +73,25 @@ export function buyShopItem(inventory: ShopInventory, itemIndex: number): boolea
   if (!entry || entry.sold) return false;
   entry.sold = true;
   return true;
+}
+
+export function stashShopItem(inventory: InventoryState, itemId: string): void {
+  inventory.items.push(itemId);
+}
+
+export function equipShopItem(partyMember: PartyMember, itemId: string, inventory: InventoryState): string | null {
+  const itemDef = ITEM_REGISTRY[itemId];
+  if (!itemDef) return null;
+
+  const slot = itemDef.slot;
+  const replacedItemId = partyMember.equippedItemIds[slot];
+  partyMember.equippedItemIds[slot] = itemId;
+
+  if (replacedItemId) {
+    inventory.items.push(replacedItemId);
+  }
+
+  return replacedItemId;
 }
 
 export function buyShopPotion(inventory: ShopInventory, potionIndex: number): boolean {

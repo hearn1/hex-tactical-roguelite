@@ -1,9 +1,17 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { RunState } from "../../state/RunState.ts";
-import { rollShopInventory, ITEM_PRICE, POTION_PRICE, HEAL_SERVICE_PRICE, buyShopItem, buyShopPotion, useHealService } from "../../run/Shop.ts";
+import { rollShopInventory, ITEM_PRICE, POTION_PRICE, HEAL_SERVICE_PRICE, buyShopItem, buyShopPotion, useHealService, equipShopItem, stashShopItem } from "../../run/Shop.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
+
+let pendingPurchasedItemId: string | null = null;
+let shopMessage: string = "";
+
+export function resetShopScreenState(): void {
+  pendingPurchasedItemId = null;
+  shopMessage = "";
+}
 
 const STAT_LABELS: Record<string, string> = {
   maxHp: "Max HP",
@@ -31,7 +39,6 @@ function describeItem(id: string): string {
 
 export class ShopScreen {
   private app: App;
-  private message: string = "";
 
   constructor(app: App) {
     this.app = app;
@@ -75,17 +82,24 @@ export class ShopScreen {
     grid.appendChild(servicesPanel);
     container.appendChild(grid);
 
-    if (this.message) {
+    if (pendingPurchasedItemId) {
+      container.appendChild(this.renderEquipOrStash(run, pendingPurchasedItemId));
+    }
+
+    if (shopMessage) {
       const msg = document.createElement("div");
       msg.style.cssText = "color:#4f4;font-weight:bold;margin-top:8px;";
-      msg.textContent = this.message;
+      msg.textContent = shopMessage;
       container.appendChild(msg);
     }
 
     const leaveBtn = document.createElement("button");
     leaveBtn.textContent = "Leave Shop";
+    leaveBtn.disabled = pendingPurchasedItemId !== null;
+    leaveBtn.title = pendingPurchasedItemId ? "Equip or stash the purchased item first." : "";
     leaveBtn.style.cssText = "padding:10px 32px;font-size:16px;margin-top:12px;";
     leaveBtn.addEventListener("click", () => {
+      if (pendingPurchasedItemId) return;
       const run = gameState.run;
       if (run) run.mapState.nodesCleared++;
       gameState.screen = "map";
@@ -109,7 +123,8 @@ export class ShopScreen {
       const entry = shop.items[i];
       const def = ITEM_REGISTRY[entry.itemId];
       const price = ITEM_PRICE[def?.rarity ?? "common"] ?? 8;
-      const canAfford = run.gold >= price && !entry.sold;
+      const mustResolvePurchase = pendingPurchasedItemId !== null;
+      const canAfford = run.gold >= price && !entry.sold && !mustResolvePurchase;
 
       const card = document.createElement("div");
       card.style.cssText = `border:1px solid ${entry.sold ? "#333" : "#555"};border-radius:6px;padding:8px;margin-bottom:8px;background:#2a2a4a;${entry.sold ? "opacity:0.5;" : ""}`;
@@ -131,15 +146,24 @@ export class ShopScreen {
 
       if (!entry.sold) {
         const buyBtn = document.createElement("button");
-        buyBtn.textContent = canAfford ? "Buy" : "Not enough gold";
+        buyBtn.setAttribute("data-testid", `shop-buy-item-${i}`);
+        buyBtn.textContent = mustResolvePurchase ? "Resolve item first" : canAfford ? "Buy" : "Not enough gold";
         buyBtn.disabled = !canAfford;
+        buyBtn.title = mustResolvePurchase ? "Equip or stash the purchased item first." : canAfford ? "" : "Not enough gold";
         buyBtn.style.cssText = "margin-top:4px;";
         buyBtn.addEventListener("click", () => {
-          if (!canAfford) return;
+          if (!canAfford || pendingPurchasedItemId) return;
           if (buyShopItem(shop, i)) {
             run.gold -= price;
             run.inventory.gold = run.gold;
-            this.message = `Bought ${def?.displayName ?? entry.itemId}.`;
+            const livingParty = run.party.filter((pm) => pm.hp > 0);
+            if (livingParty.length === 0) {
+              stashShopItem(run.inventory, entry.itemId);
+              shopMessage = `Bought ${def?.displayName ?? entry.itemId} and stashed it.`;
+            } else {
+              pendingPurchasedItemId = entry.itemId;
+              shopMessage = `Bought ${def?.displayName ?? entry.itemId}. Choose a hero to equip it or stash it.`;
+            }
             this.app.render();
           }
         });
@@ -165,7 +189,8 @@ export class ShopScreen {
       const entry = shop.potions[i];
       const def = POTION_REGISTRY[entry.potionId];
       const price = POTION_PRICE[entry.potionId] ?? 10;
-      const canAfford = run.gold >= price && !entry.sold;
+      const mustResolvePurchase = pendingPurchasedItemId !== null;
+      const canAfford = run.gold >= price && !entry.sold && !mustResolvePurchase;
 
       const card = document.createElement("div");
       card.style.cssText = `border:1px solid ${entry.sold ? "#333" : "#555"};border-radius:6px;padding:8px;margin-bottom:8px;background:#2a2a4a;${entry.sold ? "opacity:0.5;" : ""}`;
@@ -187,16 +212,18 @@ export class ShopScreen {
 
       if (!entry.sold) {
         const buyBtn = document.createElement("button");
-        buyBtn.textContent = canAfford ? "Buy" : "Not enough gold";
+        buyBtn.setAttribute("data-testid", `shop-buy-potion-${i}`);
+        buyBtn.textContent = mustResolvePurchase ? "Resolve item first" : canAfford ? "Buy" : "Not enough gold";
         buyBtn.disabled = !canAfford;
+        buyBtn.title = mustResolvePurchase ? "Equip or stash the purchased item first." : canAfford ? "" : "Not enough gold";
         buyBtn.style.cssText = "margin-top:4px;";
         buyBtn.addEventListener("click", () => {
-          if (!canAfford) return;
+          if (!canAfford || pendingPurchasedItemId) return;
           if (buyShopPotion(shop, i)) {
             run.gold -= price;
             run.inventory.gold = run.gold;
             run.inventory.potions.push(entry.potionId);
-            this.message = `Bought ${def?.displayName ?? entry.potionId}.`;
+            shopMessage = `Bought ${def?.displayName ?? entry.potionId}.`;
             this.app.render();
           }
         });
@@ -237,17 +264,20 @@ export class ShopScreen {
     card.appendChild(priceEl);
 
     if (!shop.healServiceUsed) {
-      const canAfford = run.gold >= HEAL_SERVICE_PRICE;
+      const mustResolvePurchase = pendingPurchasedItemId !== null;
+      const canAfford = run.gold >= HEAL_SERVICE_PRICE && !mustResolvePurchase;
       const buyBtn = document.createElement("button");
-      buyBtn.textContent = canAfford ? "Buy" : "Not enough gold";
+      buyBtn.setAttribute("data-testid", "shop-buy-heal-service");
+      buyBtn.textContent = mustResolvePurchase ? "Resolve item first" : canAfford ? "Buy" : "Not enough gold";
       buyBtn.disabled = !canAfford;
+      buyBtn.title = mustResolvePurchase ? "Equip or stash the purchased item first." : canAfford ? "" : "Not enough gold";
       buyBtn.style.cssText = "margin-top:4px;";
       buyBtn.addEventListener("click", () => {
-        if (!canAfford) return;
+        if (!canAfford || pendingPurchasedItemId) return;
         if (useHealService(shop, run.party)) {
           run.gold -= HEAL_SERVICE_PRICE;
           run.inventory.gold = run.gold;
-          this.message = "Party healed for 8 HP each!";
+          shopMessage = "Party healed for 8 HP each!";
           this.app.render();
         }
       });
@@ -268,6 +298,61 @@ export class ShopScreen {
       panel.appendChild(pEl);
     }
 
+    return panel;
+  }
+
+  private renderEquipOrStash(run: NonNullable<RunState>, itemId: string): HTMLElement {
+    const itemDef = ITEM_REGISTRY[itemId];
+    const panel = document.createElement("div");
+    panel.setAttribute("data-testid", "shop-equip-panel");
+    panel.style.cssText = "border:2px solid #fa0;border-radius:8px;padding:12px;background:#2a2a4a;width:100%;text-align:center;";
+
+    const title = document.createElement("div");
+    title.style.cssText = "font-weight:bold;margin-bottom:6px;";
+    title.textContent = `Equip or stash ${itemDef?.displayName ?? itemId}`;
+    panel.appendChild(title);
+
+    const desc = document.createElement("div");
+    desc.style.cssText = "font-size:12px;color:#ccc;margin-bottom:10px;";
+    desc.textContent = itemDef ? `${itemDef.rarity} ${itemDef.slot}` : "Unknown item";
+    panel.appendChild(desc);
+
+    const choices = document.createElement("div");
+    choices.style.cssText = "display:flex;gap:8px;flex-wrap:wrap;justify-content:center;";
+
+    for (const pm of run.party.filter((member) => member.hp > 0)) {
+      const btn = document.createElement("button");
+      btn.setAttribute("data-testid", `shop-equip-${pm.instanceId}`);
+      const replacedItemId = itemDef ? pm.equippedItemIds[itemDef.slot] : null;
+      const replacementText = replacedItemId ? `replace ${ITEM_REGISTRY[replacedItemId]?.displayName ?? replacedItemId}` : `${itemDef?.slot ?? "slot"} empty`;
+      btn.textContent = `${pm.displayName} (${replacementText})`;
+      btn.addEventListener("click", () => {
+        const replaced = equipShopItem(pm, itemId, run.inventory);
+        pendingPurchasedItemId = null;
+        const itemName = itemDef?.displayName ?? itemId;
+        if (replaced) {
+          const replacedName = ITEM_REGISTRY[replaced]?.displayName ?? replaced;
+          shopMessage = `Equipped ${itemName} to ${pm.displayName}. ${replacedName} was stashed.`;
+        } else {
+          shopMessage = `Equipped ${itemName} to ${pm.displayName}.`;
+        }
+        this.app.render();
+      });
+      choices.appendChild(btn);
+    }
+
+    const stashBtn = document.createElement("button");
+    stashBtn.textContent = "Stash";
+    stashBtn.setAttribute("data-testid", "shop-stash-btn");
+    stashBtn.addEventListener("click", () => {
+      stashShopItem(run.inventory, itemId);
+      pendingPurchasedItemId = null;
+      shopMessage = `Stashed ${itemDef?.displayName ?? itemId}.`;
+      this.app.render();
+    });
+    choices.appendChild(stashBtn);
+
+    panel.appendChild(choices);
     return panel;
   }
 }
