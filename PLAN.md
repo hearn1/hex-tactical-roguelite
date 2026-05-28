@@ -63,6 +63,29 @@ Each feature is one focused session. Do not skip ahead unless the prior feature 
 | 19 | Data Repository | M7.1 | [#21](https://github.com/hearn1/hex-tactical-roguelite/issues/21) | [features_19_data_repository.md](features/features_19_data_repository.md) |
 | 20 | Content Expansion + Difficulty | M7.2 | [#22](https://github.com/hearn1/hex-tactical-roguelite/issues/22) | [features_20_content_expansion.md](features/features_20_content_expansion.md) |
 
+## Future DnD-Feel Backlog
+
+These are skeletal tracking issues proposed after the first prototype milestones. They are intentionally lighter than Features 00-20 and should be filled out in a later planning session before implementation.
+
+| # | Feature | Theme | Issue | File |
+|---|---|---|---|---|
+| 21 | Run Setup and Party Creation | Character creation | [#52](https://github.com/hearn1/hex-tactical-roguelite/issues/52) | [features_21_run_setup_party_creation.md](features/features_21_run_setup_party_creation.md) |
+| 22 | Backgrounds and Personal Traits | Character identity | [#53](https://github.com/hearn1/hex-tactical-roguelite/issues/53) | [features_22_backgrounds_and_personal_traits.md](features/features_22_backgrounds_and_personal_traits.md) |
+| 23 | Ability Checks Lite | Tabletop dice moments | [#54](https://github.com/hearn1/hex-tactical-roguelite/issues/54) | [features_23_ability_checks_lite.md](features/features_23_ability_checks_lite.md) |
+| 24 | Expanded Event Framework | Event systems | [#55](https://github.com/hearn1/hex-tactical-roguelite/issues/55) | [features_24_expanded_event_framework.md](features/features_24_expanded_event_framework.md) |
+| 25 | Event Content Pack: Adventure Scenes | Event variety | [#56](https://github.com/hearn1/hex-tactical-roguelite/issues/56) | [features_25_event_content_pack_adventure_scenes.md](features/features_25_event_content_pack_adventure_scenes.md) |
+| 26 | Longer Run Map Template | Run length | [#57](https://github.com/hearn1/hex-tactical-roguelite/issues/57) | [features_26_longer_run_map_template.md](features/features_26_longer_run_map_template.md) |
+| 27 | Encounter Variety Pack | Combat variety | [#58](https://github.com/hearn1/hex-tactical-roguelite/issues/58) | [features_27_encounter_variety_pack.md](features/features_27_encounter_variety_pack.md) |
+| 28 | Elite and Boss Mechanics | Set-piece fights | [#59](https://github.com/hearn1/hex-tactical-roguelite/issues/59) | [features_28_elite_and_boss_mechanics.md](features/features_28_elite_and_boss_mechanics.md) |
+| 29 | Class Level-Up Choices | Character growth | [#60](https://github.com/hearn1/hex-tactical-roguelite/issues/60) | [features_29_class_level_up_choices.md](features/features_29_class_level_up_choices.md) |
+| 30 | Rest, Camp, and Supplies | Party management | [#61](https://github.com/hearn1/hex-tactical-roguelite/issues/61) | [features_30_rest_camp_and_supplies.md](features/features_30_rest_camp_and_supplies.md) |
+| 31 | Shop Services and Tavern Flavor | Adventure stops | [#62](https://github.com/hearn1/hex-tactical-roguelite/issues/62) | [features_31_shop_services_and_tavern_flavor.md](features/features_31_shop_services_and_tavern_flavor.md) |
+| 32 | Magic Item Identity Pack | Loot identity | [#63](https://github.com/hearn1/hex-tactical-roguelite/issues/63) | [features_32_magic_item_identity_pack.md](features/features_32_magic_item_identity_pack.md) |
+| 33 | Party Bonds and Banter Log | Party personality | [#64](https://github.com/hearn1/hex-tactical-roguelite/issues/64) | [features_33_party_bonds_and_banter_log.md](features/features_33_party_bonds_and_banter_log.md) |
+| 34 | Quest Rumors and Node Forecasts | Map decisions | [#65](https://github.com/hearn1/hex-tactical-roguelite/issues/65) | [features_34_quest_rumors_and_node_forecasts.md](features/features_34_quest_rumors_and_node_forecasts.md) |
+| 35 | Adventure Modifiers and Run Seeds | Run variety | [#66](https://github.com/hearn1/hex-tactical-roguelite/issues/66) | [features_35_adventure_modifiers_and_run_seeds.md](features/features_35_adventure_modifiers_and_run_seeds.md) |
+| 36 | Bestiary and Rules Glossary | Player reference | [#67](https://github.com/hearn1/hex-tactical-roguelite/issues/67) | [features_36_bestiary_and_rules_glossary.md](features/features_36_bestiary_and_rules_glossary.md) |
+
 **Start here:** Feature 00 → [#2](https://github.com/hearn1/hex-tactical-roguelite/issues/2).
 
 ## Dependencies (Why Order Matters)
