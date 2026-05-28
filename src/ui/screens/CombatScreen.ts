@@ -89,6 +89,10 @@ export class CombatScreen {
       this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat");
     }
 
+    if (this.getActiveUnit()?.team === "enemy") {
+      this.processTurns();
+    }
+
     return this.container;
   }
 
