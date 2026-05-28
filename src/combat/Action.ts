@@ -348,9 +348,14 @@ function checkBossReinforcement(target: UnitInstance, state: CombatState): void 
     bonusStats: {},
   };
   state.units.push(archer);
+  const activeId = state.turnQueue[state.activeIndex];
   const bossIdx = state.turnQueue.indexOf(target.instanceId);
   const insertAt = bossIdx >= 0 ? bossIdx + 1 : state.turnQueue.length;
   state.turnQueue.splice(insertAt, 0, archer.instanceId);
+  const newActiveIndex = state.turnQueue.indexOf(activeId);
+  if (newActiveIndex >= 0) {
+    state.activeIndex = newActiveIndex;
+  }
 
   state.log.push({
     kind: "action",
