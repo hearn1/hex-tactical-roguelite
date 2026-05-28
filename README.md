@@ -17,6 +17,30 @@ The prototype should feel like:
 6. Beat the act boss or die.
 7. Earn meta-currency to improve future starting characters.
 
+## Run Locally
+
+Install dependencies:
+
+```shell
+npm install
+```
+
+Start the local dev server:
+
+```shell
+npm run dev
+```
+
+Open the URL printed by Vite, usually http://localhost:5173.
+
+Useful checks:
+
+```shell
+npm test
+npm run build
+npm run preview
+```
+
 ## Documentation Map
 
 | File | Purpose |
