@@ -84,14 +84,20 @@ export function autoPlayCombat(app: App): void {
 
       const actionBtns = root.querySelectorAll<HTMLButtonElement>(".action-btn:not(.disabled)");
       let acted = false;
+      const enemiesExist = cs.units.some((u) => u.team !== unit.team && u.hp > 0);
 
       for (const btn of actionBtns) {
         if (btn.disabled) continue;
-        btn.click();
         const actionId = cs.targetingActionId;
-        if (!actionId) continue;
-        const actionDef = ACTION_REGISTRY[actionId];
+        if (actionId) {
+          cs.targetingActionId = null;
+        }
+        btn.click();
+        const targetedId = cs.targetingActionId;
+        if (!targetedId) continue;
+        const actionDef = ACTION_REGISTRY[targetedId];
         if (!actionDef) { cs.targetingActionId = null; continue; }
+        if (enemiesExist && actionDef.targetType === "self") { cs.targetingActionId = null; continue; }
         const targets = validTargets(actionDef, unit, cs);
         if (targets.length === 0) { cs.targetingActionId = null; continue; }
         const target = targets[Math.floor(gameState.rng() * targets.length)];
@@ -101,7 +107,7 @@ export function autoPlayCombat(app: App): void {
         break;
       }
 
-      if (!acted && unit.movePointsRemaining > 0 && !movedThisTurn.has(unit.instanceId)) {
+      if (!acted && enemiesExist && unit.movePointsRemaining > 0 && !movedThisTurn.has(unit.instanceId)) {
         const occ = new Set(
           cs.units.filter((u) => u.hp > 0 && u.instanceId !== unit.instanceId).map((u) => hexKey(u.pos)),
         );
@@ -203,7 +209,11 @@ export function autoPlayReward(app: App): void {
   }
   run.mapState.nodesCleared++;
   gameState.combat = null;
-  gameState.screen = "map";
+  if (run.runStatus === "won") {
+    gameState.screen = "run_summary";
+  } else {
+    gameState.screen = "map";
+  }
   app.render();
 }
 
