@@ -84,6 +84,11 @@ export class CombatScreen {
     this.drawCanvas();
     this.updatePanels();
 
+    const cs = gameState.combat;
+    if (cs && cs.status !== "active") {
+      this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat");
+    }
+
     return this.container;
   }
 
