@@ -1,7 +1,8 @@
 import type { PartyMember } from "../state/RunState.ts";
 import type { RunState } from "../state/RunState.ts";
-import type { EventChoice } from "../data/events.ts";
+import type { EventChoice, EventEffect, CheckEffect } from "../data/events.ts";
 import { applyXpToPartyMember } from "./Leveling.ts";
+import { resolveCheck, checkModifierFor, formatCheckLog, type CheckResult } from "./AbilityCheck.ts";
 
 export function restParty(party: PartyMember[]): void {
   for (const pm of party) {
@@ -16,9 +17,18 @@ export function trainPartyMember(pm: PartyMember, xp: number): ReturnType<typeof
 }
 
 export function applyEventChoiceEffects(choice: EventChoice, run: RunState, rng: () => number): string[] {
+  return applyEffectList(choice.effects, run, rng);
+}
+
+/**
+ * Apply a flat list of event effects to run state, returning log messages.
+ * Hero-targeted effects (`stat_boost`) and `check` effects are resolved by the screen flow
+ * with a chosen hero, so they are skipped here.
+ */
+export function applyEffectList(effects: EventEffect[], run: RunState, rng: () => number): string[] {
   const messages: string[] = [];
 
-  for (const effect of choice.effects) {
+  for (const effect of effects) {
     if (effect.type === "gold") {
       run.gold += effect.amount;
       run.inventory.gold += effect.amount;
@@ -63,4 +73,29 @@ export function applyStatBoost(pm: PartyMember, stat: string, amount: number): s
   const key = stat as keyof typeof pm.bonusStats;
   pm.bonusStats[key] = (pm.bonusStats[key] ?? 0) + amount;
   return `${pm.displayName} gains +${amount} ${stat}.`;
+}
+
+/**
+ * Resolve a `check` event effect for a chosen hero: roll the check, log it, then apply the
+ * matching outcome branch. A `"partial"` result with no `onPartial` falls back to `onFailure`.
+ * Draws exactly one `rng()` (the d20) before any branch effects consume further randomness.
+ */
+export function resolveCheckEffect(
+  effect: CheckEffect,
+  pm: PartyMember,
+  run: RunState,
+  rng: () => number,
+): { result: CheckResult; messages: string[] } {
+  const modifier = checkModifierFor(pm, effect.check.stat);
+  const result = resolveCheck(effect.check.stat, modifier, effect.check.dc, rng, effect.check.partialWithin);
+
+  const branch =
+    result.outcome === "success"
+      ? effect.onSuccess
+      : result.outcome === "partial"
+        ? (effect.onPartial ?? effect.onFailure)
+        : effect.onFailure;
+
+  const messages = [formatCheckLog(pm.displayName, result), ...applyEffectList(branch, run, rng)];
+  return { result, messages };
 }

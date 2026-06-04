@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { restParty, trainPartyMember, applyEventChoiceEffects, applyStatBoost } from "./Events.ts";
+import { restParty, trainPartyMember, applyEventChoiceEffects, applyStatBoost, resolveCheckEffect } from "./Events.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
-import type { EventChoice } from "../data/events.ts";
+import type { EventChoice, CheckEffect } from "../data/events.ts";
 import { createRng } from "../core/rng.ts";
 import { createInventory } from "./Inventory.ts";
 
@@ -138,6 +138,60 @@ describe("applyEventChoiceEffects", () => {
     for (const pm of party) {
       expect(pm.hp).toBeGreaterThanOrEqual(1);
     }
+  });
+});
+
+describe("resolveCheckEffect", () => {
+  const faceRng = (face: number) => () => (face - 1) / 20;
+
+  const bridgeCheck: CheckEffect = {
+    type: "check",
+    check: { stat: "agility", dc: 12, partialWithin: 3 },
+    onSuccess: [{ type: "gold", amount: 25 }],
+    onPartial: [{ type: "gold", amount: 10 }],
+    onFailure: [{ type: "hp_damage", amount: 6, target: "random_hero" }],
+  };
+
+  it("runs the onSuccess branch and logs the roll", () => {
+    const party = makeParty(); // Mara (guardian) agility mod 1
+    const run = makeRun(party);
+    // roll 14 + 1 = 15 >= 12 -> success
+    const { result, messages } = resolveCheckEffect(bridgeCheck, party[0], run, faceRng(14));
+    expect(result.outcome).toBe("success");
+    expect(run.gold).toBe(25);
+    expect(messages[0]).toContain("Agility check");
+    expect(messages[0]).toContain("Success");
+  });
+
+  it("runs the onPartial branch on a near-miss", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    // roll 10 + 1 = 11, dc 12, margin -1, band 3 -> partial
+    const { result } = resolveCheckEffect(bridgeCheck, party[0], run, faceRng(10));
+    expect(result.outcome).toBe("partial");
+    expect(run.gold).toBe(10);
+  });
+
+  it("runs the onFailure branch outside the band", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    const before = party.reduce((s, p) => s + p.hp, 0);
+    // roll 3 + 1 = 4, dc 12, margin -8 -> failure -> 6 damage
+    const { result } = resolveCheckEffect(bridgeCheck, party[0], run, faceRng(3));
+    expect(result.outcome).toBe("failure");
+    const after = party.reduce((s, p) => s + p.hp, 0);
+    expect(after).toBe(before - 6);
+  });
+
+  it("falls back to onFailure when a partial occurs but no onPartial is defined", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    const noPartial: CheckEffect = { ...bridgeCheck, onPartial: undefined };
+    const before = party.reduce((s, p) => s + p.hp, 0);
+    const { result } = resolveCheckEffect(noPartial, party[0], run, faceRng(10));
+    expect(result.outcome).toBe("partial");
+    const after = party.reduce((s, p) => s + p.hp, 0);
+    expect(after).toBe(before - 6);
   });
 });
 
