@@ -218,6 +218,7 @@ export class DataRepository {
     const allBackgroundIds = new Set(this.backgrounds.keys());
     const checkStats = new Set(["might", "agility", "spirit"]);
     const statKeys = new Set(["maxHp", "armor", "move", "might", "agility", "spirit"]);
+    const eventTags = new Set(["risk", "social", "treasure", "heal", "train", "moral"]);
 
     for (const [id, def] of this.classes) {
       for (const aid of def.actionIds) {
@@ -331,6 +332,14 @@ export class DataRepository {
     };
 
     for (const [id, def] of this.events) {
+      if (def.choices.length < 2) {
+        errors.push(`Event "${id}": must offer at least 2 choices`);
+      }
+      for (const tag of def.tags ?? []) {
+        if (!eventTags.has(tag)) {
+          errors.push(`Event "${id}": unknown tag "${tag}"`);
+        }
+      }
       for (const choice of def.choices) {
         const where = `Event "${id}" choice "${choice.id}"`;
         for (const effect of choice.effects) {
