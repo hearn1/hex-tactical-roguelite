@@ -7,7 +7,8 @@ import { CLASS_REGISTRY } from "./classes.ts";
 import type { EnemyDef } from "./enemies.ts";
 import { ENEMY_REGISTRY } from "./enemies.ts";
 import type { EncounterDef } from "./encounters.ts";
-import { ENCOUNTER_REGISTRY } from "./encounters.ts";
+import { ENCOUNTER_REGISTRY, ENCOUNTER_POOLS } from "./encounters.ts";
+import { hexesWithinRange, hexKey } from "../core/hex.ts";
 import type { EventDef, EventEffect } from "./events.ts";
 import { EVENT_REGISTRY, EVENT_POOLS } from "./events.ts";
 import type { ItemDef } from "./items.ts";
@@ -258,10 +259,56 @@ export class DataRepository {
       if (stats.spirit < 0 || stats.spirit > 10) errors.push(`Enemy "${id}": spirit out of range 0-10`);
     }
 
+    // Combat grid is a radius-3 hex disc; enemies must spawn on it without overlapping.
+    const MAX_ENEMIES_PER_ENCOUNTER = 5;
+    const gridCells = new Set(hexesWithinRange({ q: 0, r: 0 }, 3).map(hexKey));
+
     for (const [id, def] of this.encounters) {
+      let totalEnemies = 0;
       for (const group of def.enemyGroups) {
         if (!allEnemyIds.has(group.enemyId)) {
           errors.push(`Encounter "${id}": enemy "${group.enemyId}" not found`);
+        }
+        if (group.count <= 0) {
+          errors.push(`Encounter "${id}": enemy "${group.enemyId}" count must be > 0`);
+        }
+        totalEnemies += group.count;
+      }
+      if (totalEnemies > MAX_ENEMIES_PER_ENCOUNTER) {
+        errors.push(
+          `Encounter "${id}": ${totalEnemies} enemies exceeds cap of ${MAX_ENEMIES_PER_ENCOUNTER}`,
+        );
+      }
+      if (def.rewardPoolId && !allRewardIds.has(def.rewardPoolId)) {
+        errors.push(`Encounter "${id}": reward pool "${def.rewardPoolId}" not found`);
+      }
+      if (def.positions) {
+        if (def.positions.length !== totalEnemies) {
+          errors.push(
+            `Encounter "${id}": ${def.positions.length} positions but ${totalEnemies} enemies`,
+          );
+        }
+        const seen = new Set<string>();
+        for (const pos of def.positions) {
+          const key = hexKey(pos);
+          if (!gridCells.has(key)) {
+            errors.push(`Encounter "${id}": position (${pos.q}, ${pos.r}) is outside the grid`);
+          }
+          if (seen.has(key)) {
+            errors.push(`Encounter "${id}": position (${pos.q}, ${pos.r}) is used twice`);
+          }
+          seen.add(key);
+        }
+      }
+    }
+
+    for (const [poolId, encounterIds] of Object.entries(ENCOUNTER_POOLS)) {
+      if (encounterIds.length === 0) {
+        errors.push(`Encounter pool "${poolId}": must contain at least one encounter`);
+      }
+      for (const eid of encounterIds) {
+        if (!allEncounterIds.has(eid)) {
+          errors.push(`Encounter pool "${poolId}": encounter "${eid}" not found`);
         }
       }
     }
@@ -274,6 +321,16 @@ export class DataRepository {
       }
       if (def.encounterId && !allEncounterIds.has(def.encounterId)) {
         errors.push(`Node "${id}": encounter "${def.encounterId}" not found`);
+      }
+      if (def.encounterPoolId && !ENCOUNTER_POOLS[def.encounterPoolId]) {
+        errors.push(`Node "${id}": encounter pool "${def.encounterPoolId}" not found`);
+      }
+      if (
+        (def.type === "combat" || def.type === "elite" || def.type === "boss") &&
+        !def.encounterId &&
+        !def.encounterPoolId
+      ) {
+        errors.push(`Node "${id}": ${def.type} node must declare an encounterId or encounterPoolId`);
       }
       if (def.eventId && !allEventIds.has(def.eventId)) {
         errors.push(`Node "${id}": event "${def.eventId}" not found`);

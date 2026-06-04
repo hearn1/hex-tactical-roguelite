@@ -3,7 +3,7 @@ import type { UnitStats } from "../state/types.ts";
 export interface EnemyDef {
   id: string;
   displayName: string;
-  aiTag: "brute" | "skirmisher" | "support" | "caster" | "boss";
+  aiTag: "brute" | "skirmisher" | "support" | "caster" | "boss" | "ambusher";
   baseStats: UnitStats;
   actionIds: string[];
 }
@@ -43,6 +43,13 @@ export const ENEMY_REGISTRY: Record<string, EnemyDef> = {
     aiTag: "support",
     baseStats: { maxHp: 12, armor: 11, move: 3, might: 0, agility: 1, spirit: 3 },
     actionIds: ["action.dark_bolt", "action.minor_heal"],
+  },
+  "enemy.shadow_stalker": {
+    id: "enemy.shadow_stalker",
+    displayName: "Shadow Stalker",
+    aiTag: "ambusher",
+    baseStats: { maxHp: 11, armor: 13, move: 5, might: 2, agility: 4, spirit: 0 },
+    actionIds: ["action.ambush_strike"],
   },
   "enemy.ogre_hexbreaker": {
     id: "enemy.ogre_hexbreaker",

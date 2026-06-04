@@ -1,3 +1,5 @@
+import { selectEncounterFromPool } from "./encounters.ts";
+
 export interface NodeDef {
   id: string;
   type: "start" | "combat" | "elite" | "boss" | "shop" | "camp" | "event" | "recruit" | "pet";
@@ -5,6 +7,13 @@ export interface NodeDef {
   description: string;
   layer: number;
   encounterId?: string;
+  /**
+   * Seeded combat-node pool (F27 / #58). When set, the node draws its encounter from this
+   * pool at entry via the shared RNG, so the fight varies per run. `encounterId` (if also
+   * present) is the documented default/fallback. Used by standard combat nodes; elite/boss
+   * nodes keep a fixed `encounterId`.
+   */
+  encounterPoolId?: string;
   shopPoolId?: string;
   /** Curated event pool for this node (L2). Falls back to the default shared pool when absent. */
   eventPoolId?: string;
@@ -42,6 +51,7 @@ const SHORT_NODES: NodeDef[] = [
     description: "Goblins and wolves lurk among the ruins ahead.",
     layer: 1,
     encounterId: "encounter.road_ambush",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.shop_1", "node.event_1"],
   },
   {
@@ -51,6 +61,7 @@ const SHORT_NODES: NodeDef[] = [
     description: "Undead archers patrol the crumbling cemetery.",
     layer: 1,
     encounterId: "encounter.old_graveyard",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.event_1", "node.combat_c", "node.combat_wolves"],
   },
   {
@@ -77,6 +88,7 @@ const SHORT_NODES: NodeDef[] = [
     description: "Wolves and brutes prowl the forest path.",
     layer: 2,
     encounterId: "encounter.wolf_pack",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.recruit_1"],
   },
   {
@@ -86,6 +98,7 @@ const SHORT_NODES: NodeDef[] = [
     description: "Brutes demand payment in blood.",
     layer: 2,
     encounterId: "encounter.bandit_toll",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.recruit_1", "node.combat_wolves"],
   },
   {
@@ -120,6 +133,7 @@ const SHORT_NODES: NodeDef[] = [
     description: "Cultists summon dark energy beneath the old tower.",
     layer: 4,
     encounterId: "encounter.cult_ritual",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.boss"],
   },
   {
@@ -161,6 +175,7 @@ const LONG_NODES: NodeDef[] = [
     description: "Goblin raiders have barricaded the old gate.",
     layer: 1,
     encounterId: "encounter.long_gatehouse",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.long_elite_a", "node.long_shop_a"],
   },
   {
@@ -188,6 +203,7 @@ const LONG_NODES: NodeDef[] = [
     description: "Wolves harry travelers at the boggy ford.",
     layer: 2,
     encounterId: "encounter.long_mire_crossing",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.long_shop_a"],
   },
   // Layer 3 — guaranteed supply hub: every path converges here.
@@ -216,6 +232,7 @@ const LONG_NODES: NodeDef[] = [
     description: "Skeletal sentries demand a grim toll.",
     layer: 4,
     encounterId: "encounter.long_toll_of_bones",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.long_camp_a"],
   },
   // Layer 5 — guaranteed recovery: every path converges here before the final push.
@@ -235,6 +252,7 @@ const LONG_NODES: NodeDef[] = [
     description: "The Hexbreaker's cultists make a desperate stand.",
     layer: 6,
     encounterId: "encounter.long_cult_vanguard",
+    encounterPoolId: "pool.standard_combat",
     nextNodeIds: ["node.long_boss"],
   },
   {
@@ -296,4 +314,14 @@ export const ALL_NODES: NodeDef[] = Object.values(NODE_REGISTRY);
 export function getMapTemplate(id: string | undefined): MapTemplate {
   if (id && MAP_TEMPLATES[id]) return MAP_TEMPLATES[id];
   return MAP_TEMPLATES[FALLBACK_MAP_TEMPLATE_ID];
+}
+
+/**
+ * Resolves which encounter a node launches. Combat nodes with an `encounterPoolId` draw a
+ * seeded pick from that pool (using the shared RNG); otherwise the fixed `encounterId` is
+ * used. Returns `undefined` only for nodes that declare neither (non-combat nodes).
+ */
+export function resolveNodeEncounterId(node: NodeDef, rng: () => number): string | undefined {
+  if (node.encounterPoolId) return selectEncounterFromPool(node.encounterPoolId, rng);
+  return node.encounterId;
 }

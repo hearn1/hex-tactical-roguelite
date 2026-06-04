@@ -1,6 +1,6 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
-import { NODE_REGISTRY, getMapTemplate } from "../../data/nodes.ts";
+import { NODE_REGISTRY, getMapTemplate, resolveNodeEncounterId } from "../../data/nodes.ts";
 import type { NodeDef, MapTemplate } from "../../data/nodes.ts";
 import { availableNextNodes, visitNode } from "../../run/MapGraph.ts";
 import { createCombatFromRun } from "../../state/GameState.ts";
@@ -222,8 +222,9 @@ export class MapScreen {
     visitNode(mapState, nodeId);
 
     if (nodeDef.type === "combat" || nodeDef.type === "boss" || nodeDef.type === "elite") {
-      if (nodeDef.encounterId) {
-        gameState.combat = createCombatFromRun(run, nodeDef.encounterId, gameState.rng);
+      const encounterId = resolveNodeEncounterId(nodeDef, gameState.rng);
+      if (encounterId) {
+        gameState.combat = createCombatFromRun(run, encounterId, gameState.rng);
         gameState.screen = "combat";
         this.app.render();
       }
