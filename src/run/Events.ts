@@ -1,6 +1,9 @@
 import type { PartyMember } from "../state/RunState.ts";
 import type { RunState } from "../state/RunState.ts";
-import type { EventChoice, EventEffect, CheckEffect } from "../data/events.ts";
+import type { RunModifier } from "../state/types.ts";
+import type { EventChoice, EventEffect, CheckEffect, ChoiceRequirement } from "../data/events.ts";
+import { DEFAULT_EVENT_POOL_ID, EVENT_POOLS } from "../data/events.ts";
+import { NODE_REGISTRY } from "../data/nodes.ts";
 import { applyXpToPartyMember } from "./Leveling.ts";
 import { resolveCheck, checkModifierFor, formatCheckLog, type CheckResult } from "./AbilityCheck.ts";
 
@@ -20,10 +23,31 @@ export function applyEventChoiceEffects(choice: EventChoice, run: RunState, rng:
   return applyEffectList(choice.effects, run, rng);
 }
 
+/** A single human-readable log line describing a run modifier granted by a `buff` effect. */
+export function describeRunModifier(mod: RunModifier): string {
+  switch (mod.kind) {
+    case "gold_multiplier":
+      return `Gold rewards boosted (x${mod.value}) for the run.`;
+    case "global_stat":
+      return `Party gains +${mod.value} ${mod.stat} for the run.`;
+    case "first_hit_bonus_damage":
+      return `Your first hit each battle deals +${mod.amount} damage.`;
+  }
+}
+
+/** Grant XP to one hero, returning a log line that notes any level-up. */
+function applyXpToHero(pm: PartyMember, amount: number): string {
+  const result = applyXpToPartyMember(pm, amount);
+  return result.leveledUp
+    ? `${pm.displayName} gains ${amount} XP and reaches level ${result.newLevel}!`
+    : `${pm.displayName} gains ${amount} XP.`;
+}
+
 /**
  * Apply a flat list of event effects to run state, returning log messages.
- * Hero-targeted effects (`stat_boost`) and `check` effects are resolved by the screen flow
- * with a chosen hero, so they are skipped here.
+ * Hero-pick effects (`stat_boost`, `check`, and `xp` with `target: "picked_hero"`) are resolved
+ * by the screen flow with a chosen hero (see {@link resolveEventChoiceWithHero}), so they are
+ * skipped here.
  */
 export function applyEffectList(effects: EventEffect[], run: RunState, rng: () => number): string[] {
   const messages: string[] = [];
@@ -61,6 +85,23 @@ export function applyEffectList(effects: EventEffect[], run: RunState, rng: () =
     } else if (effect.type === "potion") {
       run.inventory.potions.push(effect.potionId);
       messages.push(`Gained a potion.`);
+    } else if (effect.type === "xp") {
+      if (effect.target === "party") {
+        for (const pm of run.party) {
+          applyXpToPartyMember(pm, effect.amount);
+        }
+        messages.push(`Each hero gains ${effect.amount} XP.`);
+      } else if (effect.target === "random_hero") {
+        const living = run.party.filter((p) => p.hp > 0);
+        if (living.length > 0) {
+          const target = living[Math.floor(rng() * living.length)];
+          messages.push(applyXpToHero(target, effect.amount));
+        }
+      }
+      // `picked_hero` is applied by the hero-pick flow, not here.
+    } else if (effect.type === "buff") {
+      run.runModifiers.push(effect.modifier);
+      messages.push(describeRunModifier(effect.modifier));
     } else if (effect.type === "noop") {
       messages.push(`Nothing happens.`);
     }
@@ -98,4 +139,122 @@ export function resolveCheckEffect(
 
   const messages = [formatCheckLog(pm.displayName, result), ...applyEffectList(branch, run, rng)];
   return { result, messages };
+}
+
+export interface RequirementResult {
+  ok: boolean;
+  /** Human-readable reason shown on a disabled choice when `ok` is false. */
+  reason?: string;
+}
+
+/**
+ * Pure evaluation of a choice's requirements against current run state. Returns the first
+ * unmet requirement's reason so the UI can disable the choice and explain why (never hide it).
+ */
+export function evaluateRequirements(choice: EventChoice, run: RunState): RequirementResult {
+  for (const req of choice.requirements ?? []) {
+    const result = evaluateRequirement(req, run);
+    if (!result.ok) return result;
+  }
+  return { ok: true };
+}
+
+function evaluateRequirement(req: ChoiceRequirement, run: RunState): RequirementResult {
+  switch (req.type) {
+    case "minGold":
+      return run.gold >= req.amount
+        ? { ok: true }
+        : { ok: false, reason: `Requires ${req.amount} gold.` };
+    case "hasItem":
+      return run.inventory.items.includes(req.itemId)
+        ? { ok: true }
+        : { ok: false, reason: `Requires ${req.itemId}.` };
+    case "livingHero":
+      return run.party.some((p) => p.hp > 0)
+        ? { ok: true }
+        : { ok: false, reason: `Requires a living hero.` };
+    case "partySizeAtLeast":
+      return run.party.length >= req.n
+        ? { ok: true }
+        : { ok: false, reason: `Requires a party of at least ${req.n}.` };
+  }
+}
+
+/** True when any effect in the choice needs the player to pick a hero before resolving. */
+export function choiceNeedsHeroPick(choice: EventChoice): boolean {
+  return choice.effects.some(
+    (e) =>
+      e.type === "stat_boost" ||
+      e.type === "check" ||
+      (e.type === "xp" && e.target === "picked_hero"),
+  );
+}
+
+export interface EventChoiceResolution {
+  messages: string[];
+  /** When true the screen must prompt for a hero before the choice can resolve. */
+  needsHeroPick: boolean;
+}
+
+/**
+ * Resolve a choice that needs no hero pick: applies every effect and returns the log lines.
+ * Choices containing a hero-pick effect return `needsHeroPick: true` with no state change —
+ * the screen then collects a hero and calls {@link resolveEventChoiceWithHero}.
+ */
+export function resolveEventChoice(choice: EventChoice, run: RunState, rng: () => number): EventChoiceResolution {
+  if (choiceNeedsHeroPick(choice)) {
+    return { messages: [], needsHeroPick: true };
+  }
+  return { messages: applyEffectList(choice.effects, run, rng), needsHeroPick: false };
+}
+
+/**
+ * Resolve a choice for a chosen hero. Hero-pick effects (`stat_boost`, `check`,
+ * `xp: picked_hero`) target `pm`; all other effects fall through to {@link applyEffectList}.
+ */
+export function resolveEventChoiceWithHero(
+  choice: EventChoice,
+  pm: PartyMember,
+  run: RunState,
+  rng: () => number,
+): { messages: string[] } {
+  const messages: string[] = [];
+  for (const effect of choice.effects) {
+    if (effect.type === "check") {
+      messages.push(...resolveCheckEffect(effect, pm, run, rng).messages);
+    } else if (effect.type === "stat_boost") {
+      messages.push(applyStatBoost(pm, effect.stat, effect.amount));
+    } else if (effect.type === "xp" && effect.target === "picked_hero") {
+      messages.push(applyXpToHero(pm, effect.amount));
+    } else {
+      messages.push(...applyEffectList([effect], run, rng));
+    }
+  }
+  return { messages };
+}
+
+/**
+ * Deterministically choose (and persist) the event for a node, drawing from the run RNG (L1).
+ * Resolution order: a previously stored selection wins (idempotent re-visits), then a node's
+ * pinned `eventId`, then a draw from the node's `eventPoolId` (or the default shared pool, L2).
+ * Unseen events in the pool are preferred so a run shows variety before repeating.
+ */
+export function selectEventForNode(run: RunState, nodeId: string, rng: () => number): string {
+  const existing = run.eventSelections[nodeId];
+  if (existing) return existing;
+
+  const node = NODE_REGISTRY[nodeId];
+  if (node?.eventId) {
+    run.eventSelections[nodeId] = node.eventId;
+    return node.eventId;
+  }
+
+  const poolId = node?.eventPoolId ?? DEFAULT_EVENT_POOL_ID;
+  const pool = EVENT_POOLS[poolId] ?? EVENT_POOLS[DEFAULT_EVENT_POOL_ID];
+  const used = new Set(Object.values(run.eventSelections));
+  const unseen = pool.filter((eid) => !used.has(eid));
+  const candidates = unseen.length > 0 ? unseen : pool;
+  const chosen = candidates[Math.floor(rng() * candidates.length)];
+  run.eventSelections[nodeId] = chosen;
+  return chosen;
 }

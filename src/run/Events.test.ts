@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vitest";
-import { restParty, trainPartyMember, applyEventChoiceEffects, applyStatBoost, resolveCheckEffect } from "./Events.ts";
+import {
+  restParty,
+  trainPartyMember,
+  applyEventChoiceEffects,
+  applyEffectList,
+  applyStatBoost,
+  resolveCheckEffect,
+  evaluateRequirements,
+  choiceNeedsHeroPick,
+  resolveEventChoice,
+  resolveEventChoiceWithHero,
+  selectEventForNode,
+} from "./Events.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
 import type { EventChoice, CheckEffect } from "../data/events.ts";
 import { createRng } from "../core/rng.ts";
@@ -208,5 +220,218 @@ describe("applyStatBoost", () => {
     applyStatBoost(party[0], "spirit", 1);
     applyStatBoost(party[0], "spirit", 1);
     expect(party[0].bonusStats.spirit).toBe(2);
+  });
+});
+
+describe("applyEffectList — every effect type", () => {
+  const rng = () => 0;
+
+  it("gold adds to run and inventory", () => {
+    const run = makeRun(makeParty());
+    applyEffectList([{ type: "gold", amount: 12 }], run, rng);
+    expect(run.gold).toBe(12);
+    expect(run.inventory.gold).toBe(12);
+  });
+
+  it("gold_cost spends down to a floor of 0", () => {
+    const run = makeRun(makeParty());
+    run.gold = 5;
+    run.inventory.gold = 5;
+    applyEffectList([{ type: "gold_cost", amount: 20 }], run, rng);
+    expect(run.gold).toBe(0);
+    expect(run.inventory.gold).toBe(0);
+  });
+
+  it("item and potion land in inventory", () => {
+    const run = makeRun(makeParty());
+    applyEffectList([{ type: "item", itemId: "item.lucky_charm" }, { type: "potion", potionId: "potion.healing" }], run, rng);
+    expect(run.inventory.items).toContain("item.lucky_charm");
+    expect(run.inventory.potions).toContain("potion.healing");
+  });
+
+  it("heal_party heals living heroes only", () => {
+    const party = makeParty();
+    party[1].hp = 4;
+    const run = makeRun(party);
+    applyEffectList([{ type: "heal_party", percent: 50 }], run, rng);
+    expect(party[1].hp).toBe(4 + Math.floor(14 * 0.5));
+  });
+
+  it("xp:party grants XP to every hero", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    applyEffectList([{ type: "xp", amount: 10, target: "party" }], run, rng);
+    expect(party[0].xp).toBe(10);
+    expect(party[1].xp).toBe(10);
+  });
+
+  it("xp:random_hero grants XP to exactly one living hero", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    applyEffectList([{ type: "xp", amount: 10, target: "random_hero" }], run, rng);
+    const total = party.reduce((s, p) => s + p.xp, 0);
+    expect(total).toBe(10);
+  });
+
+  it("xp:picked_hero is deferred to the hero-pick flow (no-op here)", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    applyEffectList([{ type: "xp", amount: 10, target: "picked_hero" }], run, rng);
+    expect(party.reduce((s, p) => s + p.xp, 0)).toBe(0);
+  });
+
+  it("buff pushes the modifier onto run.runModifiers", () => {
+    const run = makeRun(makeParty());
+    applyEffectList([{ type: "buff", modifier: { kind: "global_stat", stat: "might", value: 1 } }], run, rng);
+    expect(run.runModifiers).toEqual([{ kind: "global_stat", stat: "might", value: 1 }]);
+  });
+
+  it("noop changes nothing", () => {
+    const run = makeRun(makeParty());
+    const msgs = applyEffectList([{ type: "noop" }], run, rng);
+    expect(run.gold).toBe(0);
+    expect(msgs[0]).toContain("Nothing");
+  });
+});
+
+describe("evaluateRequirements", () => {
+  it("ok when no requirements", () => {
+    const run = makeRun(makeParty());
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }] };
+    expect(evaluateRequirements(choice, run).ok).toBe(true);
+  });
+
+  it("minGold fails with a reason when too poor, passes when affordable", () => {
+    const run = makeRun(makeParty());
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "minGold", amount: 20 }] };
+    let r = evaluateRequirements(choice, run);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("20 gold");
+    run.gold = 25;
+    expect(evaluateRequirements(choice, run).ok).toBe(true);
+  });
+
+  it("hasItem checks the run inventory", () => {
+    const run = makeRun(makeParty());
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "hasItem", itemId: "item.lucky_charm" }] };
+    expect(evaluateRequirements(choice, run).ok).toBe(false);
+    run.inventory.items.push("item.lucky_charm");
+    expect(evaluateRequirements(choice, run).ok).toBe(true);
+  });
+
+  it("livingHero fails when the whole party is down", () => {
+    const party = makeParty();
+    for (const p of party) p.hp = 0;
+    const run = makeRun(party);
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "livingHero" }] };
+    const r = evaluateRequirements(choice, run);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain("living hero");
+  });
+
+  it("partySizeAtLeast compares against the party length", () => {
+    const run = makeRun(makeParty()); // 2 heroes
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "partySizeAtLeast", n: 3 }] };
+    expect(evaluateRequirements(choice, run).ok).toBe(false);
+    choice.requirements = [{ type: "partySizeAtLeast", n: 2 }];
+    expect(evaluateRequirements(choice, run).ok).toBe(true);
+  });
+});
+
+describe("resolveEventChoice", () => {
+  const rng = () => 0;
+
+  it("applies non-picker effects immediately", () => {
+    const run = makeRun(makeParty());
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "gold", amount: 5 }] };
+    const res = resolveEventChoice(choice, run, rng);
+    expect(res.needsHeroPick).toBe(false);
+    expect(run.gold).toBe(5);
+    expect(res.messages.length).toBeGreaterThan(0);
+  });
+
+  it("flags hero pick and applies nothing for stat_boost / check / xp:picked_hero", () => {
+    const run = makeRun(makeParty());
+    for (const effects of [
+      [{ type: "stat_boost", stat: "spirit", amount: 1 }] as const,
+      [{ type: "xp", amount: 5, target: "picked_hero" }] as const,
+    ]) {
+      const choice: EventChoice = { id: "c", label: "c", description: "", effects: [...effects] };
+      expect(choiceNeedsHeroPick(choice)).toBe(true);
+      const res = resolveEventChoice(choice, run, rng);
+      expect(res.needsHeroPick).toBe(true);
+      expect(res.messages).toHaveLength(0);
+    }
+    expect(run.party.reduce((s, p) => s + p.xp, 0)).toBe(0);
+  });
+});
+
+describe("resolveEventChoiceWithHero", () => {
+  const rng = () => 0;
+
+  it("applies stat_boost to the chosen hero", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "stat_boost", stat: "spirit", amount: 1 }] };
+    resolveEventChoiceWithHero(choice, party[1], run, rng);
+    expect(party[1].bonusStats.spirit).toBe(1);
+    expect(party[0].bonusStats.spirit ?? 0).toBe(0);
+  });
+
+  it("applies xp:picked_hero to the chosen hero only", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "xp", amount: 10, target: "picked_hero" }] };
+    resolveEventChoiceWithHero(choice, party[0], run, rng);
+    expect(party[0].xp).toBe(10);
+    expect(party[1].xp).toBe(0);
+  });
+
+  it("routes a check effect through the chosen hero", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    const choice: EventChoice = {
+      id: "c", label: "c", description: "",
+      effects: [{
+        type: "check",
+        check: { stat: "agility", dc: 12 },
+        onSuccess: [{ type: "gold", amount: 25 }],
+        onFailure: [{ type: "noop" }],
+      }],
+    };
+    // face 20 -> guaranteed success
+    const { messages } = resolveEventChoiceWithHero(choice, party[0], run, () => 19 / 20);
+    expect(run.gold).toBe(25);
+    expect(messages[0]).toContain("Agility check");
+  });
+});
+
+describe("selectEventForNode", () => {
+  it("is deterministic for a fixed seed and persists the selection", () => {
+    const runA = makeRun(makeParty());
+    const runB = makeRun(makeParty());
+    const a = selectEventForNode(runA, "node.event_1", createRng(777));
+    const b = selectEventForNode(runB, "node.event_1", createRng(777));
+    expect(a).toBe(b);
+    expect(runA.eventSelections["node.event_1"]).toBe(a);
+  });
+
+  it("returns the stored selection on re-visit without drawing again", () => {
+    const run = makeRun(makeParty());
+    run.eventSelections["node.event_1"] = "event.healing_spring";
+    // An rng that would throw if called proves no draw happens.
+    const chosen = selectEventForNode(run, "node.event_1", () => { throw new Error("must not draw"); });
+    expect(chosen).toBe("event.healing_spring");
+  });
+
+  it("draws from the default shared pool for nodes without an eventPoolId", () => {
+    const run = makeRun(makeParty());
+    const chosen = selectEventForNode(run, "node.event_1", createRng(1));
+    expect([
+      "event.strange_shrine",
+      "event.rogue_trader",
+      "event.healing_spring",
+      "event.crumbling_bridge",
+    ]).toContain(chosen);
   });
 });

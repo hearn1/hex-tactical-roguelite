@@ -2,8 +2,13 @@ import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { PartyMember } from "../../state/RunState.ts";
 import { EVENT_REGISTRY } from "../../data/events.ts";
-import type { EventDef, EventChoice, CheckEffect } from "../../data/events.ts";
-import { applyEventChoiceEffects, applyStatBoost, resolveCheckEffect } from "../../run/Events.ts";
+import type { EventChoice, CheckEffect } from "../../data/events.ts";
+import {
+  evaluateRequirements,
+  resolveEventChoice,
+  resolveEventChoiceWithHero,
+  selectEventForNode,
+} from "../../run/Events.ts";
 import { checkModifierFor, rollNeeded, pickBestHero } from "../../run/AbilityCheck.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 
@@ -38,14 +43,8 @@ export class EventScreen {
       return document.createElement("div");
     }
 
-    const EVENT_POOL = ["event.strange_shrine", "event.rogue_trader", "event.healing_spring", "event.crumbling_bridge"];
     const nodeId = run.mapState.currentNodeId;
-    if (!run.eventSelections[nodeId]) {
-      const unvisited = EVENT_POOL.filter((eid) => !Object.values(run.eventSelections).includes(eid));
-      const pool = unvisited.length > 0 ? unvisited : EVENT_POOL;
-      run.eventSelections[nodeId] = pool[Math.floor(gameState.rng() * pool.length)];
-    }
-    const eventId = run.eventSelections[nodeId];
+    const eventId = selectEventForNode(run, nodeId, gameState.rng);
     const eventDef = EVENT_REGISTRY[eventId];
 
     if (activeNodeId !== nodeId) {
@@ -95,68 +94,73 @@ export class EventScreen {
     if (phase === "picker" && pickedChoice) {
       const checkEffect = pickedChoice.effects.find((e) => e.type === "check") as CheckEffect | undefined;
       const picker = checkEffect
-        ? this.renderCheckPicker(checkEffect)
-        : this.renderHeroPicker(eventDef, pickedChoice);
+        ? this.renderCheckPicker(pickedChoice, checkEffect)
+        : this.renderHeroPicker(pickedChoice);
       container.appendChild(picker);
       return container;
     }
 
     for (const choice of eventDef.choices) {
+      const req = evaluateRequirements(choice, run);
       const card = document.createElement("div");
-      card.style.cssText = "border:1px solid #555;border-radius:8px;padding:16px 24px;cursor:pointer;background:#2a2a4a;text-align:center;min-width:280px;";
       card.setAttribute("data-testid", `event-choice-${choice.label.replace(/\s+/g, "-").toLowerCase()}`);
-      card.innerHTML = `<div style="font-weight:bold;font-size:15px;">${choice.label}</div><div style="font-size:12px;color:#aaa;margin-top:4px;">${choice.description}</div>`;
-      card.addEventListener("click", () => this.onChoiceClick(eventDef, choice));
-      card.addEventListener("mouseenter", () => { card.style.background = "#3a3a5a"; });
-      card.addEventListener("mouseleave", () => { card.style.background = "#2a2a4a"; });
+
+      if (req.ok) {
+        card.style.cssText = "border:1px solid #555;border-radius:8px;padding:16px 24px;cursor:pointer;background:#2a2a4a;text-align:center;min-width:280px;";
+        card.innerHTML = `<div style="font-weight:bold;font-size:15px;">${choice.label}</div><div style="font-size:12px;color:#aaa;margin-top:4px;">${choice.description}</div>`;
+        card.addEventListener("click", () => this.onChoiceClick(choice));
+        card.addEventListener("mouseenter", () => { card.style.background = "#3a3a5a"; });
+        card.addEventListener("mouseleave", () => { card.style.background = "#2a2a4a"; });
+      } else {
+        // UI Rule: unmet choices are shown disabled with the reason, never hidden.
+        card.style.cssText = "border:1px solid #444;border-radius:8px;padding:16px 24px;cursor:not-allowed;background:#222;text-align:center;min-width:280px;opacity:0.55;";
+        card.setAttribute("data-disabled", "true");
+        card.innerHTML = `<div style="font-weight:bold;font-size:15px;color:#888;">${choice.label}</div><div style="font-size:12px;color:#aaa;margin-top:4px;">${choice.description}</div><div style="font-size:11px;color:#e88;margin-top:6px;">${req.reason}</div>`;
+      }
       container.appendChild(card);
     }
 
     return container;
   }
 
-  private onChoiceClick(eventDef: EventDef, choice: EventChoice): void {
+  private onChoiceClick(choice: EventChoice): void {
     const run = gameState.run!;
+    // Defense in depth: disabled choices can't be clicked, but never resolve an unmet one.
+    if (!evaluateRequirements(choice, run).ok) return;
+
+    // Flavor checks can auto-pick the best living hero; otherwise the resolver asks for a pick.
     const checkEffect = choice.effects.find((e) => e.type === "check") as CheckEffect | undefined;
-    if (checkEffect) {
-      // Flavor checks can auto-pick the best living hero; otherwise prompt the player.
-      if (checkEffect.check.autoPickBestStat) {
-        const best = pickBestHero(run.party, checkEffect.check.stat);
-        if (best) {
-          this.resolveCheck(checkEffect, best);
-          return;
-        }
+    if (checkEffect?.check.autoPickBestStat) {
+      const best = pickBestHero(run.party, checkEffect.check.stat);
+      if (best) {
+        this.resolveWithHero(choice, best);
+        return;
       }
+    }
+
+    const { messages, needsHeroPick } = resolveEventChoice(choice, run, gameState.rng);
+    if (needsHeroPick) {
       phase = "picker";
       pickedChoice = choice;
       this.app.render();
       return;
     }
 
-    const needsPicker = choice.effects.some((e) => e.type === "stat_boost");
-    if (needsPicker) {
-      phase = "picker";
-      pickedChoice = choice;
-      this.app.render();
-      return;
-    }
-
-    const messages = applyEventChoiceEffects(choice, run, gameState.rng);
     resultMessages = messages;
     phase = "result";
     this.app.render();
   }
 
-  private resolveCheck(checkEffect: CheckEffect, pm: PartyMember): void {
+  private resolveWithHero(choice: EventChoice, pm: PartyMember): void {
     const run = gameState.run!;
-    const { messages } = resolveCheckEffect(checkEffect, pm, run, gameState.rng);
+    const { messages } = resolveEventChoiceWithHero(choice, pm, run, gameState.rng);
     resultMessages = messages;
     phase = "result";
     pickedChoice = null;
     this.app.render();
   }
 
-  private renderCheckPicker(checkEffect: CheckEffect): HTMLElement {
+  private renderCheckPicker(choice: EventChoice, checkEffect: CheckEffect): HTMLElement {
     const run = gameState.run!;
     const check = checkEffect.check;
     const statName = check.stat.charAt(0).toUpperCase() + check.stat.slice(1);
@@ -192,7 +196,7 @@ export class EventScreen {
         btn.disabled = true;
         btn.title = `${pm.displayName} is down and cannot attempt the check.`;
       } else {
-        btn.addEventListener("click", () => this.resolveCheck(checkEffect, pm));
+        btn.addEventListener("click", () => this.resolveWithHero(choice, pm));
       }
       wrap.appendChild(btn);
     }
@@ -210,7 +214,7 @@ export class EventScreen {
     return wrap;
   }
 
-  private renderHeroPicker(eventDef: EventDef, choice: EventChoice): HTMLElement {
+  private renderHeroPicker(choice: EventChoice): HTMLElement {
     const run = gameState.run!;
     const wrap = document.createElement("div");
     wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px;";
@@ -225,16 +229,8 @@ export class EventScreen {
       const classDef = CLASS_REGISTRY[pm.classId];
       btn.textContent = `${classDef?.displayName ?? pm.classId} — ${pm.displayName}`;
       btn.style.cssText = "padding:8px 16px;font-size:13px;width:280px;";
-      btn.addEventListener("click", () => {
-        const statEffect = choice.effects.find((e) => e.type === "stat_boost");
-        if (statEffect && statEffect.type === "stat_boost") {
-          const msg = applyStatBoost(pm, statEffect.stat, statEffect.amount);
-          resultMessages = [msg];
-        }
-        phase = "result";
-        pickedChoice = null;
-        this.app.render();
-      });
+      btn.setAttribute("data-testid", `event-hero-${pm.instanceId}`);
+      btn.addEventListener("click", () => this.resolveWithHero(choice, pm));
       wrap.appendChild(btn);
     }
 
