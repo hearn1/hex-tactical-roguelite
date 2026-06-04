@@ -1,5 +1,5 @@
 import type { MapState } from "../run/MapGraph.ts";
-import type { UnitStats, ShopInventory, RunModifier } from "./types.ts";
+import type { UnitStats, ShopInventory, RunModifier, ActionUpgradeBonus } from "./types.ts";
 import type { InventoryState } from "../run/Inventory.ts";
 
 export interface PartyMember {
@@ -18,6 +18,23 @@ export interface PartyMember {
   };
   /** Optional background/trait chosen at run setup (one per hero). See `data/backgrounds.ts`. */
   backgroundId?: string;
+  /** Per-action bonuses from chosen level-up upgrades (F29 / #60). Persist for the run. */
+  actionUpgrades?: Record<string, ActionUpgradeBonus>;
+  /** Passive level-up upgrades in effect (F29), e.g. "start_combat_guarded". Persist for the run. */
+  passives?: string[];
+  /** Ids of level-up options this hero has chosen, in order. Drives the hero-panel display. */
+  levelUpChoiceIds?: string[];
+}
+
+/**
+ * A queued level-up awaiting a player choice (F29 / #60). Run-time XP grants enqueue one of
+ * these per level reached within the choice range; the level-up screen resolves them one at a
+ * time, then control returns to {@link RunState}'s originating screen.
+ */
+export interface PendingLevelUp {
+  instanceId: string;
+  classId: string;
+  newLevel: number;
 }
 
 export type Difficulty = "normal" | "hard";

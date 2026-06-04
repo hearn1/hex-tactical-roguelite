@@ -3,6 +3,7 @@ import { UPGRADE_REGISTRY } from "../data/upgrades.ts";
 import type { UpgradeDef } from "../data/upgrades.ts";
 import type { RunState, PartyMember } from "../state/RunState.ts";
 import { applyXpToPartyMember } from "../run/Leveling.ts";
+import { applyDefaultLevelUpChoices } from "../run/LevelUp.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 
 export function canPurchase(
@@ -112,7 +113,11 @@ export function applyMetaUpgradesToFreshRun(
       case "startingXpBonus": {
         const xpAmount = (def.effect.amountPerRank ?? 10) * rank;
         for (const pm of run.party) {
-          applyXpToPartyMember(pm, xpAmount);
+          const result = applyXpToPartyMember(pm, xpAmount);
+          // Pre-run XP must not open the interactive choice screen — auto-apply default options.
+          if (result.leveledUp) {
+            applyDefaultLevelUpChoices(pm, pm.classId, result.levelsGained);
+          }
         }
         break;
       }

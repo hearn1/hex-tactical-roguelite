@@ -21,6 +21,13 @@ import type { RewardPoolDef } from "./rewards.ts";
 import { REWARD_REGISTRY } from "./rewards.ts";
 import type { UpgradeDef } from "./upgrades.ts";
 import { UPGRADE_REGISTRY } from "./upgrades.ts";
+import type { LevelUpOption } from "./levelups.ts";
+import {
+  LEVELUP_CHOICES,
+  SHARED_FALLBACK_CHOICES,
+  LEVELUP_PASSIVE_START_COMBAT_GUARDED,
+  LEVELUP_PASSIVE_FIRST_HEAL_BONUS,
+} from "./levelups.ts";
 
 export interface ValidationReport {
   valid: boolean;
@@ -416,6 +423,47 @@ export class DataRepository {
           errors.push(`Event pool "${poolId}": event "${eid}" not found`);
         }
       }
+    }
+
+    // Level-up choices (F29): action upgrades must reference real actions; passives must be known.
+    const knownPassives = new Set([
+      LEVELUP_PASSIVE_START_COMBAT_GUARDED,
+      LEVELUP_PASSIVE_FIRST_HEAL_BONUS,
+    ]);
+    const validateLevelUpOption = (option: LevelUpOption, where: string): void => {
+      const upgrade = option.upgrade;
+      if (upgrade.kind === "action") {
+        if (upgrade.actionIds.length === 0) {
+          errors.push(`${where}: action upgrade lists no actions`);
+        }
+        for (const aid of upgrade.actionIds) {
+          if (!allActionIds.has(aid)) {
+            errors.push(`${where}: action "${aid}" not found`);
+          }
+        }
+      } else if (upgrade.kind === "passive" && !knownPassives.has(upgrade.passiveId)) {
+        errors.push(`${where}: unknown passive "${upgrade.passiveId}"`);
+      } else if (upgrade.kind === "stat") {
+        for (const key of Object.keys(upgrade.stats)) {
+          if (!statKeys.has(key)) errors.push(`${where}: invalid stat "${key}"`);
+        }
+      }
+    };
+    for (const [classId, byLevel] of Object.entries(LEVELUP_CHOICES)) {
+      if (!this.classes.has(classId)) {
+        errors.push(`Level-up table "${classId}": class not found`);
+      }
+      for (const [level, options] of Object.entries(byLevel)) {
+        if (options.length < 2) {
+          errors.push(`Level-up table "${classId}" level ${level}: must offer at least 2 options`);
+        }
+        for (const option of options) {
+          validateLevelUpOption(option, `Level-up "${classId}" L${level} option "${option.id}"`);
+        }
+      }
+    }
+    for (const option of SHARED_FALLBACK_CHOICES) {
+      validateLevelUpOption(option, `Level-up shared fallback option "${option.id}"`);
     }
 
     if (errors.length > 0) {

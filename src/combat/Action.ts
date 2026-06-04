@@ -1,17 +1,30 @@
 import type { ActionDef } from "../data/actions.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
-import type { UnitInstance, CombatState, ConditionId } from "../state/types.ts";
+import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus } from "../state/types.ts";
 import { distance, hexKey } from "../core/hex.ts";
 import { roll } from "../core/dice.ts";
 import { applyCondition } from "./Condition.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
 import { ENCOUNTER_REGISTRY } from "../data/encounters.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
+import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../data/levelups.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
 /** How many of the survivor's turns the Rally bonus lasts. */
 export const RALLY_DURATION = 2;
+
+const EMPTY_BONUS: ActionUpgradeBonus = {};
+
+/** Per-action level-up bonus for this attacker (F29), or an empty bonus when none applies. */
+function actionBonus(attacker: UnitInstance, actionId: string): ActionUpgradeBonus {
+  return attacker.actionUpgrades?.[actionId] ?? EMPTY_BONUS;
+}
+
+/** An action's effective range including any level-up range bonus (F29). */
+export function effectiveRange(action: ActionDef, attacker: UnitInstance): number {
+  return action.range + (actionBonus(attacker, action.id).rangeBonus ?? 0);
+}
 
 export function validTargets(
   action: ActionDef,
@@ -19,20 +32,21 @@ export function validTargets(
   state: CombatState,
 ): UnitInstance[] {
   const living = state.units.filter((u) => u.hp > 0);
+  const range = effectiveRange(action, attacker);
   switch (action.targetType) {
     case "self":
       return living.filter((u) => u.instanceId === attacker.instanceId);
     case "ally":
       return living.filter(
-        (u) => u.team === attacker.team && u.instanceId !== attacker.instanceId && distance(attacker.pos, u.pos) <= action.range,
+        (u) => u.team === attacker.team && u.instanceId !== attacker.instanceId && distance(attacker.pos, u.pos) <= range,
       );
     case "ally_or_self":
       return living.filter(
-        (u) => u.team === attacker.team && distance(attacker.pos, u.pos) <= action.range,
+        (u) => u.team === attacker.team && distance(attacker.pos, u.pos) <= range,
       );
     case "enemy":
       return living.filter(
-        (u) => u.team !== attacker.team && distance(attacker.pos, u.pos) <= action.range,
+        (u) => u.team !== attacker.team && distance(attacker.pos, u.pos) <= range,
       );
   }
 }
@@ -71,7 +85,8 @@ export function resolveAction(
       if (!skipHasActed) attacker.hasActed = true;
       return;
     }
-    applyCondition(target, action.effect.conditionId as ConditionId, action.effect.duration);
+    const condDuration = action.effect.duration + (actionBonus(attacker, action.id).conditionDurationBonus ?? 0);
+    applyCondition(target, action.effect.conditionId as ConditionId, condDuration);
     state.log.push({
       kind: "action",
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — ${action.effect.conditionId} applied.`,
@@ -94,9 +109,21 @@ export function resolveAction(
       });
     }
 
+    // Field Prayer passive (F29): first heal each combat restores extra HP.
+    let firstHealBonus = 0;
+    if ((attacker.passives?.includes(LEVELUP_PASSIVE_FIRST_HEAL_BONUS) ?? false) && !attacker.firstHealDone) {
+      firstHealBonus = FIRST_HEAL_BONUS_AMOUNT;
+      attacker.firstHealDone = true;
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] Field Prayer — +${FIRST_HEAL_BONUS_AMOUNT} to this heal.`,
+        round,
+      });
+    }
+
     const formula = rewriteFormula(action.effect.formula, attacker);
     const result = roll(formula, rng);
-    const healed = result.total + blessedBonus;
+    const healed = result.total + blessedBonus + firstHealBonus + (actionBonus(attacker, action.id).healBonus ?? 0);
     const before = target.hp;
     target.hp = Math.min(target.hp + healed, target.stats.maxHp);
     const actual = target.hp - before;
@@ -171,6 +198,8 @@ export function resolveAction(
   }
   // Opportunist burst (e.g. the ambusher's first strike on an exposed/wounded foe).
   if (bonusDamage > 0) damage += bonusDamage;
+  // Level-up action damage upgrade (F29), e.g. Pressing Strike / Ember Focus.
+  damage += actionBonus(attacker, action.id).damageBonus ?? 0;
 
   const guardedIdx = target.conditions.findIndex((c) => c.id === "guarded");
   if (guardedIdx >= 0) {
@@ -203,7 +232,9 @@ export function resolveAction(
   }
 
   if (action.effect.type === "damage" && action.effect.applyCondition) {
-    applyCondition(target, action.effect.applyCondition.id as ConditionId, action.effect.applyCondition.duration);
+    const condDuration =
+      action.effect.applyCondition.duration + (actionBonus(attacker, action.id).conditionDurationBonus ?? 0);
+    applyCondition(target, action.effect.applyCondition.id as ConditionId, condDuration);
     state.log.push({
       kind: "action",
       text: `[T${round}] ${action.displayName} hits — ${action.effect.applyCondition.id} applied.`,

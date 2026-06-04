@@ -1,5 +1,5 @@
 import type { App } from "../App.ts";
-import { gameState } from "../../state/GameState.ts";
+import { gameState, routeAfterXp } from "../../state/GameState.ts";
 import type { PartyMember } from "../../state/RunState.ts";
 import { EVENT_REGISTRY } from "../../data/events.ts";
 import type { EventChoice, CheckEffect } from "../../data/events.ts";
@@ -84,7 +84,8 @@ export class EventScreen {
         resultMessages = [];
         pickedChoice = null;
         activeNodeId = null;
-        gameState.screen = "map";
+        // Divert through the level-up screen first if the event's XP queued any choices (F29).
+        routeAfterXp("map");
         this.app.render();
       });
       container.appendChild(contBtn);
@@ -138,7 +139,7 @@ export class EventScreen {
       }
     }
 
-    const { messages, needsHeroPick } = resolveEventChoice(choice, run, gameState.rng);
+    const { messages, needsHeroPick } = resolveEventChoice(choice, run, gameState.rng, gameState.pendingLevelUps);
     if (needsHeroPick) {
       phase = "picker";
       pickedChoice = choice;
@@ -153,7 +154,7 @@ export class EventScreen {
 
   private resolveWithHero(choice: EventChoice, pm: PartyMember): void {
     const run = gameState.run!;
-    const { messages } = resolveEventChoiceWithHero(choice, pm, run, gameState.rng);
+    const { messages } = resolveEventChoiceWithHero(choice, pm, run, gameState.rng, gameState.pendingLevelUps);
     resultMessages = messages;
     phase = "result";
     pickedChoice = null;

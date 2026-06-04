@@ -1,7 +1,8 @@
 import type { App } from "../App.ts";
-import { gameState } from "../../state/GameState.ts";
+import { gameState, routeAfterXp } from "../../state/GameState.ts";
 import type { PartyMember } from "../../state/RunState.ts";
 import { restParty, trainPartyMember } from "../../run/Events.ts";
+import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 
 // Module-level state persists across CampScreen instances created by App.render()
@@ -77,7 +78,8 @@ export class CampScreen {
       contBtn.addEventListener("click", () => {
         const run = gameState.run;
         if (run) run.mapState.nodesCleared++;
-        gameState.screen = "map";
+        // Route through the level-up screen first if Train queued any choices (F29).
+        routeAfterXp("map");
         this.app.render();
       });
       container.appendChild(contBtn);
@@ -142,6 +144,7 @@ export class CampScreen {
         let msg = `${pm.displayName} gains 5 XP (now ${pm.xp} XP).`;
         if (result.leveledUp) {
           msg += ` Reaches Level ${result.newLevel}!`;
+          enqueuePendingLevelUps(gameState.pendingLevelUps, pm.instanceId, pm.classId, result.levelsGained);
         }
         resultText = msg;
         phase = "result";

@@ -10,6 +10,7 @@ export type ScreenId =
   | "event"
   | "recruit"
   | "pet"
+  | "levelup"
   | "run_summary";
 
 export type Team = "hero" | "enemy";
@@ -42,6 +43,22 @@ export interface Hex {
   r: number;
 }
 
+/**
+ * Per-action numeric bonuses granted by level-up choices (F29 / #60). Keyed by action id on
+ * a unit's {@link UnitInstance.actionUpgrades}. Read by the combat resolver so an upgrade is
+ * picked up with no new action defs — extensible toward deeper class-build options later.
+ */
+export interface ActionUpgradeBonus {
+  /** Flat bonus added to the action's rolled damage. */
+  damageBonus?: number;
+  /** Flat bonus added to the action's rolled heal. */
+  healBonus?: number;
+  /** Bonus added to the action's effective range (targeting + validation). */
+  rangeBonus?: number;
+  /** Extra turns added to a condition the action applies (e.g. Slowed/Blessed). */
+  conditionDurationBonus?: number;
+}
+
 export interface UnitInstance {
   instanceId: string;
   defId: string;
@@ -59,6 +76,12 @@ export interface UnitInstance {
   bonusStats: Partial<UnitStats>;
   /** Hero's chosen background (heroes only). Display-only here; the effect was applied at run start. */
   backgroundId?: string;
+  /** Per-action level-up bonuses (F29). Copied from the party member at combat start. */
+  actionUpgrades?: Record<string, ActionUpgradeBonus>;
+  /** Level-up passive ids in effect (F29), e.g. "start_combat_guarded", "first_heal_bonus". */
+  passives?: string[];
+  /** Transient combat flag: the `first_heal_bonus` passive has already fired this combat. */
+  firstHealDone?: boolean;
 }
 
 export interface CombatLogEntry {

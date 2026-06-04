@@ -21,6 +21,8 @@ export interface LevelUpResult {
   leveledUp: boolean;
   newLevel: number;
   gains: Partial<UnitStats>;
+  /** Each new level number reached by this grant, in order (e.g. 1→3 yields [2, 3]). */
+  levelsGained: number[];
 }
 
 const CLASS_LEVEL_GAINS: Record<string, Partial<UnitStats>> = {
@@ -53,12 +55,14 @@ export function applyXp(unit: UnitInstance, xp: number): LevelUpResult {
   let totalGains: Partial<UnitStats> = {};
   let currentLevel = levelForXp(startXp);
   let leveledUp = false;
+  const levelsGained: number[] = [];
 
   for (let level = currentLevel; level < MAX_LEVEL; level++) {
     if (unit.xp >= XP_THRESHOLDS[level]) {
       leveledUp = true;
       totalGains = sumGains(totalGains, perLevelGains);
       currentLevel = level + 1;
+      levelsGained.push(currentLevel);
     } else {
       break;
     }
@@ -67,7 +71,7 @@ export function applyXp(unit: UnitInstance, xp: number): LevelUpResult {
   unit.level = currentLevel;
 
   if (!leveledUp) {
-    return { leveledUp: false, newLevel: currentLevel, gains: {} };
+    return { leveledUp: false, newLevel: currentLevel, gains: {}, levelsGained: [] };
   }
 
   const maxHpDelta = totalGains.maxHp ?? 0;
@@ -87,7 +91,7 @@ export function applyXp(unit: UnitInstance, xp: number): LevelUpResult {
     unit.hp += maxHpDelta;
   }
 
-  return { leveledUp: true, newLevel: currentLevel, gains: totalGains };
+  return { leveledUp: true, newLevel: currentLevel, gains: totalGains, levelsGained };
 }
 
 export function applyXpToPartyMember(pm: PartyMember, xp: number): LevelUpResult {
@@ -100,12 +104,14 @@ export function applyXpToPartyMember(pm: PartyMember, xp: number): LevelUpResult
   let totalGains: Partial<UnitStats> = {};
   let currentLevel = levelForXp(startXp);
   let leveledUp = false;
+  const levelsGained: number[] = [];
 
   for (let level = currentLevel; level < MAX_LEVEL; level++) {
     if (pm.xp >= XP_THRESHOLDS[level]) {
       leveledUp = true;
       totalGains = sumGains(totalGains, perLevelGains);
       currentLevel = level + 1;
+      levelsGained.push(currentLevel);
     } else {
       break;
     }
@@ -114,7 +120,7 @@ export function applyXpToPartyMember(pm: PartyMember, xp: number): LevelUpResult
   pm.level = currentLevel;
 
   if (!leveledUp) {
-    return { leveledUp: false, newLevel: currentLevel, gains: {} };
+    return { leveledUp: false, newLevel: currentLevel, gains: {}, levelsGained: [] };
   }
 
   const maxHpDelta = totalGains.maxHp ?? 0;
@@ -132,5 +138,5 @@ export function applyXpToPartyMember(pm: PartyMember, xp: number): LevelUpResult
     }
   }
 
-  return { leveledUp: true, newLevel: currentLevel, gains: totalGains };
+  return { leveledUp: true, newLevel: currentLevel, gains: totalGains, levelsGained };
 }
