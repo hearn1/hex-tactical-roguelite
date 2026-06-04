@@ -1,3 +1,18 @@
+import type { CheckStat } from "../state/types.ts";
+
+/**
+ * Canonical ability-check declaration (F23). Defined here so this module is the single
+ * source of truth shared with the F24 event resolver — do not redefine elsewhere.
+ */
+export interface CheckDef {
+  stat: CheckStat;
+  dc: number;
+  /** Optional partial-success band: a miss within N of the DC reads as "partial". */
+  partialWithin?: number;
+  /** When true the engine may auto-pick the best living hero instead of prompting. */
+  autoPickBestStat?: boolean;
+}
+
 export type EventEffect =
   | { type: "gold"; amount: number }
   | { type: "gold_cost"; amount: number }
@@ -6,7 +21,21 @@ export type EventEffect =
   | { type: "potion"; potionId: string }
   | { type: "item"; itemId: string }
   | { type: "heal_party"; percent: number }
-  | { type: "noop" };
+  | { type: "noop" }
+  | CheckEffect;
+
+/**
+ * An ability-check branch effect. The chosen hero's check resolves, then the matching
+ * outcome's effect list is applied. `onPartial` is optional; if absent, a partial result
+ * falls back to `onFailure`.
+ */
+export interface CheckEffect {
+  type: "check";
+  check: CheckDef;
+  onSuccess: EventEffect[];
+  onFailure: EventEffect[];
+  onPartial?: EventEffect[];
+}
 
 export interface EventChoice {
   id: string;
@@ -86,6 +115,33 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
           { type: "hp_damage", amount: 5, target: "random_hero" },
           { type: "gold", amount: 15 },
         ],
+      },
+    ],
+  },
+  "event.crumbling_bridge": {
+    id: "event.crumbling_bridge",
+    title: "Crumbling Bridge",
+    description: "A frayed rope bridge sways over a deep ravine. A nimble crossing could grab the gear left behind — or end in a fall.",
+    choices: [
+      {
+        id: "event.crumbling_bridge.cross",
+        label: "Leap across",
+        description: "Agility check (DC 12). Success: 25 gold. Partial: 10 gold. Failure: a hero takes 6 damage.",
+        effects: [
+          {
+            type: "check",
+            check: { stat: "agility", dc: 12, partialWithin: 3 },
+            onSuccess: [{ type: "gold", amount: 25 }],
+            onPartial: [{ type: "gold", amount: 10 }],
+            onFailure: [{ type: "hp_damage", amount: 6, target: "random_hero" }],
+          },
+        ],
+      },
+      {
+        id: "event.crumbling_bridge.detour",
+        label: "Take the long way",
+        description: "Avoid the risk entirely.",
+        effects: [{ type: "noop" }],
       },
     ],
   },
