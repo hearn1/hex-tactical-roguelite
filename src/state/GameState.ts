@@ -6,16 +6,19 @@ import { ENEMY_REGISTRY } from "../data/enemies.ts";
 import { ENCOUNTER_REGISTRY } from "../data/encounters.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import type { Team } from "./types.ts";
-import type { RunState, PartyMember } from "./RunState.ts";
+import type { RunState, PartyMember, PendingLevelUp } from "./RunState.ts";
 import type { InventoryState } from "../run/Inventory.ts";
 import { createInventory } from "../run/Inventory.ts";
 import { computeStats } from "../combat/Stats.ts";
+import { applyCondition } from "../combat/Condition.ts";
+import { LEVELUP_PASSIVE_START_COMBAT_GUARDED } from "../data/levelups.ts";
 import type { MetaProgressionState } from "../meta/MetaProgression.ts";
 import { createDefaultMetaProgression } from "../meta/MetaProgression.ts";
 import { DIFFICULTY_CONFIG, scaleStat } from "../data/difficulty.ts";
 import { resetRewardScreenState } from "../ui/screens/RewardScreen.ts";
 import { resetCampScreenState } from "../ui/screens/CampScreen.ts";
 import { resetShopScreenState } from "../ui/screens/ShopScreen.ts";
+import { resetLevelUpScreenState } from "../ui/screens/LevelUpScreen.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -28,6 +31,10 @@ export interface GameState {
   run: RunState | null;
   inventory: InventoryState;
   meta: MetaProgressionState;
+  /** Level-ups awaiting a player choice (F29 / #60), resolved one at a time on the levelup screen. */
+  pendingLevelUps: PendingLevelUp[];
+  /** Screen to return to once the pending level-up queue drains (set when routing to levelup). */
+  levelUpReturnScreen: ScreenId;
 }
 
 function equipStartingItems(unit: UnitInstance): void {
@@ -191,6 +198,9 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     equippedItemIds: { ...pm.equippedItemIds },
     bonusStats: { ...pm.bonusStats },
     backgroundId: pm.backgroundId,
+    actionUpgrades: pm.actionUpgrades ? { ...pm.actionUpgrades } : undefined,
+    passives: pm.passives ? [...pm.passives] : undefined,
+    firstHealDone: false,
   };
   unit.stats = computeStats(unit);
   return unit;
@@ -232,6 +242,13 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
       inst.stats.maxHp = scaleStat(inst.stats.maxHp, diffConfig.enemyHpMultiplier);
       inst.hp = inst.stats.maxHp;
       units.push(inst);
+    }
+  }
+
+  // Hold the Line passive (F29): heroes who took it begin combat already Guarded.
+  for (const unit of units) {
+    if (unit.team === "hero" && unit.passives?.includes(LEVELUP_PASSIVE_START_COMBAT_GUARDED)) {
+      applyCondition(unit, "guarded", 1);
     }
   }
 
@@ -304,6 +321,8 @@ function createGameState(): GameState {
     run: null,
     inventory: createInventory(),
     meta: createDefaultMetaProgression(),
+    pendingLevelUps: [],
+    levelUpReturnScreen: "map",
   };
 }
 
@@ -316,9 +335,26 @@ export function resetGameState(seed?: number): void {
   gameState.run = null;
   gameState.inventory = createInventory();
   gameState.meta = createDefaultMetaProgression();
+  gameState.pendingLevelUps = [];
+  gameState.levelUpReturnScreen = "map";
   resetRewardScreenState();
   resetCampScreenState();
   resetShopScreenState();
+  resetLevelUpScreenState();
 }
 
 export const gameState: GameState = createGameState();
+
+/**
+ * Transition to `intendedScreen`, but first divert through the level-up choice screen if any
+ * level-ups are queued (F29 / #60). The level-up screen returns to `intendedScreen` once the
+ * queue drains. Sites that grant run-time XP call this instead of setting `screen` directly.
+ */
+export function routeAfterXp(intendedScreen: ScreenId): void {
+  if (gameState.pendingLevelUps.length > 0) {
+    gameState.levelUpReturnScreen = intendedScreen;
+    gameState.screen = "levelup";
+  } else {
+    gameState.screen = intendedScreen;
+  }
+}

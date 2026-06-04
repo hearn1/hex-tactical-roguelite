@@ -1,10 +1,11 @@
-import type { PartyMember } from "../state/RunState.ts";
+import type { PartyMember, PendingLevelUp } from "../state/RunState.ts";
 import type { RunState } from "../state/RunState.ts";
 import type { RunModifier } from "../state/types.ts";
 import type { EventChoice, EventEffect, CheckEffect, ChoiceRequirement } from "../data/events.ts";
 import { DEFAULT_EVENT_POOL_ID, EVENT_POOLS, EVENT_REGISTRY } from "../data/events.ts";
 import { NODE_REGISTRY } from "../data/nodes.ts";
 import { applyXpToPartyMember } from "./Leveling.ts";
+import { enqueuePendingLevelUps } from "./LevelUp.ts";
 import { resolveCheck, checkModifierFor, formatCheckLog, type CheckResult } from "./AbilityCheck.ts";
 
 export function restParty(party: PartyMember[]): void {
@@ -35,9 +36,15 @@ export function describeRunModifier(mod: RunModifier): string {
   }
 }
 
-/** Grant XP to one hero, returning a log line that notes any level-up. */
-function applyXpToHero(pm: PartyMember, amount: number): string {
+/**
+ * Grant XP to one hero, returning a log line that notes any level-up. In-range level-ups are
+ * pushed onto `out` (when supplied) so the screen flow can route to the choice screen (F29).
+ */
+function applyXpToHero(pm: PartyMember, amount: number, out?: PendingLevelUp[]): string {
   const result = applyXpToPartyMember(pm, amount);
+  if (result.leveledUp && out) {
+    enqueuePendingLevelUps(out, pm.instanceId, pm.classId, result.levelsGained);
+  }
   return result.leveledUp
     ? `${pm.displayName} gains ${amount} XP and reaches level ${result.newLevel}!`
     : `${pm.displayName} gains ${amount} XP.`;
@@ -49,7 +56,12 @@ function applyXpToHero(pm: PartyMember, amount: number): string {
  * by the screen flow with a chosen hero (see {@link resolveEventChoiceWithHero}), so they are
  * skipped here.
  */
-export function applyEffectList(effects: EventEffect[], run: RunState, rng: () => number): string[] {
+export function applyEffectList(
+  effects: EventEffect[],
+  run: RunState,
+  rng: () => number,
+  out?: PendingLevelUp[],
+): string[] {
   const messages: string[] = [];
 
   for (const effect of effects) {
@@ -88,14 +100,17 @@ export function applyEffectList(effects: EventEffect[], run: RunState, rng: () =
     } else if (effect.type === "xp") {
       if (effect.target === "party") {
         for (const pm of run.party) {
-          applyXpToPartyMember(pm, effect.amount);
+          const result = applyXpToPartyMember(pm, effect.amount);
+          if (result.leveledUp && out) {
+            enqueuePendingLevelUps(out, pm.instanceId, pm.classId, result.levelsGained);
+          }
         }
         messages.push(`Each hero gains ${effect.amount} XP.`);
       } else if (effect.target === "random_hero") {
         const living = run.party.filter((p) => p.hp > 0);
         if (living.length > 0) {
           const target = living[Math.floor(rng() * living.length)];
-          messages.push(applyXpToHero(target, effect.amount));
+          messages.push(applyXpToHero(target, effect.amount, out));
         }
       }
       // `picked_hero` is applied by the hero-pick flow, not here.
@@ -126,6 +141,7 @@ export function resolveCheckEffect(
   pm: PartyMember,
   run: RunState,
   rng: () => number,
+  out?: PendingLevelUp[],
 ): { result: CheckResult; messages: string[] } {
   const modifier = checkModifierFor(pm, effect.check.stat);
   const result = resolveCheck(effect.check.stat, modifier, effect.check.dc, rng, effect.check.partialWithin);
@@ -139,7 +155,7 @@ export function resolveCheckEffect(
 
   // Branch effects resolve with the attempting hero in scope, so an outcome can grant that
   // hero a permanent stat or XP (e.g. a Spirit check that rewards +1 Spirit on success).
-  const messages = [formatCheckLog(pm.displayName, result), ...applyEffectsForHero(branch, pm, run, rng)];
+  const messages = [formatCheckLog(pm.displayName, result), ...applyEffectsForHero(branch, pm, run, rng, out)];
   return { result, messages };
 }
 
@@ -149,17 +165,23 @@ export function resolveCheckEffect(
  * Everything else falls through to {@link applyEffectList}. Shared by check branches and
  * hero-pick choices so the two paths stay consistent.
  */
-function applyEffectsForHero(effects: EventEffect[], pm: PartyMember, run: RunState, rng: () => number): string[] {
+function applyEffectsForHero(
+  effects: EventEffect[],
+  pm: PartyMember,
+  run: RunState,
+  rng: () => number,
+  out?: PendingLevelUp[],
+): string[] {
   const messages: string[] = [];
   for (const effect of effects) {
     if (effect.type === "check") {
-      messages.push(...resolveCheckEffect(effect, pm, run, rng).messages);
+      messages.push(...resolveCheckEffect(effect, pm, run, rng, out).messages);
     } else if (effect.type === "stat_boost") {
       messages.push(applyStatBoost(pm, effect.stat, effect.amount));
     } else if (effect.type === "xp" && effect.target === "picked_hero") {
-      messages.push(applyXpToHero(pm, effect.amount));
+      messages.push(applyXpToHero(pm, effect.amount, out));
     } else {
-      messages.push(...applyEffectList([effect], run, rng));
+      messages.push(...applyEffectList([effect], run, rng, out));
     }
   }
   return messages;
@@ -225,11 +247,16 @@ export interface EventChoiceResolution {
  * Choices containing a hero-pick effect return `needsHeroPick: true` with no state change —
  * the screen then collects a hero and calls {@link resolveEventChoiceWithHero}.
  */
-export function resolveEventChoice(choice: EventChoice, run: RunState, rng: () => number): EventChoiceResolution {
+export function resolveEventChoice(
+  choice: EventChoice,
+  run: RunState,
+  rng: () => number,
+  out?: PendingLevelUp[],
+): EventChoiceResolution {
   if (choiceNeedsHeroPick(choice)) {
     return { messages: [], needsHeroPick: true };
   }
-  return { messages: applyEffectList(choice.effects, run, rng), needsHeroPick: false };
+  return { messages: applyEffectList(choice.effects, run, rng, out), needsHeroPick: false };
 }
 
 /**
@@ -241,8 +268,9 @@ export function resolveEventChoiceWithHero(
   pm: PartyMember,
   run: RunState,
   rng: () => number,
+  out?: PendingLevelUp[],
 ): { messages: string[] } {
-  return { messages: applyEffectsForHero(choice.effects, pm, run, rng) };
+  return { messages: applyEffectsForHero(choice.effects, pm, run, rng, out) };
 }
 
 /**

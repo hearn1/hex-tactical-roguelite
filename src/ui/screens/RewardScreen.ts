@@ -1,8 +1,9 @@
 import type { App } from "../App.ts";
-import { gameState } from "../../state/GameState.ts";
+import { gameState, routeAfterXp } from "../../state/GameState.ts";
 import type { CombatReward, RewardCard } from "../../run/RewardManager.ts";
 import { generateReward, applyGoldModifiers, applyDifficultyToReward, applyDifficultyToXp } from "../../run/RewardManager.ts";
 import { applyXp } from "../../run/Leveling.ts";
+import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
@@ -62,7 +63,7 @@ export class RewardScreen {
 
       const survivors = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
       for (const hero of survivors) {
-        hero.xp += rewardCache.xpPerHero;
+        // applyXp adds the XP itself; enqueue any in-range level-ups for the choice screen.
         const result = applyXp(hero, rewardCache.xpPerHero);
         if (result.leveledUp) {
           const gainStr = Object.entries(result.gains)
@@ -70,6 +71,7 @@ export class RewardScreen {
             .map(([k, v]) => `+${v} ${k}`)
             .join(", ");
           levelUpTexts.push(`${hero.displayName} reaches Level ${result.newLevel}! (${gainStr})`);
+          enqueuePendingLevelUps(gameState.pendingLevelUps, hero.instanceId, hero.defId, result.levelsGained);
         }
       }
     }
@@ -268,6 +270,8 @@ export class RewardScreen {
             pm.hp = unit.hp > 0 ? unit.hp : 1;
             pm.xp = unit.xp;
             pm.level = unit.level;
+            // Persist the reward-time auto level-up stat gains so chosen upgrades stack on top (F29).
+            pm.bonusStats = { ...unit.bonusStats };
           }
         }
         const nd = NODE_REGISTRY[run.mapState.currentNodeId];
@@ -283,11 +287,8 @@ export class RewardScreen {
 
   gameState.combat = null;
   if (run) {
-    if (run.runStatus === "won") {
-      gameState.screen = "run_summary";
-    } else {
-      gameState.screen = "map";
-    }
+    // Divert through the level-up choice screen first if any are queued (F29).
+    routeAfterXp(run.runStatus === "won" ? "run_summary" : "map");
   } else {
     gameState.screen = "main_menu";
   }

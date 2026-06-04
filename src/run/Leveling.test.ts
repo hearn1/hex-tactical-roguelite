@@ -85,6 +85,25 @@ describe("applyXp", () => {
     expect(result.gains.spirit).toBe(4);
   });
 
+  it("reports each level reached in order (multi-threshold grant)", () => {
+    const unit = makeUnit({
+      defId: "class.arcanist",
+      xp: 0,
+      level: 1,
+      stats: { maxHp: 11, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
+      hp: 11,
+    });
+    const result = applyXp(unit, 200);
+    expect(result.levelsGained).toEqual([2, 3, 4, 5]);
+  });
+
+  it("a no-op grant reports no levels gained", () => {
+    const unit = makeUnit({ defId: "class.guardian", xp: 0, level: 1 });
+    const result = applyXp(unit, 5);
+    expect(result.leveledUp).toBe(false);
+    expect(result.levelsGained).toEqual([]);
+  });
+
   it("current HP increases by maxHp delta, not refilled", () => {
     const unit = makeUnit({
       defId: "class.guardian",

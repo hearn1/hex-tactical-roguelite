@@ -13,6 +13,7 @@ import { processTurnStart } from "../../combat/Condition.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
+import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
 
 const HERO_COLOR = "#4488ff";
 const ENEMY_COLOR = "#ff4444";
@@ -171,7 +172,13 @@ export class CombatScreen {
       const t = h.equippedItemIds.trinket ? ITEM_REGISTRY[h.equippedItemIds.trinket]?.displayName ?? h.equippedItemIds.trinket : "(none)";
       const bg = h.backgroundId ? BACKGROUND_REGISTRY[h.backgroundId] : undefined;
       const bgHtml = bg ? `<br/>Background: ${bg.displayName} (${describeBackgroundEffect(bg)})` : "";
-      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b>${bgHtml}<br/>Weapon: ${w}<br/>Armor: ${a}<br/>Trinket: ${t}</div>`;
+      // Chosen level-up upgrades (F29) read from the persistent party member, shown per hero.
+      const pm = gameState.run?.party.find((p) => p.instanceId === h.instanceId);
+      const upgradeNames = (pm?.levelUpChoiceIds ?? [])
+        .map((id) => LEVELUP_OPTION_BY_ID[id]?.name)
+        .filter((n): n is string => !!n);
+      const upgradesHtml = upgradeNames.length > 0 ? `<br/>Upgrades: ${upgradeNames.join(", ")}` : "";
+      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b>${bgHtml}${upgradesHtml}<br/>Weapon: ${w}<br/>Armor: ${a}<br/>Trinket: ${t}</div>`;
     }).join("");
     const bagHtml = `<div><b>Bag</b><br/>Items: ${inv.items.join(", ") || "(empty)"}<br/>Potions: ${inv.potions.join(", ") || "(empty)"}<br/>Gold: ${inv.gold}</div>`;
     panel.innerHTML = `<h3 style="margin:0 0 6px;font-size:14px;">Inventory</h3>${itemsHtml}<hr style="border-color:#444;">${bagHtml}`;

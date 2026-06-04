@@ -12,6 +12,7 @@ import { RecruitScreen } from "./screens/RecruitScreen.ts";
 import { PetScreen } from "./screens/PetScreen.ts";
 import { MetaUpgrades } from "./screens/MetaUpgrades.ts";
 import { SetupScreen } from "./screens/SetupScreen.ts";
+import { LevelUpScreen } from "./screens/LevelUpScreen.ts";
 
 export class App {
   private root: HTMLElement;
@@ -51,6 +52,8 @@ export class App {
         return new RecruitScreen(this).render();
       case "pet":
         return new PetScreen(this).render();
+      case "levelup":
+        return new LevelUpScreen(this).render();
       case "run_summary":
         return new RunSummary(this).render();
       default:
