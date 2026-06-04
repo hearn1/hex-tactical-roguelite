@@ -10,7 +10,8 @@ import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "../../combat/Action.ts";
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
 import { processTurnStart } from "../../combat/Condition.ts";
-import { ITEM_REGISTRY } from "../../data/items.ts";
+import { resolveOncePerCombatBonus } from "../../combat/ItemHooks.ts";
+import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
@@ -167,9 +168,15 @@ export class CombatScreen {
     const heroes = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
     const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
     const itemsHtml = heroes.map((h) => {
-      const w = h.equippedItemIds.weapon ? ITEM_REGISTRY[h.equippedItemIds.weapon]?.displayName ?? h.equippedItemIds.weapon : "(none)";
-      const a = h.equippedItemIds.armor ? ITEM_REGISTRY[h.equippedItemIds.armor]?.displayName ?? h.equippedItemIds.armor : "(none)";
-      const t = h.equippedItemIds.trinket ? ITEM_REGISTRY[h.equippedItemIds.trinket]?.displayName ?? h.equippedItemIds.trinket : "(none)";
+      const wItem = h.equippedItemIds.weapon ? ITEM_REGISTRY[h.equippedItemIds.weapon] : null;
+      const aItem = h.equippedItemIds.armor ? ITEM_REGISTRY[h.equippedItemIds.armor] : null;
+      const tItem = h.equippedItemIds.trinket ? ITEM_REGISTRY[h.equippedItemIds.trinket] : null;
+      const w = wItem?.displayName ?? h.equippedItemIds.weapon ?? "(none)";
+      const a = aItem?.displayName ?? h.equippedItemIds.armor ?? "(none)";
+      const t = tItem?.displayName ?? h.equippedItemIds.trinket ?? "(none)";
+      const wDesc = wItem?.flavorText ? `<br/><span style="font-size:10px;color:#999;">${wItem.flavorText}</span>` : "";
+      const aDesc = aItem?.flavorText ? `<br/><span style="font-size:10px;color:#999;">${aItem.flavorText}</span>` : "";
+      const tDesc = tItem?.flavorText ? `<br/><span style="font-size:10px;color:#999;">${tItem.flavorText}</span>` : "";
       const bg = h.backgroundId ? BACKGROUND_REGISTRY[h.backgroundId] : undefined;
       const bgHtml = bg ? `<br/>Background: ${bg.displayName} (${describeBackgroundEffect(bg)})` : "";
       // Chosen level-up upgrades (F29) read from the persistent party member, shown per hero.
@@ -178,7 +185,7 @@ export class CombatScreen {
         .map((id) => LEVELUP_OPTION_BY_ID[id]?.name)
         .filter((n): n is string => !!n);
       const upgradesHtml = upgradeNames.length > 0 ? `<br/>Upgrades: ${upgradeNames.join(", ")}` : "";
-      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b>${bgHtml}${upgradesHtml}<br/>Weapon: ${w}<br/>Armor: ${a}<br/>Trinket: ${t}</div>`;
+      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b>${bgHtml}${upgradesHtml}<br/>Weapon: ${w}${wDesc}<br/>Armor: ${a}${aDesc}<br/>Trinket: ${t}${tDesc}</div>`;
     }).join("");
     const bagHtml = `<div><b>Bag</b><br/>Items: ${inv.items.join(", ") || "(empty)"}<br/>Potions: ${inv.potions.join(", ") || "(empty)"}<br/>Gold: ${inv.gold}</div>`;
     panel.innerHTML = `<h3 style="margin:0 0 6px;font-size:14px;">Inventory</h3>${itemsHtml}<hr style="border-color:#444;">${bagHtml}`;
@@ -394,6 +401,13 @@ export class CombatScreen {
     if (active) {
       active.movePointsRemaining = active.stats.move;
       active.hasActed = false;
+      // Item hook: first-turn bonus on round 1 (e.g. Quickstep Buckle).
+      if (cs.round === 1 && active.team === "hero") {
+        const turnResult = resolveOncePerCombatBonus(active, "firstTurn", cs);
+        if (turnResult.moveBonus) {
+          active.movePointsRemaining += turnResult.moveBonus;
+        }
+      }
       const expired = processTurnStart(active);
       for (const condId of expired) {
         cs.log.push({

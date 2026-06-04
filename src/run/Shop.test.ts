@@ -64,16 +64,18 @@ describe("rollShopInventory", () => {
   it("all items have registered defs", () => {
     const rng = createRng(42);
     const shop = rollShopInventory(rng);
+    const validIds = ["item.iron_sword", "item.wooden_shield", "item.apprentice_wand", "item.hunter_bow", "item.padded_armor", "item.soldier_badge", "item.ember_staff", "item.bloodstone", "item.owl_feather", "item.hearthstone_charm", "item.runemark_blade", "item.emberglass_wand", "item.ward_stitched_vest", "item.moonwell_robe", "item.quickstep_buckle", "item.lantern_moth_pin"];
     for (const entry of shop.items) {
-      expect(["item.iron_sword", "item.wooden_shield", "item.apprentice_wand", "item.hunter_bow", "item.padded_armor", "item.soldier_badge", "item.ember_staff", "item.bloodstone", "item.owl_feather"]).toContain(entry.itemId);
+      expect(validIds).toContain(entry.itemId);
     }
   });
 
   it("potions are from the valid pool", () => {
     const rng = createRng(42);
     const shop = rollShopInventory(rng);
+    const validPotions = ["potion.healing", "potion.focus", "potion.fire_flask", "potion.bottled_dawn"];
     for (const entry of shop.potions) {
-      expect(["potion.healing", "potion.focus", "potion.fire_flask"]).toContain(entry.potionId);
+      expect(validPotions).toContain(entry.potionId);
     }
   });
 

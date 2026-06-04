@@ -22,6 +22,7 @@ const COMMON_ITEM_POOL: string[] = [
   "item.padded_armor",
   "item.apprentice_wand",
   "item.soldier_badge",
+  "item.hearthstone_charm",
 ];
 
 const UNCOMMON_ITEM_POOL: string[] = [
@@ -29,12 +30,19 @@ const UNCOMMON_ITEM_POOL: string[] = [
   "item.bloodstone",
   "item.owl_feather",
   "item.runed_robe",
+  "item.runemark_blade",
+  "item.emberglass_wand",
+  "item.ward_stitched_vest",
+  "item.moonwell_robe",
+  "item.quickstep_buckle",
+  "item.lantern_moth_pin",
 ];
 
 const POTION_WEIGHTS: { id: string; weight: number }[] = [
-  { id: "potion.healing", weight: 50 },
-  { id: "potion.focus", weight: 30 },
+  { id: "potion.healing", weight: 45 },
+  { id: "potion.focus", weight: 25 },
   { id: "potion.fire_flask", weight: 20 },
+  { id: "potion.bottled_dawn", weight: 10 },
 ];
 
 function pickWeighted(options: { id: string; weight: number }[], rng: () => number): string {

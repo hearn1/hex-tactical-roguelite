@@ -82,6 +82,8 @@ export interface UnitInstance {
   passives?: string[];
   /** Transient combat flag: the `first_heal_bonus` passive has already fired this combat. */
   firstHealDone?: boolean;
+  /** Item hook IDs that have already triggered this combat, e.g. "item.runemark_blade". */
+  usedItemHooks?: string[];
 }
 
 export interface CombatLogEntry {

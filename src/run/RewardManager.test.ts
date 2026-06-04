@@ -57,6 +57,6 @@ describe("generateReward", () => {
     const rng = createRng(42);
     const reward = generateReward(threeEnemyEncounter, rng);
     const itemId = (reward.cards[0] as { kind: "item"; itemId: string }).itemId;
-    expect(["item.iron_sword", "item.wooden_shield", "item.padded_armor", "item.apprentice_wand", "item.soldier_badge"]).toContain(itemId);
+    expect(["item.iron_sword", "item.wooden_shield", "item.padded_armor", "item.apprentice_wand", "item.soldier_badge", "item.hearthstone_charm"]).toContain(itemId);
   });
 });
