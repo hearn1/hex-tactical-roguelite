@@ -26,6 +26,12 @@ describe("screen-smoke", () => {
     expect(() => app.render()).not.toThrow();
   });
 
+  it("setup renders without throwing", () => {
+    const { app } = mountApp();
+    gameState.screen = "setup";
+    expect(() => app.render()).not.toThrow();
+  });
+
   it("map renders without throwing with an active run", () => {
     const { app } = mountApp();
     setupDefaultRun();

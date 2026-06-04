@@ -1,6 +1,7 @@
 export type ScreenId =
   | "main_menu"
   | "meta_upgrades"
+  | "setup"
   | "map"
   | "combat"
   | "reward"

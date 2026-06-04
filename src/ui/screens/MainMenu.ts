@@ -1,67 +1,9 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
-import { initCombatState } from "../../state/GameState.ts";
-import type { RunState, PartyMember, Difficulty } from "../../state/RunState.ts";
-import { createInventory } from "../../run/Inventory.ts";
-import { CLASS_REGISTRY, HERO_DEFAULT_NAMES } from "../../data/classes.ts";
-import { ITEM_REGISTRY } from "../../data/items.ts";
-import { computeStats } from "../../combat/Stats.ts";
+import type { Difficulty } from "../../state/RunState.ts";
+import { buildParty, createRunState, defaultPartySpecs } from "../../run/PartySetup.ts";
 import { applyMetaUpgradesToFreshRun } from "../../meta/Upgrades.ts";
-
-
-function createStartingParty(): PartyMember[] {
-  const classIds = ["class.guardian", "class.acolyte", "class.arcanist"];
-  return classIds.map((classId, i) => {
-    const def = CLASS_REGISTRY[classId];
-    const displayName = HERO_DEFAULT_NAMES[classId] ?? `Hero ${i + 1}`;
-    const equippedItemIds: { weapon: string | null; armor: string | null; trinket: string | null } = {
-      weapon: null, armor: null, trinket: null,
-    };
-    for (const itemId of def.startingItems ?? []) {
-      const itemDef = ITEM_REGISTRY[itemId];
-      if (!itemDef) continue;
-      const slot = itemDef.slot;
-      if (!equippedItemIds[slot]) {
-        equippedItemIds[slot] = itemId;
-      }
-    }
-    return {
-      instanceId: `hero_00${i + 1}`,
-      classId,
-      displayName,
-      level: 1,
-      xp: 0,
-      hp: def.baseStats.maxHp,
-      maxHp: def.baseStats.maxHp,
-      bonusStats: {},
-      equippedItemIds,
-    };
-  });
-}
-
-function initNewRun(difficulty: Difficulty = "normal"): RunState {
-  const party = createStartingParty();
-  const startingGold = 30;
-  return {
-    seed: Date.now(),
-    gold: startingGold,
-    party,
-    inventory: createInventory(),
-    mapState: {
-      currentNodeId: "node.start",
-      visitedNodeIds: ["node.start"],
-      nodesCleared: 0,
-      elitesDefeated: 0,
-      bossDefeated: false,
-    },
-    runStatus: "active",
-    shopStates: {},
-    recruitOffers: {},
-    runModifiers: [],
-    difficulty,
-    eventSelections: {},
-  };
-}
+import { resetSetupScreenState } from "./SetupScreen.ts";
 
 export class MainMenu {
   private app: App;
@@ -97,18 +39,28 @@ export class MainMenu {
     diffRow.appendChild(diffBtn);
     container.appendChild(diffRow);
 
-    const newRunBtn = document.createElement("button");
-    newRunBtn.textContent = "New Run";
-    newRunBtn.style.cssText = "padding:10px 24px;font-size:16px;";
-    newRunBtn.addEventListener("click", () => {
-      const run = initNewRun(currentDiff);
+    const quickStartBtn = document.createElement("button");
+    quickStartBtn.textContent = "Quick Start";
+    quickStartBtn.style.cssText = "padding:10px 24px;font-size:16px;";
+    quickStartBtn.addEventListener("click", () => {
+      const run = createRunState(buildParty(defaultPartySpecs()), currentDiff);
       applyMetaUpgradesToFreshRun(run, gameState.meta);
       gameState.run = run;
       gameState.combat = null;
       gameState.screen = "map";
       this.app.render();
     });
-    container.appendChild(newRunBtn);
+    container.appendChild(quickStartBtn);
+
+    const customBtn = document.createElement("button");
+    customBtn.textContent = "Custom Party";
+    customBtn.style.cssText = "padding:10px 24px;font-size:16px;";
+    customBtn.addEventListener("click", () => {
+      resetSetupScreenState(currentDiff);
+      gameState.screen = "setup";
+      this.app.render();
+    });
+    container.appendChild(customBtn);
 
     const metaBtn = document.createElement("button");
     metaBtn.textContent = "Meta Upgrades";

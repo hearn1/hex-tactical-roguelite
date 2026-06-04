@@ -44,7 +44,7 @@ describe("playthrough", () => {
       gameState.screen = "main_menu";
       app.render();
 
-      clickButton("New Run");
+      clickButton("Quick Start");
       expect(getScreen()).toBe("map");
 
       runFullFlow(mounted);
