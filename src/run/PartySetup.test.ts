@@ -7,6 +7,7 @@ import {
   createRunState,
 } from "./PartySetup.ts";
 import type { PartySpec } from "./PartySetup.ts";
+import { CLASS_REGISTRY } from "../data/classes.ts";
 
 describe("defaultPartySpecs", () => {
   it("produces exactly RUN_SETUP_PARTY_SIZE specs with valid classes and names", () => {
@@ -105,6 +106,31 @@ describe("buildParty", () => {
     ]);
     const ids = new Set(party.map((p) => p.instanceId));
     expect(ids.size).toBe(3);
+  });
+
+  it("stores the chosen background id on the hero", () => {
+    const party = buildParty([
+      { classId: "class.guardian", name: "A", backgroundId: "background.cutpurse" },
+      { classId: "class.acolyte", name: "B" },
+      { classId: "class.arcanist", name: "C", backgroundId: null },
+    ]);
+    expect(party[0].backgroundId).toBe("background.cutpurse");
+    expect(party[1].backgroundId).toBeUndefined();
+    expect(party[2].backgroundId).toBeUndefined();
+  });
+});
+
+describe("defaultPartySpecs backgrounds", () => {
+  it("seeds each slot with its class-default background", () => {
+    const specs = defaultPartySpecs();
+    for (const spec of specs) {
+      expect(spec.backgroundId).toBe(CLASS_REGISTRY[spec.classId].defaultBackgroundId);
+    }
+  });
+
+  it("builds a Quick Start party with class-default backgrounds assigned", () => {
+    const party = buildParty(defaultPartySpecs());
+    expect(party.every((p) => typeof p.backgroundId === "string")).toBe(true);
   });
 });
 

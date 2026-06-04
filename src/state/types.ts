@@ -25,6 +25,13 @@ export interface UnitStats {
   spirit: number;
 }
 
+/**
+ * The three stats that drive non-combat skill checks. A shared subset of {@link UnitStats}
+ * so a `bonusStats` tweak (backgrounds, meta upgrades, events) is picked up by both combat
+ * (`computeStats`) and the F23 check system without forking the stat model.
+ */
+export type CheckStat = "might" | "agility" | "spirit";
+
 export interface Condition {
   id: ConditionId;
   remainingTurns: number;
@@ -50,6 +57,8 @@ export interface UnitInstance {
   hasActed: boolean;
   equippedItemIds: { weapon: string | null; armor: string | null; trinket: string | null };
   bonusStats: Partial<UnitStats>;
+  /** Hero's chosen background (heroes only). Display-only here; the effect was applied at run start. */
+  backgroundId?: string;
 }
 
 export interface CombatLogEntry {

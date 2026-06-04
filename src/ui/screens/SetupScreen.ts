@@ -17,6 +17,8 @@ import {
   getAmbiguousClassUpgrades,
 } from "../../meta/Upgrades.ts";
 import type { AmbiguousClassUpgrade } from "../../meta/Upgrades.ts";
+import { applyBackgrounds } from "../../run/Backgrounds.ts";
+import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 
 // Module-level state persists across SetupScreen instances created by App.render().
 let specs: PartySpec[] = [];
@@ -183,6 +185,8 @@ export class SetupScreen {
 
     row.appendChild(header);
 
+    row.appendChild(this.renderBackgroundPicker(spec, index));
+
     const errorEl = document.createElement("div");
     errorEl.style.cssText = "color:#f66;font-size:12px;min-height:14px;";
     row.appendChild(errorEl);
@@ -190,6 +194,51 @@ export class SetupScreen {
     row.appendChild(this.renderClassPreview(spec.classId));
 
     return { row, errorEl };
+  }
+
+  /** Per-slot background dropdown: name + effect, reversible until Confirm, "none" allowed. */
+  private renderBackgroundPicker(spec: PartySpec, index: number): HTMLElement {
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;gap:8px;align-items:center;flex-wrap:wrap;";
+
+    const label = document.createElement("span");
+    label.textContent = "Background:";
+    label.style.cssText = "font-size:13px;color:#bbb;";
+    wrap.appendChild(label);
+
+    const select = document.createElement("select");
+    select.style.cssText = "padding:4px 8px;font-size:13px;";
+
+    const noneOpt = document.createElement("option");
+    noneOpt.value = "";
+    noneOpt.textContent = "None";
+    if (!spec.backgroundId) noneOpt.selected = true;
+    select.appendChild(noneOpt);
+
+    for (const bg of Object.values(BACKGROUND_REGISTRY)) {
+      const opt = document.createElement("option");
+      opt.value = bg.id;
+      opt.textContent = bg.displayName;
+      if (bg.id === spec.backgroundId) opt.selected = true;
+      select.appendChild(opt);
+    }
+
+    const effectEl = document.createElement("span");
+    effectEl.style.cssText = "font-size:12px;color:#8c8;";
+    const paintEffect = () => {
+      const bg = spec.backgroundId ? BACKGROUND_REGISTRY[spec.backgroundId] : undefined;
+      effectEl.textContent = bg ? `${describeBackgroundEffect(bg)} — ${bg.flavor}` : "";
+    };
+    paintEffect();
+
+    select.addEventListener("change", () => {
+      specs[index].backgroundId = select.value === "" ? null : select.value;
+      paintEffect();
+    });
+
+    wrap.appendChild(select);
+    wrap.appendChild(effectEl);
+    return wrap;
   }
 
   private renderClassPreview(classId: string): HTMLElement {
@@ -245,6 +294,7 @@ export class SetupScreen {
 
   private startRun(party: PartyMember[], targetAssignments: Record<string, string>): void {
     const run = createRunState(party, difficulty);
+    applyBackgrounds(run);
     applyMetaUpgradesToFreshRun(run, gameState.meta, targetAssignments);
     gameState.run = run;
     gameState.combat = null;

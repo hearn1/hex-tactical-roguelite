@@ -16,6 +16,8 @@ export interface PartyMember {
     armor: string | null;
     trinket: string | null;
   };
+  /** Optional background/trait chosen at run setup (one per hero). See `data/backgrounds.ts`. */
+  backgroundId?: string;
 }
 
 export type Difficulty = "normal" | "hard";

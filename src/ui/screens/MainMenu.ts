@@ -3,6 +3,7 @@ import { gameState } from "../../state/GameState.ts";
 import type { Difficulty } from "../../state/RunState.ts";
 import { buildParty, createRunState, defaultPartySpecs } from "../../run/PartySetup.ts";
 import { applyMetaUpgradesToFreshRun } from "../../meta/Upgrades.ts";
+import { applyBackgrounds } from "../../run/Backgrounds.ts";
 import { resetSetupScreenState } from "./SetupScreen.ts";
 
 export class MainMenu {
@@ -44,6 +45,7 @@ export class MainMenu {
     quickStartBtn.style.cssText = "padding:10px 24px;font-size:16px;";
     quickStartBtn.addEventListener("click", () => {
       const run = createRunState(buildParty(defaultPartySpecs()), currentDiff);
+      applyBackgrounds(run);
       applyMetaUpgradesToFreshRun(run, gameState.meta);
       gameState.run = run;
       gameState.combat = null;

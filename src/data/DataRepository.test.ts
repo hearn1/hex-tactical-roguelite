@@ -109,6 +109,24 @@ describe("DataRepository", () => {
     const all = repo.getAllEvents();
     expect(all.length).toBeGreaterThanOrEqual(3);
   });
+
+  it("getBackground returns expected def", () => {
+    const def = repo.getBackground("background.caravan_guard");
+    expect(def).toBeDefined();
+    expect(def!.displayName).toBe("Caravan Guard");
+    expect(def!.effect).toEqual({ type: "statBonus", stat: "might", amount: 1 });
+  });
+
+  it("getAllBackgrounds returns all backgrounds", () => {
+    const all = repo.getAllBackgrounds();
+    expect(all.length).toBe(5);
+  });
+
+  it("every class default background resolves", () => {
+    for (const cls of [repo.getClass("class.guardian")!, repo.getClass("class.acolyte")!, repo.getClass("class.arcanist")!]) {
+      expect(repo.getBackground(cls.defaultBackgroundId)).toBeDefined();
+    }
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {
@@ -146,6 +164,30 @@ describe("DataRepository validation rejects broken references", () => {
     expect(report.valid).toBe(false);
     expect(report.errors.some((e) => e.includes("enemy.nonexistent"))).toBe(true);
     enc.enemyGroups = original;
+  });
+
+  it("detects an invalid class default background reference", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const cls = repo.getClass("class.guardian")!;
+    const original = cls.defaultBackgroundId;
+    cls.defaultBackgroundId = "background.nonexistent";
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("background.nonexistent"))).toBe(true);
+    cls.defaultBackgroundId = original;
+  });
+
+  it("detects an unknown potion reference in a background", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const bg = repo.getBackground("background.field_medic")!;
+    const original = bg.effect;
+    bg.effect = { type: "potion", potionId: "potion.nonexistent", count: 1 };
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("potion.nonexistent"))).toBe(true);
+    bg.effect = original;
   });
 
   it("validation fails when not loaded", () => {

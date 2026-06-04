@@ -190,6 +190,7 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     hasActed: false,
     equippedItemIds: { ...pm.equippedItemIds },
     bonusStats: { ...pm.bonusStats },
+    backgroundId: pm.backgroundId,
   };
   unit.stats = computeStats(unit);
   return unit;

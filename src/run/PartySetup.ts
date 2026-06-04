@@ -13,10 +13,12 @@ import { createInventory } from "./Inventory.ts";
  */
 export const RUN_SETUP_PARTY_SIZE = 3;
 
-/** A single editable run-setup slot: which class and what the hero is named. */
+/** A single editable run-setup slot: which class, what the hero is named, and an optional background. */
 export interface PartySpec {
   classId: string;
   name: string;
+  /** Chosen background id, or null for "none". See `data/backgrounds.ts`. */
+  backgroundId?: string | null;
 }
 
 export interface PartyValidation {
@@ -36,6 +38,9 @@ export function defaultPartySpecs(): PartySpec[] {
   return classIds.slice(0, RUN_SETUP_PARTY_SIZE).map((classId, i) => ({
     classId,
     name: HERO_DEFAULT_NAMES[classId] ?? CLASS_REGISTRY[classId]?.displayName ?? `Hero ${i + 1}`,
+    // Seed each slot with its class-default background so Quick Start (which uses these
+    // specs directly) produces a complete, flavored hero. Custom setup may change it.
+    backgroundId: CLASS_REGISTRY[classId]?.defaultBackgroundId ?? null,
   }));
 }
 
@@ -98,6 +103,8 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
       maxHp,
       bonusStats: {},
       equippedItemIds,
+      // Effect is applied at run start by applyBackgrounds, not here. "none" → undefined.
+      backgroundId: spec.backgroundId ?? undefined,
     };
   });
 }
