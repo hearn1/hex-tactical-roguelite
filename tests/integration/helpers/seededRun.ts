@@ -41,6 +41,7 @@ export function setupDefaultRun(seed: number = 12345): void {
     runModifiers: [],
     difficulty: "normal",
     eventSelections: {},
+    adventureModifierId: undefined,
   };
 }
 
@@ -68,6 +69,7 @@ export function setupLowHealthRun(seed: number = 98765): void {
     runModifiers: [],
     difficulty: "normal",
     eventSelections: {},
+    adventureModifierId: undefined,
   };
   gameState.screen = "map";
 }
@@ -92,6 +94,7 @@ export function setupWonRun(seed: number = 12345): void {
     runModifiers: [],
     difficulty: "normal",
     eventSelections: {},
+    adventureModifierId: undefined,
   };
 }
 
@@ -119,6 +122,7 @@ export function setupLostRun(seed: number = 12345): void {
     runModifiers: [],
     difficulty: "normal",
     eventSelections: {},
+    adventureModifierId: undefined,
   };
 }
 
@@ -142,6 +146,7 @@ export function setupActiveRun(seed: number = 12345): void {
     runModifiers: [],
     difficulty: "normal",
     eventSelections: {},
+    adventureModifierId: undefined,
   };
   gameState.screen = "map";
 }

@@ -4,6 +4,7 @@ import { NODE_REGISTRY, getMapTemplate, resolveNodeEncounterId } from "../../dat
 import type { NodeDef, MapTemplate } from "../../data/nodes.ts";
 import { availableNextNodes, visitNode } from "../../run/MapGraph.ts";
 import { createCombatFromRun } from "../../state/GameState.ts";
+import { ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
 
 const LAYER_COLORS: Record<string, string> = {
   start: "#4a8",
@@ -205,9 +206,13 @@ export class MapScreen {
     mapEl.appendChild(svg);
 
     const infoBar = document.createElement("div");
-    infoBar.style.cssText = "margin-top:8px;font-size:13px;color:#aaa;";
+    infoBar.style.cssText = "margin-top:8px;font-size:13px;color:#aaa;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;";
     const run = gameState.run!;
-    infoBar.textContent = `Gold: ${run.gold} | Cleared: ${run.mapState.nodesCleared} | Boss: ${run.mapState.bossDefeated ? "Yes" : "No"}`;
+    const modDef = run.adventureModifierId ? ADVENTURE_MODIFIER_REGISTRY[run.adventureModifierId] : undefined;
+    const modText = modDef
+      ? `Modifier: ${modDef.displayName} (${modDef.bonusDescription} / ${modDef.drawbackDescription})`
+      : "Modifier: None";
+    infoBar.innerHTML = `<span>Gold: ${run.gold}</span><span>Cleared: ${run.mapState.nodesCleared}</span><span>Boss: ${run.mapState.bossDefeated ? "Yes" : "No"}</span><span style="color:#8cf;">${modText}</span><span style="color:#888;font-size:11px;">Seed: ${run.seed}</span>`;
     container.appendChild(mapEl);
     container.appendChild(infoBar);
 

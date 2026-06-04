@@ -1,5 +1,5 @@
 import type { App } from "../App.ts";
-import { gameState } from "../../state/GameState.ts";
+import { gameState, reseedRngFromRun } from "../../state/GameState.ts";
 import type { Difficulty, PartyMember } from "../../state/RunState.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { ACTION_REGISTRY } from "../../data/actions.ts";
@@ -19,6 +19,7 @@ import {
 import type { AmbiguousClassUpgrade } from "../../meta/Upgrades.ts";
 import { applyBackgrounds } from "../../run/Backgrounds.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
+import { generateModifierOffers, applyAdventureModifier, ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
 
 // Module-level state persists across SetupScreen instances created by App.render().
 let specs: PartySpec[] = [];
@@ -29,6 +30,11 @@ let ambiguous: AmbiguousClassUpgrade[] = [];
 let assignments: Record<string, string> = {};
 let initialized = false;
 
+// Adventure modifier + seed state
+let seedInput: string = "";
+let modifierOffers: string[] = [];
+let chosenModifierId: string | null = null;
+
 /** Re-seed the setup screen with pre-filled defaults. Called when entering from the menu. */
 export function resetSetupScreenState(diff: Difficulty = "normal"): void {
   specs = defaultPartySpecs();
@@ -37,6 +43,11 @@ export function resetSetupScreenState(diff: Difficulty = "normal"): void {
   pendingParty = null;
   ambiguous = [];
   assignments = {};
+  seedInput = String(Date.now());
+  chosenModifierId = null;
+  // Generate offers from the seed once setup screen state is reset
+  const seed = parseInt(seedInput, 10) || Date.now();
+  modifierOffers = generateModifierOffers(seed, 3);
   initialized = true;
 }
 
@@ -72,6 +83,27 @@ export class SetupScreen {
     sub.style.cssText = "color:#aaa;font-size:13px;";
     container.appendChild(sub);
 
+    // Seed input row
+    const seedRow = document.createElement("div");
+    seedRow.style.cssText = "display:flex;gap:8px;align-items:center;width:100%;max-width:500px;";
+    const seedLabel = document.createElement("span");
+    seedLabel.style.cssText = "font-size:13px;color:#bbb;";
+    seedLabel.textContent = "Run Seed:";
+    seedRow.appendChild(seedLabel);
+    const seedField = document.createElement("input");
+    seedField.type = "text";
+    seedField.value = seedInput;
+    seedField.style.cssText = "padding:4px 8px;font-size:13px;flex:1;min-width:100px;font-family:monospace;";
+    seedField.addEventListener("input", () => {
+      seedInput = seedField.value;
+      const seed = parseInt(seedInput, 10) || Date.now();
+      modifierOffers = generateModifierOffers(seed, 3);
+      chosenModifierId = null;
+      this.renderModifierSection();
+    });
+    seedRow.appendChild(seedField);
+    container.appendChild(seedRow);
+
     // Difficulty control (mirrored from the main menu, owned by setup going forward).
     const diffRow = document.createElement("div");
     diffRow.style.cssText = "display:flex;gap:8px;align-items:center;";
@@ -92,6 +124,12 @@ export class SetupScreen {
     });
     diffRow.appendChild(diffBtn);
     container.appendChild(diffRow);
+
+    // Modifier selection section
+    const modSection = document.createElement("div");
+    modSection.id = "modifier-section";
+    modSection.style.cssText = "width:100%;max-width:600px;";
+    container.appendChild(modSection);
 
     // Validation surfaces — refreshed live on name edits without a full re-render.
     const confirmBtn = document.createElement("button");
@@ -135,7 +173,63 @@ export class SetupScreen {
     container.appendChild(backBtn);
 
     refreshValidation();
+    this.renderModifierSection();
     return container;
+  }
+
+  private renderModifierSection(): void {
+    const section = document.getElementById("modifier-section");
+    if (!section) return;
+    section.innerHTML = "";
+
+    const modLabel = document.createElement("div");
+    modLabel.style.cssText = "font-size:14px;font-weight:bold;color:#ddd;margin-top:8px;";
+    modLabel.textContent = "Adventure Modifier (choose one or None):";
+    section.appendChild(modLabel);
+
+    const cardRow = document.createElement("div");
+    cardRow.style.cssText = "display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:8px;";
+
+    const paintCards = () => {
+      for (const child of Array.from(cardRow.children) as HTMLElement[]) {
+        const modId = child.dataset.modifierId ?? "";
+        const selected = chosenModifierId === modId;
+        (child as HTMLElement).style.borderColor = selected ? "#4f4" : "#555";
+        (child as HTMLElement).style.background = selected ? "#2a4a2a" : "#2a2a2a";
+      }
+    };
+
+    for (const modId of modifierOffers) {
+      const def = ADVENTURE_MODIFIER_REGISTRY[modId];
+      if (!def) continue;
+      const card = document.createElement("div");
+      card.dataset.modifierId = modId;
+      card.style.cssText = "border:2px solid #555;border-radius:8px;padding:12px;cursor:pointer;background:#2a2a2a;text-align:center;min-width:160px;max-width:180px;";
+      card.innerHTML = `
+        <div style="font-weight:bold;color:#8cf;font-size:14px;">${def.displayName}</div>
+        <div style="font-size:11px;color:#8c8;margin-top:6px;">${def.bonusDescription}</div>
+        <div style="font-size:11px;color:#c88;margin-top:2px;">${def.drawbackDescription}</div>
+      `;
+      card.addEventListener("click", () => {
+        chosenModifierId = modId;
+        paintCards();
+      });
+      cardRow.appendChild(card);
+    }
+
+    // None option
+    const noneCard = document.createElement("div");
+    noneCard.dataset.modifierId = "";
+    noneCard.style.cssText = "border:2px solid #555;border-radius:8px;padding:12px;cursor:pointer;background:#2a2a2a;text-align:center;min-width:160px;max-width:180px;";
+    noneCard.innerHTML = `<div style="font-weight:bold;color:#aaa;font-size:14px;">None</div><div style="font-size:11px;color:#888;margin-top:6px;">No modifier — standard run</div>`;
+    noneCard.addEventListener("click", () => {
+      chosenModifierId = null;
+      paintCards();
+    });
+    cardRow.appendChild(noneCard);
+
+    section.appendChild(cardRow);
+    paintCards();
   }
 
   private renderSlot(
@@ -293,9 +387,26 @@ export class SetupScreen {
   }
 
   private startRun(party: PartyMember[], targetAssignments: Record<string, string>): void {
+    const seed = parseInt(seedInput, 10) || Date.now();
     const run = createRunState(party, difficulty);
+    run.seed = seed;
+
+    if (chosenModifierId) {
+      run.adventureModifierId = chosenModifierId;
+      applyAdventureModifier(run, chosenModifierId);
+      const def = ADVENTURE_MODIFIER_REGISTRY[chosenModifierId];
+      if (def?.startingGoldDelta) {
+        run.gold = Math.max(0, run.gold + def.startingGoldDelta);
+        run.inventory.gold = run.gold;
+      }
+      if (def?.startingPotionId) {
+        run.inventory.potions.push(def.startingPotionId);
+      }
+    }
+
     applyBackgrounds(run);
     applyMetaUpgradesToFreshRun(run, gameState.meta, targetAssignments);
+    reseedRngFromRun(run.seed);
     gameState.run = run;
     gameState.combat = null;
     gameState.screen = "map";

@@ -66,6 +66,30 @@ export function applyEventChoiceEffects(choice: EventChoice, run: RunState, rng:
 }
 
 /** A single human-readable log line describing a run modifier granted by a `buff` effect. */
+/** Compute the cumulative event DC bonus from run modifiers. */
+export function eventDcBonus(run: Pick<RunState, "runModifiers">): number {
+  let bonus = 0;
+  for (const mod of run.runModifiers) {
+    if (mod.kind === "event_dc_bonus") bonus += mod.value;
+  }
+  return bonus;
+}
+
+/** Compute the cumulative event reward multiplier from run modifiers. */
+export function eventRewardMultiplier(run: Pick<RunState, "runModifiers">): number {
+  let mult = 1.0;
+  for (const mod of run.runModifiers) {
+    if (mod.kind === "event_reward_multiplier") mult *= mod.value;
+  }
+  return mult;
+}
+
+/** Apply event_reward_multiplier from run modifiers to a numeric amount. */
+export function scaleEventReward(amount: number, run: Pick<RunState, "runModifiers">): number {
+  const mult = eventRewardMultiplier(run);
+  return mult !== 1.0 ? Math.floor(amount * mult) : amount;
+}
+
 export function describeRunModifier(mod: RunModifier): string {
   switch (mod.kind) {
     case "gold_multiplier":
@@ -76,6 +100,18 @@ export function describeRunModifier(mod: RunModifier): string {
       return `Your first hit each battle deals +${mod.amount} damage.`;
     case "next_combat_blessing":
       return `The party is prepared — each hero is Blessed (+2 to their first attack or heal) at the start of the next battle.`;
+    case "reward_xp_multiplier":
+      return `XP rewards boosted (x${mod.value}) for the run.`;
+    case "enemy_hp_multiplier":
+      return `Enemy max HP scaled (x${mod.value}) for the run.`;
+    case "enemy_damage_bonus":
+      return `Enemies deal +${mod.value} damage for the run.`;
+    case "event_dc_bonus":
+      return `Event check DCs increased by +${mod.value} for the run.`;
+    case "event_reward_multiplier":
+      return `Numeric event rewards boosted (x${mod.value}) for the run.`;
+    case "elite_reward_multiplier":
+      return `Elite rewards boosted (x${mod.value}) for the run.`;
   }
 }
 
@@ -107,11 +143,14 @@ export function applyEffectList(
 ): string[] {
   const messages: string[] = [];
 
+  const erm = eventRewardMultiplier(run);
+
   for (const effect of effects) {
     if (effect.type === "gold") {
-      run.gold += effect.amount;
-      run.inventory.gold += effect.amount;
-      messages.push(`Party gains ${effect.amount} gold.`);
+      const scaled = erm !== 1.0 ? Math.floor(effect.amount * erm) : effect.amount;
+      run.gold += scaled;
+      run.inventory.gold += scaled;
+      messages.push(`Party gains ${scaled} gold${scaled !== effect.amount ? ` (${effect.amount} × ${erm})` : ""}.`);
     } else if (effect.type === "gold_cost") {
       const cost = Math.min(effect.amount, run.gold);
       run.gold -= cost;
@@ -121,19 +160,20 @@ export function applyEffectList(
       run.inventory.items.push(effect.itemId);
       messages.push(`Gained ${effect.itemId}.`);
     } else if (effect.type === "heal_party") {
+      const pct = erm !== 1.0 ? Math.floor(effect.percent * erm) : effect.percent;
       let healedCount = 0;
       for (const pm of run.party) {
         if (pm.hp <= 0) continue;
-        const healAmount = Math.max(1, Math.floor(pm.maxHp * effect.percent / 100));
+        const healAmount = Math.max(1, Math.floor(pm.maxHp * pct / 100));
         pm.hp = Math.min(pm.maxHp, pm.hp + healAmount);
         healedCount++;
       }
       messages.push(`Healed ${healedCount} party members.`);
     } else if (effect.type === "hp_damage") {
+      const dmg = erm !== 1.0 ? Math.floor(effect.amount * erm) : effect.amount;
       const living = run.party.filter((p) => p.hp > 0);
       if (living.length > 0 && effect.target === "random_hero") {
         const target = living[Math.floor(rng() * living.length)];
-        const dmg = effect.amount;
         target.hp = Math.max(1, target.hp - dmg);
         messages.push(`${target.displayName} takes ${dmg} damage (now ${target.hp} HP).`);
       }
@@ -141,19 +181,20 @@ export function applyEffectList(
       run.inventory.potions.push(effect.potionId);
       messages.push(`Gained a potion.`);
     } else if (effect.type === "xp") {
+      const scaled = erm !== 1.0 ? Math.floor(effect.amount * erm) : effect.amount;
       if (effect.target === "party") {
         for (const pm of run.party) {
-          const result = applyXpToPartyMember(pm, effect.amount);
+          const result = applyXpToPartyMember(pm, scaled);
           if (result.leveledUp && out) {
             enqueuePendingLevelUps(out, pm.instanceId, pm.classId, result.levelsGained);
           }
         }
-        messages.push(`Each hero gains ${effect.amount} XP.`);
+        messages.push(`Each hero gains ${scaled} XP${scaled !== effect.amount ? ` (${effect.amount} × ${erm})` : ""}.`);
       } else if (effect.target === "random_hero") {
         const living = run.party.filter((p) => p.hp > 0);
         if (living.length > 0) {
           const target = living[Math.floor(rng() * living.length)];
-          messages.push(applyXpToHero(target, effect.amount, out));
+          messages.push(applyXpToHero(target, scaled, out));
         }
       }
       // `picked_hero` is applied by the hero-pick flow, not here.
@@ -187,7 +228,9 @@ export function resolveCheckEffect(
   out?: PendingLevelUp[],
 ): { result: CheckResult; messages: string[] } {
   const modifier = checkModifierFor(pm, effect.check.stat);
-  const result = resolveCheck(effect.check.stat, modifier, effect.check.dc, rng, effect.check.partialWithin);
+  const dcBonus = eventDcBonus(run);
+  const adjustedDc = effect.check.dc + dcBonus;
+  const result = resolveCheck(effect.check.stat, modifier, adjustedDc, rng, effect.check.partialWithin);
 
   const branch =
     result.outcome === "success"

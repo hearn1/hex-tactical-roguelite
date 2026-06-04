@@ -1,7 +1,7 @@
 import type { App } from "../App.ts";
 import { gameState, routeAfterXp } from "../../state/GameState.ts";
 import type { CombatReward, RewardCard } from "../../run/RewardManager.ts";
-import { generateReward, applyGoldModifiers, applyDifficultyToReward, applyDifficultyToXp } from "../../run/RewardManager.ts";
+import { generateReward, applyGoldModifiers, applyXpModifiers, applyEliteRewardMultiplier, applyDifficultyToReward, applyDifficultyToXp } from "../../run/RewardManager.ts";
 import { applyXp } from "../../run/Leveling.ts";
 import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
@@ -56,7 +56,14 @@ export class RewardScreen {
       if (run) {
         rewardCache.gold = applyGoldModifiers(rewardCache.gold, run.runModifiers);
         rewardCache.gold = applyDifficultyToReward(rewardCache.gold, run.difficulty);
+        rewardCache.xpPerHero = applyXpModifiers(rewardCache.xpPerHero, run.runModifiers);
         rewardCache.xpPerHero = applyDifficultyToXp(rewardCache.xpPerHero, run.difficulty);
+        // Check if we're on an elite node for elite reward multiplier
+        const nd = NODE_REGISTRY[run.mapState.currentNodeId];
+        if (nd?.type === "elite") {
+          rewardCache.gold = applyEliteRewardMultiplier(rewardCache.gold, run.runModifiers);
+          rewardCache.xpPerHero = applyEliteRewardMultiplier(rewardCache.xpPerHero, run.runModifiers);
+        }
       }
       inv.gold += rewardCache.gold;
       if (run) run.gold += rewardCache.gold;
