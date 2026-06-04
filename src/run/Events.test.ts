@@ -11,6 +11,10 @@ import {
   resolveEventChoice,
   resolveEventChoiceWithHero,
   selectEventForNode,
+  brewPotion,
+  prepareForCombat,
+  CAMP_BREW_POTION_COST,
+  CAMP_BREW_POTION_ID,
 } from "./Events.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
 import type { EventChoice, CheckEffect } from "../data/events.ts";
@@ -109,6 +113,46 @@ describe("trainPartyMember", () => {
     const result = trainPartyMember(party[0], 5);
     expect(result.leveledUp).toBe(false);
     expect(party[0].level).toBe(1);
+  });
+});
+
+describe("brewPotion", () => {
+  it("spends gold and adds a Healing Potion when affordable", () => {
+    const run = makeRun(makeParty());
+    run.gold = CAMP_BREW_POTION_COST + 5;
+    run.inventory.gold = run.gold;
+
+    const result = brewPotion(run);
+
+    expect(result.ok).toBe(true);
+    expect(run.gold).toBe(5);
+    expect(run.inventory.gold).toBe(5);
+    expect(run.inventory.potions).toContain(CAMP_BREW_POTION_ID);
+    expect(result.message).toContain("Healing Potion");
+  });
+
+  it("fails without changing state when the party can't afford it", () => {
+    const run = makeRun(makeParty());
+    run.gold = CAMP_BREW_POTION_COST - 1;
+    run.inventory.gold = run.gold;
+
+    const result = brewPotion(run);
+
+    expect(result.ok).toBe(false);
+    expect(run.gold).toBe(CAMP_BREW_POTION_COST - 1);
+    expect(run.inventory.potions).toHaveLength(0);
+  });
+});
+
+describe("prepareForCombat", () => {
+  it("queues a next_combat_blessing run modifier", () => {
+    const run = makeRun(makeParty());
+
+    const result = prepareForCombat(run);
+
+    expect(result.ok).toBe(true);
+    expect(run.runModifiers).toEqual([{ kind: "next_combat_blessing" }]);
+    expect(result.message).toContain("Blessed");
   });
 });
 

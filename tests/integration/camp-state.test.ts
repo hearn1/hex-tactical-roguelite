@@ -56,19 +56,38 @@ describe("CampScreen state", () => {
     cleanup();
   });
 
-  it("Rest button transitions to result phase and Continue returns to map", () => {
+  it("Rest shows a preview, Confirm applies it, and Leave returns to map", () => {
     const { root, app, getScreen, clickButton } = mountApp();
     setupCampRun();
     gameState.screen = "camp";
     app.render();
 
     clickButton("Rest (Heal 40% max HP)");
+    // Pre-confirm preview shows the heal before it applies, and stays reversible.
+    expect(root.textContent).toContain("Heal each living hero");
+    expect(root.textContent).toContain("Confirm");
 
+    clickButton("Confirm");
     expect(root.textContent).toContain("rested");
-    expect(root.textContent).toContain("Continue");
 
-    clickButton("Continue");
+    clickButton("Leave");
     expect(getScreen()).toBe("map");
+  });
+
+  it("Cancel from the Rest preview returns to the menu without applying", () => {
+    const { root, app, clickButton } = mountApp();
+    setupCampRun();
+    gameState.screen = "camp";
+    app.render();
+
+    clickButton("Rest (Heal 40% max HP)");
+    expect(root.textContent).toContain("Confirm");
+
+    clickButton("Cancel");
+    expect(root.textContent).toContain("Brew Potion");
+    expect(root.textContent).not.toContain("Heal each living hero");
+    // Nothing recorded in the camp log.
+    expect(root.textContent).not.toContain("rested");
   });
 
   it("Train button transitions to hero picker, picking hero shows result", () => {
@@ -82,7 +101,7 @@ describe("CampScreen state", () => {
     expect(root.textContent).toContain("Choose a hero to train");
 
     const heroBtns = Array.from(root.querySelectorAll("button")).filter(
-      (b) => b.textContent?.includes("—"),
+      (b) => b.textContent?.includes("—") && b.textContent?.includes("XP)"),
     );
     expect(heroBtns.length).toBe(3);
     (heroBtns[0] as HTMLButtonElement).click();
@@ -103,5 +122,64 @@ describe("CampScreen state", () => {
     expect(root.textContent).toContain("Rest (Heal 40% max HP)");
     expect(root.textContent).toContain("Train (+5 XP to a hero)");
     expect(root.textContent).not.toContain("Choose a hero to train");
+  });
+
+  it("Brew Potion deducts gold, adds a potion, and shows it in the bag", () => {
+    const { root, app, clickButton } = mountApp();
+    setupCampRun(); // starts with 30 gold
+    gameState.screen = "camp";
+    app.render();
+
+    clickButton("Brew Potion (Spend 10 gold → +1 Healing Potion)");
+    expect(root.textContent).toContain("add 1 Healing Potion");
+    clickButton("Confirm");
+
+    expect(gameState.run!.gold).toBe(20);
+    expect(gameState.run!.inventory.potions).toContain("potion.healing");
+    // The bag summary on-screen confirms the potion is now held.
+    expect(root.textContent).toContain("Potions: Healing Potion");
+  });
+
+  it("limits recovery to one per camp: after Rest, Brew is disabled with a reason", () => {
+    const { root, app, clickButton } = mountApp();
+    setupCampRun();
+    gameState.screen = "camp";
+    app.render();
+
+    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Confirm");
+
+    const brewBtn = Array.from(root.querySelectorAll("button")).find((b) =>
+      b.textContent?.startsWith("Brew Potion"),
+    ) as HTMLButtonElement;
+    expect(brewBtn.disabled).toBe(true);
+    expect(brewBtn.textContent).toContain("Already recovered");
+  });
+
+  it("Prepare for Combat queues a buff consumed by the next combat", () => {
+    const { root, app, clickButton } = mountApp();
+    setupCampRun();
+    gameState.screen = "camp";
+    app.render();
+
+    clickButton("Prepare for Combat (Bless the party next battle)");
+    expect(root.textContent).toContain("Blessed");
+    clickButton("Confirm");
+
+    expect(gameState.run!.runModifiers.some((m) => m.kind === "next_combat_blessing")).toBe(true);
+    // Prepare is not recovery — Rest is still available afterwards.
+    expect(root.textContent).toContain("Rest (Heal 40% max HP)");
+  });
+
+  it("Leave increments nodesCleared exactly once", () => {
+    const { app, getScreen, clickButton } = mountApp();
+    setupCampRun();
+    gameState.screen = "camp";
+    app.render();
+    const before = gameState.run!.mapState.nodesCleared;
+
+    clickButton("Leave");
+    expect(getScreen()).toBe("map");
+    expect(gameState.run!.mapState.nodesCleared).toBe(before + 1);
   });
 });

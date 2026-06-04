@@ -252,6 +252,25 @@ describe("screen-transitions", () => {
     expect(getScreen()).toBe("map");
   });
 
+  it("Camp Prepare buff blesses heroes at the next combat and is consumed", () => {
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.runModifiers.push({ kind: "next_combat_blessing" });
+
+    const combat = createCombatFromRun(run, "encounter.road_ambush", gameState.rng);
+
+    // Every living hero enters the battle Blessed...
+    const heroes = combat.units.filter((u) => u.team === "hero" && u.hp > 0);
+    expect(heroes.length).toBeGreaterThan(0);
+    expect(heroes.every((h) => h.conditions.some((c) => c.id === "blessed"))).toBe(true);
+    // ...and the buff is consumed so a later combat doesn't re-trigger it.
+    expect(run.runModifiers.some((m) => m.kind === "next_combat_blessing")).toBe(false);
+
+    const combat2 = createCombatFromRun(run, "encounter.road_ambush", gameState.rng);
+    const heroes2 = combat2.units.filter((u) => u.team === "hero" && u.hp > 0);
+    expect(heroes2.some((h) => h.conditions.some((c) => c.id === "blessed"))).toBe(false);
+  });
+
   it('Recruit: "Skip" transitions to map', () => {
     const { app, getScreen, clickButton } = mountApp();
     setupDefaultRun();
