@@ -240,6 +240,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
   firstUnit.movePointsRemaining = firstUnit.stats.move;
 
   const isBoss = encounterId === "encounter.boss_ogre_hexbreaker";
+  const hasEliteTrait = encounterDef.eliteTrait !== undefined;
 
   return {
     round: 1,
@@ -255,6 +256,8 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     targetingActionId: null,
     bossActionIndex: isBoss ? 0 : undefined,
     bossReinforcementSpawned: isBoss ? false : undefined,
+    bossTelegraph: isBoss ? null : undefined,
+    eliteRallyTriggered: hasEliteTrait ? false : undefined,
     encounterId,
     difficulty: run.difficulty,
   };

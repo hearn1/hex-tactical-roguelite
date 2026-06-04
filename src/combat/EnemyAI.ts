@@ -1,11 +1,14 @@
 import type { UnitInstance, CombatState } from "../state/types.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
-import { distance, hexKey } from "../core/hex.ts";
+import { distance, hexKey, neighbors } from "../core/hex.ts";
 import { reachableHexes } from "./Movement.ts";
-import { resolveAction, validTargets } from "./Action.ts";
+import { resolveAction, validTargets, resolveBossTelegraph } from "./Action.ts";
 
 const BOSS_ROTATION = ["action.roar", "action.massive_swing", "action.ground_slam"] as const;
+
+/** The heavy attack the boss telegraphs when enraged (F28 / #59). */
+const BOSS_TELEGRAPH_ACTION = "action.ground_slam";
 
 /** Flat bonus damage the ambusher adds when it strikes an exposed or wounded hero. */
 const AMBUSH_BURST_BONUS = 3;
@@ -108,7 +111,48 @@ function moveToPreferredRange(
   }
 }
 
+/** The boss is enraged (and starts telegraphing heavy attacks) at or below half HP. */
+function isBossEnraged(boss: UnitInstance): boolean {
+  return boss.hp <= Math.floor(boss.stats.maxHp / 2);
+}
+
+/**
+ * Telegraphed heavy attack (F28 / #59). Once enraged (≤50% HP) the boss alternates between
+ * "winding up" — marking every adjacent hex as a threat for a full round — and unleashing
+ * Ground Slam on those hexes its next turn. Heroes get a turn to reposition out of the area.
+ * The schedule is deterministic: the only RNG is the resolution damage roll.
+ *
+ * @returns true if the telegraph system handled this turn (boss should not also act).
+ */
+function handleBossTelegraph(unit: UnitInstance, state: CombatState, rng: () => number): boolean {
+  // A wound-up telegraph always resolves on the next boss turn.
+  if (state.bossTelegraph) {
+    resolveBossTelegraph(unit, state, rng);
+    return true;
+  }
+  // Enraged with no pending telegraph: wind one up this turn instead of a normal action.
+  if (isBossEnraged(unit)) {
+    const targetHexes = neighbors(unit.pos)
+      .map(hexKey)
+      .filter((key) => state.gridKeys.includes(key));
+    state.bossTelegraph = {
+      actionId: BOSS_TELEGRAPH_ACTION,
+      targetHexes,
+      setOnRound: state.round,
+    };
+    state.log.push({
+      kind: "action",
+      text: `[T${state.round}] ${unit.displayName} winds up Ground Slam — every adjacent hex will be struck next turn! Move clear!`,
+      round: state.round,
+    });
+    return true;
+  }
+  return false;
+}
+
 function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => number): void {
+  if (handleBossTelegraph(unit, state, rng)) return;
+
   const idx = state.bossActionIndex ?? 0;
   const actionId = BOSS_ROTATION[idx % 3];
   state.bossActionIndex = idx + 1;

@@ -14,7 +14,7 @@ export type ScreenId =
 
 export type Team = "hero" | "enemy";
 
-export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed";
+export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed" | "rallied";
 
 export interface UnitStats {
   maxHp: number;
@@ -78,6 +78,21 @@ export type RunModifier =
   | { kind: "global_stat"; stat: keyof UnitStats; value: number }
   | { kind: "first_hit_bonus_damage"; amount: number };
 
+/**
+ * A telegraphed boss heavy attack that was "wound up" on a previous boss turn and resolves
+ * on the boss's next turn (F28 / #59). The target hexes are fixed when the telegraph is set
+ * so the player has a full round to read the threat and reposition. Schedule is RNG-free —
+ * only the resolution damage rolls draw from the shared seeded stream.
+ */
+export interface BossTelegraph {
+  /** The action whose effect lands on resolution (e.g. `action.ground_slam`). */
+  actionId: string;
+  /** Axial hex keys (`q,r`) that will be struck when the telegraph resolves. */
+  targetHexes: string[];
+  /** Round on which the telegraph was set, for logging/inspection. */
+  setOnRound: number;
+}
+
 export interface CombatState {
   round: number;
   activeIndex: number;
@@ -89,6 +104,10 @@ export interface CombatState {
   targetingActionId: string | null;
   bossActionIndex?: number;
   bossReinforcementSpawned?: boolean;
+  /** Pending telegraphed boss attack, or null/undefined when none is wound up (boss only). */
+  bossTelegraph?: BossTelegraph | null;
+  /** True once an elite encounter's "Rally" trait has fired (so it only triggers once). */
+  eliteRallyTriggered?: boolean;
   encounterId?: string;
   difficulty?: "normal" | "hard";
 }
