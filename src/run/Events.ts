@@ -2,7 +2,7 @@ import type { PartyMember } from "../state/RunState.ts";
 import type { RunState } from "../state/RunState.ts";
 import type { RunModifier } from "../state/types.ts";
 import type { EventChoice, EventEffect, CheckEffect, ChoiceRequirement } from "../data/events.ts";
-import { DEFAULT_EVENT_POOL_ID, EVENT_POOLS } from "../data/events.ts";
+import { DEFAULT_EVENT_POOL_ID, EVENT_POOLS, EVENT_REGISTRY } from "../data/events.ts";
 import { NODE_REGISTRY } from "../data/nodes.ts";
 import { applyXpToPartyMember } from "./Leveling.ts";
 import { resolveCheck, checkModifierFor, formatCheckLog, type CheckResult } from "./AbilityCheck.ts";
@@ -137,8 +137,32 @@ export function resolveCheckEffect(
         ? (effect.onPartial ?? effect.onFailure)
         : effect.onFailure;
 
-  const messages = [formatCheckLog(pm.displayName, result), ...applyEffectList(branch, run, rng)];
+  // Branch effects resolve with the attempting hero in scope, so an outcome can grant that
+  // hero a permanent stat or XP (e.g. a Spirit check that rewards +1 Spirit on success).
+  const messages = [formatCheckLog(pm.displayName, result), ...applyEffectsForHero(branch, pm, run, rng)];
   return { result, messages };
+}
+
+/**
+ * Apply a list of effects with a chosen hero in scope. Hero-targeted effects resolve against
+ * `pm`: `stat_boost` and `xp: picked_hero` hit that hero, and a nested `check` rolls for them.
+ * Everything else falls through to {@link applyEffectList}. Shared by check branches and
+ * hero-pick choices so the two paths stay consistent.
+ */
+function applyEffectsForHero(effects: EventEffect[], pm: PartyMember, run: RunState, rng: () => number): string[] {
+  const messages: string[] = [];
+  for (const effect of effects) {
+    if (effect.type === "check") {
+      messages.push(...resolveCheckEffect(effect, pm, run, rng).messages);
+    } else if (effect.type === "stat_boost") {
+      messages.push(applyStatBoost(pm, effect.stat, effect.amount));
+    } else if (effect.type === "xp" && effect.target === "picked_hero") {
+      messages.push(applyXpToHero(pm, effect.amount));
+    } else {
+      messages.push(...applyEffectList([effect], run, rng));
+    }
+  }
+  return messages;
 }
 
 export interface RequirementResult {
@@ -218,19 +242,7 @@ export function resolveEventChoiceWithHero(
   run: RunState,
   rng: () => number,
 ): { messages: string[] } {
-  const messages: string[] = [];
-  for (const effect of choice.effects) {
-    if (effect.type === "check") {
-      messages.push(...resolveCheckEffect(effect, pm, run, rng).messages);
-    } else if (effect.type === "stat_boost") {
-      messages.push(applyStatBoost(pm, effect.stat, effect.amount));
-    } else if (effect.type === "xp" && effect.target === "picked_hero") {
-      messages.push(applyXpToHero(pm, effect.amount));
-    } else {
-      messages.push(...applyEffectList([effect], run, rng));
-    }
-  }
-  return { messages };
+  return { messages: applyEffectsForHero(choice.effects, pm, run, rng) };
 }
 
 /**
@@ -252,8 +264,10 @@ export function selectEventForNode(run: RunState, nodeId: string, rng: () => num
   const poolId = node?.eventPoolId ?? DEFAULT_EVENT_POOL_ID;
   const pool = EVENT_POOLS[poolId] ?? EVENT_POOLS[DEFAULT_EVENT_POOL_ID];
   const used = new Set(Object.values(run.eventSelections));
-  const unseen = pool.filter((eid) => !used.has(eid));
-  const candidates = unseen.length > 0 ? unseen : pool;
+  // No repeats within a run unless an event opts in with `repeatable: true`. Prefer the
+  // still-available events; only fall back to the full pool if every entry is exhausted.
+  const available = pool.filter((eid) => !used.has(eid) || EVENT_REGISTRY[eid]?.repeatable === true);
+  const candidates = available.length > 0 ? available : pool;
   const chosen = candidates[Math.floor(rng() * candidates.length)];
   run.eventSelections[nodeId] = chosen;
   return chosen;

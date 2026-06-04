@@ -251,6 +251,31 @@ describe("DataRepository validation rejects broken references", () => {
     delete choice.requirements;
   });
 
+  it("detects an event with fewer than 2 choices", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.quiet_hollow")!;
+    const original = [...ev.choices];
+    ev.choices = [original[0]];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("at least 2 choices"))).toBe(true);
+    ev.choices = original;
+  });
+
+  it("detects an unknown event tag", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.quiet_hollow")!;
+    const original = ev.tags;
+    // @ts-expect-error — deliberately invalid tag to exercise the validator
+    ev.tags = ["bogus"];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes('unknown tag "bogus"'))).toBe(true);
+    ev.tags = original;
+  });
+
   it("detects a node referencing an unknown event pool", () => {
     const repo = new DataRepository();
     repo.loadAll();

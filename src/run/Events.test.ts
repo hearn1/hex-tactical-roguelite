@@ -14,6 +14,8 @@ import {
 } from "./Events.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
 import type { EventChoice, CheckEffect } from "../data/events.ts";
+import { EVENT_REGISTRY, EVENT_POOLS, DEFAULT_EVENT_POOL_ID } from "../data/events.ts";
+import { NODE_REGISTRY } from "../data/nodes.ts";
 import { createRng } from "../core/rng.ts";
 import { createInventory } from "./Inventory.ts";
 
@@ -427,11 +429,83 @@ describe("selectEventForNode", () => {
   it("draws from the default shared pool for nodes without an eventPoolId", () => {
     const run = makeRun(makeParty());
     const chosen = selectEventForNode(run, "node.event_1", createRng(1));
-    expect([
-      "event.strange_shrine",
-      "event.rogue_trader",
-      "event.healing_spring",
-      "event.crumbling_bridge",
-    ]).toContain(chosen);
+    expect(EVENT_POOLS[DEFAULT_EVENT_POOL_ID]).toContain(chosen);
+  });
+
+  it("does not repeat a non-repeatable event within a run", () => {
+    const run = makeRun(makeParty());
+    const pool = EVENT_POOLS[DEFAULT_EVENT_POOL_ID];
+    const seen = new Set<string>();
+    // Draw once per pool entry; with no repeatable events every draw must be distinct.
+    for (let i = 0; i < pool.length; i++) {
+      const chosen = selectEventForNode(run, `node.synthetic_${i}`, createRng(100 + i));
+      expect(seen.has(chosen)).toBe(false);
+      seen.add(chosen);
+    }
+    expect(seen.size).toBe(pool.length);
+  });
+
+  it("allows a repeatable event to be selected again", () => {
+    const run = makeRun(makeParty());
+    const repeatableId = Object.keys(EVENT_REGISTRY).find((id) => EVENT_REGISTRY[id].repeatable);
+    EVENT_REGISTRY["event.__repeatable_fixture"] = {
+      id: "event.__repeatable_fixture",
+      title: "Repeatable Fixture",
+      description: "",
+      choices: [{ id: "a", label: "A", description: "", effects: [{ type: "noop" }] }],
+      repeatable: true,
+    };
+    EVENT_POOLS["pool.__repeatable_fixture"] = ["event.__repeatable_fixture"];
+    NODE_REGISTRY["node.__rf_a"] = { id: "node.__rf_a", type: "event", title: "", description: "", layer: 0, eventPoolId: "pool.__repeatable_fixture", nextNodeIds: [] };
+    NODE_REGISTRY["node.__rf_b"] = { id: "node.__rf_b", type: "event", title: "", description: "", layer: 0, eventPoolId: "pool.__repeatable_fixture", nextNodeIds: [] };
+    try {
+      const first = selectEventForNode(run, "node.__rf_a", createRng(5));
+      const second = selectEventForNode(run, "node.__rf_b", createRng(6));
+      expect(first).toBe("event.__repeatable_fixture");
+      expect(second).toBe("event.__repeatable_fixture");
+    } finally {
+      delete EVENT_REGISTRY["event.__repeatable_fixture"];
+      delete EVENT_POOLS["pool.__repeatable_fixture"];
+      delete NODE_REGISTRY["node.__rf_a"];
+      delete NODE_REGISTRY["node.__rf_b"];
+    }
+    expect(repeatableId).toBeUndefined(); // pack ships with no repeatable events by default
+  });
+
+  it("honors a node's pinned eventId (guaranteed signature scene)", () => {
+    const run = makeRun(makeParty());
+    NODE_REGISTRY["node.__pinned"] = {
+      id: "node.__pinned", type: "event", title: "", description: "", layer: 0,
+      eventId: "event.ashen_star_shrine", nextNodeIds: [],
+    };
+    try {
+      const chosen = selectEventForNode(run, "node.__pinned", () => { throw new Error("must not draw"); });
+      expect(chosen).toBe("event.ashen_star_shrine");
+    } finally {
+      delete NODE_REGISTRY["node.__pinned"];
+    }
+  });
+});
+
+describe("event content pack — check branches reward the attempting hero", () => {
+  const faceRng = (face: number) => () => (face - 1) / 20;
+
+  it("Whispering Milestone success grants +1 Spirit to the hero who attempted", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    const choice = EVENT_REGISTRY["event.whispering_milestone"].choices[0];
+    // Acolyte (Sable) spirit mod +3; roll 12 -> 15 vs DC 13 -> success.
+    resolveEventChoiceWithHero(choice, party[1], run, faceRng(12));
+    expect(party[1].bonusStats.spirit).toBe(1);
+    expect(party[0].bonusStats.spirit ?? 0).toBe(0);
+  });
+
+  it("Rain-Washed Cairn success grants XP to the reader on success", () => {
+    const party = makeParty();
+    const run = makeRun(party);
+    const choice = EVENT_REGISTRY["event.rain_washed_cairn"].choices[1];
+    resolveEventChoiceWithHero(choice, party[1], run, faceRng(20));
+    expect(party[1].xp).toBe(15);
+    expect(party[0].xp).toBe(0);
   });
 });
