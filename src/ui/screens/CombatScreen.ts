@@ -20,6 +20,7 @@ const GRID_COLOR = "#555";
 const HOVER_COLOR = "rgba(255,255,0,0.15)";
 const REACHABLE_COLOR = "rgba(0,200,100,0.2)";
 const TARGET_COLOR = "rgba(255,50,50,0.35)";
+const TELEGRAPH_COLOR = "rgba(255,140,0,0.45)";
 const ACTIVE_GLOW = "#ffcc00";
 
 export class CombatScreen {
@@ -35,6 +36,7 @@ export class CombatScreen {
   private endTurnBtn!: HTMLButtonElement;
   private inventoryPanelEl!: HTMLElement;
   private invToggleBtn!: HTMLButtonElement;
+  private telegraphBannerEl!: HTMLElement;
 
   constructor(app: App) {
     this.app = app;
@@ -69,6 +71,12 @@ export class CombatScreen {
     const endTurnBar = this.buildEndTurnBar();
     this.inventoryPanelEl = this.buildInventoryPanel();
 
+    this.telegraphBannerEl = document.createElement("div");
+    this.telegraphBannerEl.className = "telegraph-banner";
+    this.telegraphBannerEl.style.cssText =
+      "display:none;background:rgba(255,140,0,0.9);color:#1a1a1a;font-weight:bold;text-align:center;padding:6px;border-radius:4px;margin:4px 0;";
+
+    this.container.appendChild(this.telegraphBannerEl);
     this.container.appendChild(topRow);
     this.container.appendChild(this.actionBarEl);
     this.container.appendChild(this.logPanelEl);
@@ -215,6 +223,12 @@ export class CombatScreen {
       }
     }
 
+    if (cs.bossTelegraph) {
+      for (const key of cs.bossTelegraph.targetHexes) {
+        fillHex(ctx, parseHexKey(key), TELEGRAPH_COLOR);
+      }
+    }
+
     if (this.hoveredHex && cs.gridKeys.includes(hexKey(this.hoveredHex))) {
       fillHex(ctx, this.hoveredHex, HOVER_COLOR);
     }
@@ -270,6 +284,7 @@ export class CombatScreen {
       else if (c.id === "weakened") condLabels.push("W");
       else if (c.id === "blessed") condLabels.push("B");
       else if (c.id === "slowed") condLabels.push("S");
+      else if (c.id === "rallied") condLabels.push("R");
     }
     if (condLabels.length > 0) {
       ctx.fillStyle = "#ffcc00";
@@ -449,6 +464,19 @@ export class CombatScreen {
     this.updateLogPanel();
     this.updateEndTurnButton();
     this.updateInventoryPanel();
+    this.updateTelegraphBanner();
+  }
+
+  private updateTelegraphBanner(): void {
+    const banner = this.telegraphBannerEl;
+    if (!banner) return;
+    const cs = gameState.combat;
+    if (cs && cs.bossTelegraph) {
+      banner.textContent = "⚠ Ground Slam incoming — clear the highlighted hexes!";
+      banner.style.display = "block";
+    } else {
+      banner.style.display = "none";
+    }
   }
 
   private updateTurnPanel(): void {

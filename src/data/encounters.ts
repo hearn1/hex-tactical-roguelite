@@ -19,6 +19,12 @@ export interface EncounterDef {
    * placement (F26/F35) pick thematically-appropriate fights. No behavior this slice.
    */
   tags?: string[];
+  /**
+   * Optional shared elite mechanic (F28 / #59). `"rally"`: when the first enemy in this
+   * encounter falls, the survivors gain a temporary to-hit bonus (a readable "they close
+   * ranks" beat). Marks a fight as an elite encounter without a boss-sized system.
+   */
+  eliteTrait?: "rally";
 }
 
 export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
@@ -72,6 +78,7 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
       { enemyId: "enemy.goblin_skirmisher", count: 2 },
     ],
     rewardPoolId: "reward.uncommon",
+    eliteTrait: "rally",
   },
   "encounter.boss_ogre_hexbreaker": {
     id: "encounter.boss_ogre_hexbreaker",
@@ -108,6 +115,7 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
       { enemyId: "enemy.goblin_skirmisher", count: 2 },
     ],
     rewardPoolId: "reward.uncommon",
+    eliteTrait: "rally",
   },
   "encounter.long_toll_of_bones": {
     id: "encounter.long_toll_of_bones",

@@ -1,10 +1,17 @@
 import type { ActionDef } from "../data/actions.ts";
+import { ACTION_REGISTRY } from "../data/actions.ts";
 import type { UnitInstance, CombatState, ConditionId } from "../state/types.ts";
 import { distance, hexKey } from "../core/hex.ts";
 import { roll } from "../core/dice.ts";
 import { applyCondition } from "./Condition.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
+import { ENCOUNTER_REGISTRY } from "../data/encounters.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
+
+/** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
+export const RALLY_TO_HIT_BONUS = 2;
+/** How many of the survivor's turns the Rally bonus lasts. */
+export const RALLY_DURATION = 2;
 
 export function validTargets(
   action: ActionDef,
@@ -114,6 +121,10 @@ export function resolveAction(
   const weakenedIdx = attacker.conditions.findIndex((c) => c.id === "weakened");
   const weakenedPenalty = weakenedIdx >= 0 ? 2 : 0;
 
+  // Rally (elite trait): a persistent to-hit bonus that lasts its duration (not consumed).
+  const ralliedIdx = attacker.conditions.findIndex((c) => c.id === "rallied");
+  const ralliedBonus = ralliedIdx >= 0 ? RALLY_TO_HIT_BONUS : 0;
+
   const blessedIdx = attacker.conditions.findIndex((c) => c.id === "blessed");
   let blessedBonus = 0;
   if (blessedIdx >= 0) {
@@ -127,7 +138,7 @@ export function resolveAction(
   }
 
   const d20 = Math.floor(rng() * 20) + 1;
-  const attackTotal = d20 + stat + proficiency - weakenedPenalty + blessedBonus;
+  const attackTotal = d20 + stat + proficiency - weakenedPenalty + blessedBonus + ralliedBonus;
   const isCrit = d20 === 20;
   const isAutoMiss = d20 === 1;
   const hit = !isAutoMiss && (isCrit || attackTotal >= target.stats.armor);
@@ -208,6 +219,7 @@ export function resolveAction(
       text: `[T${round}] ${target.displayName} is defeated.`,
       round,
     });
+    checkEliteRally(target, state);
   }
 
   if (!skipHasActed) attacker.hasActed = true;
@@ -365,6 +377,118 @@ function checkBossReinforcement(target: UnitInstance, state: CombatState): void 
     text: `[T${state.round}] The Hexbreaker calls reinforcement — a Skeleton Archer joins!`,
     round: state.round,
   });
+}
+
+/**
+ * Elite "Rally" trait (F28 / #59). The first time any enemy falls in an encounter flagged
+ * `eliteTrait: "rally"`, every surviving enemy gains the `rallied` to-hit bonus for a few
+ * turns — a readable "the survivors close ranks" beat. Fires at most once per combat.
+ */
+function checkEliteRally(fallen: UnitInstance, state: CombatState): void {
+  if (state.eliteRallyTriggered) return;
+  if (fallen.team !== "enemy") return;
+  const encounter = state.encounterId ? ENCOUNTER_REGISTRY[state.encounterId] : undefined;
+  if (!encounter || encounter.eliteTrait !== "rally") return;
+
+  const survivors = state.units.filter((u) => u.team === "enemy" && u.hp > 0);
+  if (survivors.length === 0) return;
+
+  state.eliteRallyTriggered = true;
+  for (const enemy of survivors) {
+    applyCondition(enemy, "rallied", RALLY_DURATION);
+  }
+  state.log.push({
+    kind: "action",
+    text: `[T${state.round}] ${fallen.displayName} falls — the survivors Rally! (+${RALLY_TO_HIT_BONUS} to hit for ${RALLY_DURATION} turns)`,
+    round: state.round,
+  });
+}
+
+/**
+ * Resolves a wound-up boss telegraph (F28 / #59). Every living hero standing on one of the
+ * pre-marked target hexes takes the telegraphed action's damage (plus the difficulty bonus,
+ * reduced by Guarded) and is Slowed. Heroes who moved clear of the area take nothing. The
+ * telegraph is cleared afterward. Damage rolls use the shared seeded stream; the schedule
+ * (which hexes, which turn) was fixed when the telegraph was set, so it is RNG-free.
+ */
+export function resolveBossTelegraph(
+  boss: UnitInstance,
+  state: CombatState,
+  rng: () => number,
+): void {
+  const telegraph = state.bossTelegraph;
+  if (!telegraph) return;
+  const round = state.round;
+  const action = ACTION_REGISTRY[telegraph.actionId];
+  const formulaSource =
+    action && action.effect.type === "damage" ? action.effect.formula : "1d8 + might";
+  const displayName = action?.displayName ?? "Ground Slam";
+
+  const targetSet = new Set(telegraph.targetHexes);
+  const struck = state.units.filter(
+    (u) => u.team === "hero" && u.hp > 0 && targetSet.has(hexKey(u.pos)),
+  );
+
+  state.log.push({
+    kind: "action",
+    text: `[T${round}] ${boss.displayName} unleashes ${displayName}!`,
+    round,
+  });
+
+  if (struck.length === 0) {
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${displayName} crashes down — the heroes cleared the area, no one is hit.`,
+      round,
+    });
+    state.bossTelegraph = null;
+    return;
+  }
+
+  for (const hero of struck) {
+    const formula = rewriteFormula(formulaSource, boss);
+    let damage = roll(formula, rng).total;
+    const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
+    damage += dc.enemyDamageBonus;
+
+    const guardedIdx = hero.conditions.findIndex((c) => c.id === "guarded");
+    if (guardedIdx >= 0) {
+      const beforeDmg = damage;
+      damage = Math.max(1, Math.floor(damage / 2));
+      hero.conditions.splice(guardedIdx, 1);
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] Guarded consumed — ${beforeDmg} damage reduced to ${damage}.`,
+        round,
+      });
+    }
+
+    const beforeHp = hero.hp;
+    hero.hp = Math.max(0, hero.hp - damage);
+    const dealt = beforeHp - hero.hp;
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${displayName} hits ${hero.displayName} — ${dealt} dmg. ${hero.displayName}: ${hero.hp}/${hero.stats.maxHp} HP.`,
+      round,
+    });
+
+    if (hero.hp > 0) {
+      applyCondition(hero, "slowed", 1);
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${hero.displayName} is Slowed by the impact.`,
+        round,
+      });
+    } else {
+      state.log.push({
+        kind: "defeat",
+        text: `[T${round}] ${hero.displayName} is defeated.`,
+        round,
+      });
+    }
+  }
+
+  state.bossTelegraph = null;
 }
 
 export function checkVictoryDefeat(state: CombatState): void {
