@@ -55,4 +55,6 @@ export interface RunState {
   difficulty: Difficulty;
   eventSelections: Record<string, string>;
   summaryApplied?: boolean;
+  /** Nodes whose type + title have been revealed by Buy Rumor service. */
+  revealedForecasts?: Record<string, true>;
 }

@@ -123,6 +123,7 @@ export class MapScreen {
       const isVisited = mapState.visitedNodeIds.includes(node.id);
       const isAvailable = available.includes(node.id);
       const isLocked = !isVisited && !isAvailable && !isCurrent;
+      const isForetold = !!gameState.run?.revealedForecasts?.[node.id];
 
       const group = document.createElementNS(svgNS, "g");
 
@@ -149,6 +150,10 @@ export class MapScreen {
         stroke = "#ffcc00";
         strokeWidth = 3;
         cursor = "pointer";
+      } else if (isLocked && isForetold) {
+        fill = "#1a2a1a";
+        stroke = "#8c8";
+        strokeWidth = 2;
       } else if (isLocked) {
         fill = "#1a1a1a";
         stroke = "#333";
@@ -177,7 +182,7 @@ export class MapScreen {
       label.setAttribute("x", String(coords.x));
       label.setAttribute("y", String(coords.y + 4));
       label.setAttribute("text-anchor", "middle");
-      label.setAttribute("fill", isLocked ? "#555" : "#ddd");
+      label.setAttribute("fill", isForetold && isLocked ? "#8c8" : isLocked ? "#555" : "#ddd");
       label.setAttribute("font-size", "11");
       label.setAttribute("font-weight", "bold");
       const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1, 2);
@@ -190,7 +195,7 @@ export class MapScreen {
       textLabel.setAttribute("x", String(coords.x));
       textLabel.setAttribute("y", String(coords.y + NODE_RADIUS + 16));
       textLabel.setAttribute("text-anchor", "middle");
-      textLabel.setAttribute("fill", isLocked ? "#444" : "#aaa");
+      textLabel.setAttribute("fill", isForetold && isLocked ? "#8c8" : isLocked ? "#444" : "#aaa");
       textLabel.setAttribute("font-size", "10");
       textLabel.setAttribute("style", "pointer-events:none;");
       textLabel.textContent = node.title.length > 18 ? node.title.slice(0, 16) + "..." : node.title;

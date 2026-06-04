@@ -93,7 +93,7 @@ export interface CombatLogEntry {
 export interface ShopInventory {
   items: { itemId: string; sold: boolean }[];
   potions: { potionId: string; sold: boolean }[];
-  healServiceUsed: boolean;
+  servicesUsed: Record<string, boolean>;
 }
 
 export type RunModifier =
