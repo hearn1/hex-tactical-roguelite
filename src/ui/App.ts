@@ -11,6 +11,7 @@ import { EventScreen } from "./screens/EventScreen.ts";
 import { RecruitScreen } from "./screens/RecruitScreen.ts";
 import { PetScreen } from "./screens/PetScreen.ts";
 import { MetaUpgrades } from "./screens/MetaUpgrades.ts";
+import { SetupScreen } from "./screens/SetupScreen.ts";
 
 export class App {
   private root: HTMLElement;
@@ -32,6 +33,8 @@ export class App {
         return new MainMenu(this).render();
       case "meta_upgrades":
         return new MetaUpgrades(this).render();
+      case "setup":
+        return new SetupScreen(this).render();
       case "map":
         return new MapScreen(this).render();
       case "combat":

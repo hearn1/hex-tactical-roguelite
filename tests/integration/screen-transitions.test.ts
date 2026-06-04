@@ -15,13 +15,32 @@ describe("screen-transitions", () => {
     cleanup();
   });
 
-  it('MainMenu: "New Run" transitions to map', () => {
+  it('MainMenu: "Quick Start" transitions to map', () => {
     const { app, getScreen, clickButton } = mountApp();
     gameState.screen = "main_menu";
     app.render();
-    clickButton("New Run");
+    clickButton("Quick Start");
     expect(getScreen()).toBe("map");
     expect(gameState.run).not.toBeNull();
+  });
+
+  it('MainMenu: "Custom Party" transitions to setup', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    gameState.screen = "main_menu";
+    app.render();
+    clickButton("Custom Party");
+    expect(getScreen()).toBe("setup");
+  });
+
+  it('SetupScreen: "Confirm Party" starts a custom run on the map', () => {
+    const { app, getScreen, clickButton } = mountApp();
+    gameState.screen = "main_menu";
+    app.render();
+    clickButton("Custom Party");
+    clickButton("Confirm Party");
+    expect(getScreen()).toBe("map");
+    expect(gameState.run).not.toBeNull();
+    expect(gameState.run!.party).toHaveLength(3);
   });
 
   it('MainMenu: "Meta Upgrades" transitions to meta_upgrades', () => {

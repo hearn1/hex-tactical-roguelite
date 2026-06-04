@@ -45,7 +45,7 @@ describe("idempotency", () => {
     app.render();
     app.render();
     const buttons = root.querySelectorAll("button");
-    const newRunBtns = Array.from(buttons).filter((b) => b.textContent?.trim() === "New Run");
+    const newRunBtns = Array.from(buttons).filter((b) => b.textContent?.trim() === "Quick Start");
     expect(newRunBtns.length).toBe(1);
   });
 });
