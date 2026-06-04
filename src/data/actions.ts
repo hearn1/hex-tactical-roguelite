@@ -199,4 +199,14 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     range: 3,
     effect: { type: "applyCondition", conditionId: "weakened", duration: 2, targetMode: "aoe_around_caster" },
   },
+  "action.ambush_strike": {
+    id: "action.ambush_strike",
+    displayName: "Ambush Strike",
+    description: "A swift opportunist blow that hits far harder against an isolated or wounded foe.",
+    source: "enemy",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "agility",
+    effect: { type: "damage", formula: "2d4 + agility" },
+  },
 };

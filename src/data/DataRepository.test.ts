@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { DataRepository } from "./DataRepository.ts";
+import { ENCOUNTER_POOLS } from "./encounters.ts";
 
 describe("DataRepository", () => {
   let repo: DataRepository;
@@ -274,6 +275,75 @@ describe("DataRepository validation rejects broken references", () => {
     expect(report.valid).toBe(false);
     expect(report.errors.some((e) => e.includes('unknown tag "bogus"'))).toBe(true);
     ev.tags = original;
+  });
+
+  it("detects an encounter referencing an unknown reward pool", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const enc = repo.getEncounter("encounter.road_ambush")!;
+    enc.rewardPoolId = "reward.nonexistent";
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("reward.nonexistent"))).toBe(true);
+    delete enc.rewardPoolId;
+  });
+
+  it("detects an enemy position outside the combat grid", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const enc = repo.getEncounter("encounter.shadowed_defile")!;
+    const original = enc.positions ? [...enc.positions] : undefined;
+    enc.positions = [{ q: 9, r: 9 }, { q: 0, r: 2 }, { q: 0, r: -2 }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("outside the grid"))).toBe(true);
+    enc.positions = original;
+  });
+
+  it("detects overlapping enemy positions", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const enc = repo.getEncounter("encounter.shadowed_defile")!;
+    const original = enc.positions ? [...enc.positions] : undefined;
+    enc.positions = [{ q: 0, r: 2 }, { q: 0, r: 2 }, { q: 0, r: -2 }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("used twice"))).toBe(true);
+    enc.positions = original;
+  });
+
+  it("detects an encounter exceeding the 5-enemy cap", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const enc = repo.getEncounter("encounter.road_ambush")!;
+    const original = [...enc.enemyGroups];
+    enc.enemyGroups = [{ enemyId: "enemy.wolf", count: 6 }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("exceeds cap"))).toBe(true);
+    enc.enemyGroups = original;
+  });
+
+  it("detects an encounter pool referencing an unknown encounter", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    ENCOUNTER_POOLS["pool.standard_combat"].push("encounter.nonexistent");
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("encounter.nonexistent"))).toBe(true);
+    ENCOUNTER_POOLS["pool.standard_combat"].pop();
+  });
+
+  it("detects a node referencing an unknown encounter pool", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const node = repo.getNode("node.long_combat_a")!;
+    const original = node.encounterPoolId;
+    node.encounterPoolId = "pool.nonexistent";
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("pool.nonexistent"))).toBe(true);
+    node.encounterPoolId = original;
   });
 
   it("detects a node referencing an unknown event pool", () => {

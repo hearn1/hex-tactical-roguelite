@@ -211,17 +211,23 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     units.push(createHeroFromPartyMember(pm, pos));
   }
 
-  let enemyCount = 0;
+  // Enemy placement uses the encounter's declared `positions` (one entry per enemy slot,
+  // in enemyGroups order) when present, else a shared scatter. Both index a single flat
+  // counter so no two enemies share a hex.
+  const totalEnemies = encounterDef.enemyGroups.reduce((sum, g) => sum + g.count, 0);
+  const customPositions = encounterDef.positions;
+  const fallbackPositions = scatterEnemyPositions(totalEnemies);
+  let enemyIndex = 0;
   for (const group of encounterDef.enemyGroups) {
     const enemyDef = ENEMY_REGISTRY[group.enemyId];
     if (!enemyDef) continue;
     const actualCount = group.count;
-    const positions = scatterEnemyPositions(actualCount);
     for (let i = 0; i < actualCount; i++) {
-      enemyCount++;
-      const pos = positions[i] ?? { q: 2, r: enemyCount };
+      const pos =
+        customPositions?.[enemyIndex] ?? fallbackPositions[enemyIndex] ?? { q: 2, r: enemyIndex + 1 };
+      enemyIndex++;
       const name = actualCount > 1 ? `${enemyDef.displayName} ${i + 1}` : enemyDef.displayName;
-      const instId = `enemy_${enemyDef.id}_${enemyCount}`;
+      const instId = `enemy_${enemyDef.id}_${enemyIndex}`;
       const inst = createEnemyInstance(instId, group.enemyId as EnemyId, name, pos);
       inst.stats.maxHp = scaleStat(inst.stats.maxHp, diffConfig.enemyHpMultiplier);
       inst.hp = inst.stats.maxHp;

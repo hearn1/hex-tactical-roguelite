@@ -44,6 +44,7 @@ export function resolveAction(
   state: CombatState,
   rng: () => number,
   skipHasActed?: boolean,
+  bonusDamage = 0,
 ): void {
   const round = state.round;
 
@@ -157,6 +158,8 @@ export function resolveAction(
     const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
     damage += dc.enemyDamageBonus;
   }
+  // Opportunist burst (e.g. the ambusher's first strike on an exposed/wounded foe).
+  if (bonusDamage > 0) damage += bonusDamage;
 
   const guardedIdx = target.conditions.findIndex((c) => c.id === "guarded");
   if (guardedIdx >= 0) {

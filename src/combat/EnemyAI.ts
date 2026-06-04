@@ -7,6 +7,11 @@ import { resolveAction, validTargets } from "./Action.ts";
 
 const BOSS_ROTATION = ["action.roar", "action.massive_swing", "action.ground_slam"] as const;
 
+/** Flat bonus damage the ambusher adds when it strikes an exposed or wounded hero. */
+const AMBUSH_BURST_BONUS = 3;
+/** Distance the ambusher edges toward the party while waiting for an opening. */
+const AMBUSH_HOLD_RANGE = 2;
+
 function pickTarget(unit: UnitInstance, state: CombatState): UnitInstance | null {
   const heroes = state.units.filter((u) => u.team === "hero" && u.hp > 0);
   if (heroes.length === 0) return null;
@@ -175,6 +180,85 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
   }
 }
 
+/** A hero is "exposed" when no living ally stands adjacent to shield them. */
+function isExposed(hero: UnitInstance, state: CombatState): boolean {
+  return !state.units.some(
+    (u) =>
+      u.team === "hero" &&
+      u.hp > 0 &&
+      u.instanceId !== hero.instanceId &&
+      distance(hero.pos, u.pos) <= 1,
+  );
+}
+
+/** A hero is "wounded" once at or below half their max HP. */
+function isWounded(hero: UnitInstance): boolean {
+  return hero.hp <= Math.floor(hero.stats.maxHp / 2);
+}
+
+function ambushTargetOrder(unit: UnitInstance) {
+  return (a: UnitInstance, b: UnitInstance): number => {
+    if (a.hp !== b.hp) return a.hp - b.hp;
+    const da = distance(unit.pos, a.pos);
+    const db = distance(unit.pos, b.pos);
+    if (da !== db) return da - db;
+    return a.instanceId.localeCompare(b.instanceId);
+  };
+}
+
+/**
+ * Ambusher: a high-burst opportunist. It holds back until a hero is wounded or caught
+ * exposed, then rushes that target and strikes with a first-strike burst bonus. With no
+ * opening it still strikes anything already in melee reach (no bonus) so it never stalls,
+ * and otherwise edges toward the party at a cautious range, biding for an opening.
+ */
+function executeAmbusherTurn(unit: UnitInstance, state: CombatState, rng: () => number): void {
+  const enemyDef = ENEMY_REGISTRY[unit.defId];
+  const action = ACTION_REGISTRY[enemyDef.actionIds[0]];
+  if (!action) return;
+
+  const heroes = state.units.filter((u) => u.team === "hero" && u.hp > 0);
+  if (heroes.length === 0) return;
+
+  const order = ambushTargetOrder(unit);
+  const prime = heroes.filter((h) => isWounded(h) || isExposed(h, state)).sort(order);
+
+  if (prime.length > 0) {
+    const target = prime[0];
+    if (distance(unit.pos, target.pos) > action.range) {
+      moveToward(unit, target.pos, state);
+    }
+    if (distance(unit.pos, target.pos) <= action.range) {
+      const targets = validTargets(action, unit, state);
+      const finalTarget = targets.find((t) => t.instanceId === target.instanceId);
+      if (finalTarget) {
+        state.log.push({
+          kind: "action",
+          text: `[T${state.round}] ${unit.displayName} catches ${finalTarget.displayName} exposed — Ambush! (+${AMBUSH_BURST_BONUS} burst)`,
+          round: state.round,
+        });
+        resolveAction(action, unit, finalTarget, state, rng, false, AMBUSH_BURST_BONUS);
+      }
+    }
+    return;
+  }
+
+  // No opening: strike a foe already in reach (no burst) rather than stand idle.
+  const inReach = heroes.filter((h) => distance(unit.pos, h.pos) <= action.range).sort(order);
+  if (inReach.length > 0) {
+    const targets = validTargets(action, unit, state);
+    const finalTarget = targets.find((t) => t.instanceId === inReach[0].instanceId);
+    if (finalTarget) {
+      resolveAction(action, unit, finalTarget, state, rng);
+      return;
+    }
+  }
+
+  // Otherwise hold back near the party, waiting for a target to become vulnerable.
+  const nearest = [...heroes].sort((a, b) => distance(unit.pos, a.pos) - distance(unit.pos, b.pos))[0];
+  moveToPreferredRange(unit, nearest.pos, AMBUSH_HOLD_RANGE, state);
+}
+
 export function takeEnemyTurn(
   unit: UnitInstance,
   state: CombatState,
@@ -188,6 +272,11 @@ export function takeEnemyTurn(
 
   if (aiTag === "boss") {
     executeBossTurn(unit, state, rng);
+    return;
+  }
+
+  if (aiTag === "ambusher") {
+    executeAmbusherTurn(unit, state, rng);
     return;
   }
 

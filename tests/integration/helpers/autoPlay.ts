@@ -222,11 +222,15 @@ export function autoPlayReward(app: App): void {
 }
 
 export function autoPlayEvent(root: HTMLElement): void {
-  const cards = root.querySelectorAll('[data-testid^="event-choice-"]');
-  if (cards.length > 0) {
-    (cards[0] as HTMLElement).click();
+  // Pick the first *selectable* choice — some events gate choices (e.g. cost gold) and
+  // render them disabled (`data-disabled`), so blindly clicking choice 0 can stall.
+  const cards = Array.from(root.querySelectorAll<HTMLElement>('[data-testid^="event-choice-"]'));
+  const selectable = cards.filter((c) => c.getAttribute("data-disabled") !== "true");
+  const pick = selectable[0] ?? cards[0];
+  if (pick) {
+    pick.click();
   }
-  const heroBtns = root.querySelectorAll("button");
+  const heroBtns = root.querySelectorAll<HTMLButtonElement>("button");
   if (heroBtns.length > 0) {
     for (const btn of heroBtns) {
       if (btn.textContent?.trim() === "Continue") {
@@ -234,8 +238,9 @@ export function autoPlayEvent(root: HTMLElement): void {
         return;
       }
     }
+    // Otherwise pick the first enabled non-Cancel button (e.g. an able hero for a check).
     for (const btn of heroBtns) {
-      if (btn.textContent?.trim() !== "Cancel") {
+      if (btn.textContent?.trim() !== "Cancel" && !btn.disabled) {
         btn.click();
         return;
       }
