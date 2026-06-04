@@ -14,6 +14,7 @@ export const POTION_PRICE: Record<string, number> = {
   "potion.healing": 6,
   "potion.focus": 8,
   "potion.fire_flask": 10,
+  "potion.bottled_dawn": 14,
 };
 
 export const HEAL_SERVICE_PRICE = 15;
@@ -22,11 +23,16 @@ export const HEAL_AMOUNT = 8;
 const COMMON_ITEMS = [
   "item.iron_sword", "item.wooden_shield", "item.apprentice_wand",
   "item.hunter_bow", "item.padded_armor", "item.soldier_badge",
+  "item.hearthstone_charm",
 ];
 
-const UNCOMMON_ITEMS = ["item.ember_staff", "item.bloodstone", "item.owl_feather"];
+const UNCOMMON_ITEMS = [
+  "item.ember_staff", "item.bloodstone", "item.owl_feather",
+  "item.runemark_blade", "item.emberglass_wand", "item.ward_stitched_vest",
+  "item.moonwell_robe", "item.quickstep_buckle", "item.lantern_moth_pin",
+];
 
-const POTION_POOL = ["potion.healing", "potion.focus", "potion.fire_flask"];
+const POTION_POOL = ["potion.healing", "potion.focus", "potion.fire_flask", "potion.bottled_dawn"];
 
 function filterExisting(pool: string[], registry: Record<string, unknown>): string[] {
   return pool.filter((id) => registry[id] !== undefined);

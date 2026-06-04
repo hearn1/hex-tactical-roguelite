@@ -12,6 +12,7 @@ import { createInventory } from "../run/Inventory.ts";
 import { computeStats } from "../combat/Stats.ts";
 import { applyCondition } from "../combat/Condition.ts";
 import { LEVELUP_PASSIVE_START_COMBAT_GUARDED } from "../data/levelups.ts";
+import { resolveOncePerCombatBonus } from "../combat/ItemHooks.ts";
 import type { MetaProgressionState } from "../meta/MetaProgression.ts";
 import { createDefaultMetaProgression } from "../meta/MetaProgression.ts";
 import { DIFFICULTY_CONFIG, scaleStat } from "../data/difficulty.ts";
@@ -278,6 +279,14 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     log.push({ kind: "initiative", text: `[T1] The party was prepared — heroes enter Blessed.`, round: 1 });
   }
   log.push({ kind: "turn_start", text: `[T1] ${firstUnit.displayName}'s turn begins.`, round: 1 });
+
+  // Item hook: combat-start triggers (e.g. Hearthstone Charm grants Guarded).
+  const preState = { round: 1, log, units } as CombatState;
+  for (const unit of units) {
+    if (unit.team === "hero" && unit.hp > 0) {
+      resolveOncePerCombatBonus(unit, "combatStart", preState);
+    }
+  }
 
   return {
     round: 1,

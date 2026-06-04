@@ -4,7 +4,7 @@ import type { CombatReward, RewardCard } from "../../run/RewardManager.ts";
 import { generateReward, applyGoldModifiers, applyDifficultyToReward, applyDifficultyToXp } from "../../run/RewardManager.ts";
 import { applyXp } from "../../run/Leveling.ts";
 import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
-import { ITEM_REGISTRY } from "../../data/items.ts";
+import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import type { UnitInstance } from "../../state/types.ts";
@@ -146,7 +146,8 @@ export class RewardScreen {
 
     if (card.kind === "item") {
       const itemDef = ITEM_REGISTRY[card.itemId];
-      el.innerHTML = `<div style="font-weight:bold;color:#8cf;">Item</div><div style="font-size:13px;margin-top:4px;">${itemDef?.displayName ?? card.itemId}</div>`;
+      const desc = itemDef ? describeItem(card.itemId) : "";
+      el.innerHTML = `<div style="font-weight:bold;color:#8cf;">Item</div><div style="font-size:13px;margin-top:4px;">${itemDef?.displayName ?? card.itemId}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">${desc}</div>`;
     } else if (card.kind === "potion") {
       const potionDef = POTION_REGISTRY[card.potionId];
       el.innerHTML = `<div style="font-weight:bold;color:#8f8;">Potion</div><div style="font-size:13px;margin-top:4px;">${potionDef?.displayName ?? card.potionId}</div>`;

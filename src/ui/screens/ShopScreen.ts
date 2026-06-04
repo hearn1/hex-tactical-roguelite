@@ -2,7 +2,7 @@ import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { RunState } from "../../state/RunState.ts";
 import { rollShopInventory, ITEM_PRICE, POTION_PRICE, buyShopItem, buyShopPotion, equipShopItem, stashShopItem, applyShopService } from "../../run/Shop.ts";
-import { ITEM_REGISTRY } from "../../data/items.ts";
+import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { BACKGROUND_REGISTRY } from "../../data/backgrounds.ts";
 import { SHOP_SERVICE_REGISTRY } from "../../data/shopServices.ts";
@@ -13,30 +13,6 @@ let shopMessage: string = "";
 export function resetShopScreenState(): void {
   pendingPurchasedItemId = null;
   shopMessage = "";
-}
-
-const STAT_LABELS: Record<string, string> = {
-  maxHp: "Max HP",
-  armor: "Armor",
-  move: "Move",
-  might: "Might",
-  agility: "Agility",
-  spirit: "Spirit",
-};
-
-function describeItem(id: string): string {
-  const def = ITEM_REGISTRY[id];
-  if (!def) return "Unknown item";
-  const parts: string[] = [def.rarity, def.slot];
-  if (def.statBonuses) {
-    for (const [k, v] of Object.entries(def.statBonuses)) {
-      if (v) parts.push(`${STAT_LABELS[k] ?? k} +${v}`);
-    }
-  }
-  if (def.grantedActionIds?.length) {
-    parts.push(`Grants ${def.grantedActionIds.length} action(s)`);
-  }
-  return parts.join(" | ");
 }
 
 export class ShopScreen {

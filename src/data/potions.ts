@@ -20,4 +20,9 @@ export const POTION_REGISTRY: Record<string, PotionDef> = {
     displayName: "Fire Flask",
     description: "Range 3 consumable, deals 1d6 fire damage.",
   },
+  "potion.bottled_dawn": {
+    id: "potion.bottled_dawn",
+    displayName: "Bottled Dawn",
+    description: "Heal one hero for 8 HP and remove Slowed/Weakened if present.",
+  },
 };

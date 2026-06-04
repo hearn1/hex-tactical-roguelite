@@ -347,11 +347,20 @@ export class DataRepository {
       }
     }
 
+    const validConditionIds = new Set(["guarded", "weakened", "blessed", "slowed", "rallied"]);
+
     for (const [id, def] of this.items) {
       if (def.grantedActionIds) {
         for (const aid of def.grantedActionIds) {
           if (!allActionIds.has(aid)) {
             errors.push(`Item "${id}": granted action "${aid}" not found`);
+          }
+        }
+      }
+      if (def.hook) {
+        if (def.hook.type === "oncePerCombatBonus" && def.hook.effect.kind === "applyCondition") {
+          if (!validConditionIds.has(def.hook.effect.conditionId)) {
+            errors.push(`Item "${id}": hook references unknown condition "${def.hook.effect.conditionId}"`);
           }
         }
       }

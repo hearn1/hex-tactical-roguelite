@@ -8,6 +8,7 @@ import { ENEMY_REGISTRY } from "../data/enemies.ts";
 import { ENCOUNTER_REGISTRY } from "../data/encounters.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../data/levelups.ts";
+import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
@@ -123,7 +124,12 @@ export function resolveAction(
 
     const formula = rewriteFormula(action.effect.formula, attacker);
     const result = roll(formula, rng);
-    const healed = result.total + blessedBonus + firstHealBonus + (actionBonus(attacker, action.id).healBonus ?? 0);
+
+    // Item hook: once-per-combat first heal bonus (e.g. Lantern Moth Pin).
+    const healHookResult = resolveOncePerCombatBonus(attacker, "firstHealDone", state);
+    const itemHealBonus = healHookResult.healBonus ?? 0;
+
+    const healed = result.total + blessedBonus + firstHealBonus + (actionBonus(attacker, action.id).healBonus ?? 0) + itemHealBonus;
     const before = target.hp;
     target.hp = Math.min(target.hp + healed, target.stats.maxHp);
     const actual = target.hp - before;
@@ -201,6 +207,19 @@ export function resolveAction(
   // Level-up action damage upgrade (F29), e.g. Pressing Strike / Ember Focus.
   damage += actionBonus(attacker, action.id).damageBonus ?? 0;
 
+  // Item hook: continuous attack bonus (e.g. Emberglass Wand for spell attacks).
+  const itemAttackType = attackStat === "spirit" ? "spell" : attackStat === "might" ? "melee" : null;
+  if (itemAttackType) {
+    damage += resolveAttackBonus(attacker, itemAttackType, state);
+  }
+
+  // Item hook: once-per-combat first attack bonus (e.g. Runemark Blade for melee).
+  const firstAttackTrigger = itemAttackType === "melee" ? "firstMeleeAttack" : itemAttackType === "spell" ? "firstSpellAttack" : null;
+  if (firstAttackTrigger) {
+    const onceResult = resolveOncePerCombatBonus(attacker, firstAttackTrigger, state);
+    if (onceResult.damageBonus) damage += onceResult.damageBonus;
+  }
+
   const guardedIdx = target.conditions.findIndex((c) => c.id === "guarded");
   if (guardedIdx >= 0) {
     const beforeDmg = damage;
@@ -211,6 +230,12 @@ export function resolveAction(
       text: `[T${round}] Guarded consumed — ${beforeDmg} damage reduced to ${damage}.`,
       round,
     });
+  }
+
+  // Item hook: once-per-combat first hit taken reduction (e.g. Ward-Stitched Vest).
+  const hitReduction = resolveOncePerCombatBonus(target, "firstHitTaken", state);
+  if (hitReduction.damageReduction) {
+    damage = Math.max(0, damage - hitReduction.damageReduction);
   }
 
   const beforeHp = target.hp;
