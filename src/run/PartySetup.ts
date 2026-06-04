@@ -1,6 +1,7 @@
 import type { RunState, PartyMember, Difficulty } from "../state/RunState.ts";
 import { CLASS_REGISTRY, HERO_DEFAULT_NAMES } from "../data/classes.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
+import { DEFAULT_MAP_TEMPLATE_ID, getMapTemplate } from "../data/nodes.ts";
 import { createInventory } from "./Inventory.ts";
 
 /**
@@ -110,15 +111,21 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
 }
 
 /** Builds a fresh active run around an already-built party. */
-export function createRunState(party: PartyMember[], difficulty: Difficulty = "normal"): RunState {
+export function createRunState(
+  party: PartyMember[],
+  difficulty: Difficulty = "normal",
+  mapTemplateId: string = DEFAULT_MAP_TEMPLATE_ID,
+): RunState {
+  const template = getMapTemplate(mapTemplateId);
   return {
     seed: Date.now(),
     gold: 30,
     party,
     inventory: createInventory(),
+    mapTemplateId: template.id,
     mapState: {
-      currentNodeId: "node.start",
-      visitedNodeIds: ["node.start"],
+      currentNodeId: template.startNodeId,
+      visitedNodeIds: [template.startNodeId],
       nodesCleared: 0,
       elitesDefeated: 0,
       bossDefeated: false,

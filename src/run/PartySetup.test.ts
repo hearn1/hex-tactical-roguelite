@@ -135,13 +135,21 @@ describe("defaultPartySpecs backgrounds", () => {
 });
 
 describe("createRunState", () => {
-  it("wraps a party in a fresh active run", () => {
+  it("wraps a party in a fresh active run on the default (long) template", () => {
     const party = buildParty(defaultPartySpecs());
     const run = createRunState(party, "hard");
     expect(run.party).toBe(party);
     expect(run.difficulty).toBe("hard");
     expect(run.runStatus).toBe("active");
     expect(run.gold).toBe(30);
+    expect(run.mapTemplateId).toBe("long");
+    expect(run.mapState.currentNodeId).toBe("node.long_start");
+    expect(run.mapState.visitedNodeIds).toEqual(["node.long_start"]);
+  });
+
+  it("can start a run on the short prototype template", () => {
+    const run = createRunState(buildParty(defaultPartySpecs()), "normal", "short");
+    expect(run.mapTemplateId).toBe("short");
     expect(run.mapState.currentNodeId).toBe("node.start");
   });
 

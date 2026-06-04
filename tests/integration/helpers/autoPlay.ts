@@ -6,6 +6,7 @@ import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueu
 import { takeEnemyTurn } from "../../../src/combat/EnemyAI.ts";
 import { processTurnStart } from "../../../src/combat/Condition.ts";
 import { availableNextNodes } from "../../../src/run/MapGraph.ts";
+import { NODE_REGISTRY } from "../../../src/data/nodes.ts";
 import { hexToPixel, hexKey, parseHexKey, distance } from "../../../src/core/hex.ts";
 import { reachableHexes } from "../../../src/combat/Movement.ts";
 import type { CombatState, UnitInstance } from "../../../src/state/types.ts";
@@ -202,10 +203,13 @@ export function autoPlayReward(app: App): void {
   }
 
   syncPartyFromCombat(cs, run);
-  const nd = run.mapState.currentNodeId;
-  if (nd === "node.boss") {
+  const nd = NODE_REGISTRY[run.mapState.currentNodeId];
+  if (nd?.type === "boss") {
     run.mapState.bossDefeated = true;
     run.runStatus = "won";
+  }
+  if (nd?.type === "elite") {
+    run.mapState.elitesDefeated++;
   }
   run.mapState.nodesCleared++;
   gameState.combat = null;
