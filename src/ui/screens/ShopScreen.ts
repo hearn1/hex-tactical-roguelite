@@ -4,6 +4,7 @@ import type { RunState } from "../../state/RunState.ts";
 import { rollShopInventory, ITEM_PRICE, POTION_PRICE, HEAL_SERVICE_PRICE, buyShopItem, buyShopPotion, useHealService, equipShopItem, stashShopItem } from "../../run/Shop.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
+import { BACKGROUND_REGISTRY } from "../../data/backgrounds.ts";
 
 let pendingPurchasedItemId: string | null = null;
 let shopMessage: string = "";
@@ -294,7 +295,9 @@ export class ShopScreen {
     for (const pm of run.party) {
       const pEl = document.createElement("div");
       pEl.style.cssText = "font-size:12px;color:#ccc;margin:2px 0;";
-      pEl.textContent = `${pm.displayName} (${pm.classId.slice(6)}) HP: ${pm.hp}/${pm.maxHp}`;
+      const bg = pm.backgroundId ? BACKGROUND_REGISTRY[pm.backgroundId] : undefined;
+      const bgLabel = bg ? ` · ${bg.displayName}` : "";
+      pEl.textContent = `${pm.displayName} (${pm.classId.slice(6)}) HP: ${pm.hp}/${pm.maxHp}${bgLabel}`;
       panel.appendChild(pEl);
     }
 

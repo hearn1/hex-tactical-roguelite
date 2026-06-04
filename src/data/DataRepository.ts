@@ -1,5 +1,7 @@
 import type { ActionDef } from "./actions.ts";
 import { ACTION_REGISTRY } from "./actions.ts";
+import type { BackgroundDef } from "./backgrounds.ts";
+import { BACKGROUND_REGISTRY } from "./backgrounds.ts";
 import type { ClassDef } from "./classes.ts";
 import { CLASS_REGISTRY } from "./classes.ts";
 import type { EnemyDef } from "./enemies.ts";
@@ -36,6 +38,7 @@ export class DataRepository {
   private upgrades: Map<string, UpgradeDef>;
   private events: Map<string, EventDef>;
   private rewards: Map<string, RewardPoolDef>;
+  private backgrounds: Map<string, BackgroundDef>;
   private loaded: boolean;
 
   constructor() {
@@ -49,6 +52,7 @@ export class DataRepository {
     this.upgrades = new Map();
     this.events = new Map();
     this.rewards = new Map();
+    this.backgrounds = new Map();
     this.loaded = false;
   }
 
@@ -63,6 +67,7 @@ export class DataRepository {
     this.loadRewards();
     this.loadNodes();
     this.loadUpgrades();
+    this.loadBackgrounds();
     this.loaded = true;
   }
 
@@ -114,6 +119,10 @@ export class DataRepository {
     this.upgrades = this.loadMap(UPGRADE_REGISTRY);
   }
 
+  private loadBackgrounds(): void {
+    this.backgrounds = this.loadMap(BACKGROUND_REGISTRY);
+  }
+
   getClass(id: string): ClassDef | undefined {
     return this.classes.get(id);
   }
@@ -152,6 +161,14 @@ export class DataRepository {
 
   getReward(id: string): RewardPoolDef | undefined {
     return this.rewards.get(id);
+  }
+
+  getBackground(id: string): BackgroundDef | undefined {
+    return this.backgrounds.get(id);
+  }
+
+  getAllBackgrounds(): BackgroundDef[] {
+    return Array.from(this.backgrounds.values());
   }
 
   getAllEncounters(): EncounterDef[] {
@@ -197,6 +214,9 @@ export class DataRepository {
     const allNodeIds = new Set(this.nodes.keys());
     const allRewardIds = new Set(this.rewards.keys());
     const allEventIds = new Set(this.events.keys());
+    const allPotionIds = new Set(this.potions.keys());
+    const allBackgroundIds = new Set(this.backgrounds.keys());
+    const checkStats = new Set(["might", "agility", "spirit"]);
 
     for (const [id, def] of this.classes) {
       for (const aid of def.actionIds) {
@@ -208,6 +228,9 @@ export class DataRepository {
         if (!allItemIds.has(iid)) {
           errors.push(`Class "${id}": starting item "${iid}" not found`);
         }
+      }
+      if (def.defaultBackgroundId && !allBackgroundIds.has(def.defaultBackgroundId)) {
+        errors.push(`Class "${id}": default background "${def.defaultBackgroundId}" not found`);
       }
       const stats = def.baseStats;
       if (stats.maxHp <= 0) errors.push(`Class "${id}": maxHp must be > 0`);
@@ -267,6 +290,16 @@ export class DataRepository {
         if (def.effect.itemId && !allItemIds.has(def.effect.itemId)) {
           errors.push(`Upgrade "${id}": item "${def.effect.itemId}" not found`);
         }
+      }
+    }
+
+    for (const [id, def] of this.backgrounds) {
+      const effect = def.effect;
+      if (effect.type === "potion" && !allPotionIds.has(effect.potionId)) {
+        errors.push(`Background "${id}": potion "${effect.potionId}" not found`);
+      }
+      if (effect.type === "statBonus" && !checkStats.has(effect.stat)) {
+        errors.push(`Background "${id}": stat "${effect.stat}" is not a valid check stat`);
       }
     }
 

@@ -6,6 +6,12 @@ export interface ClassDef {
   baseStats: UnitStats;
   actionIds: string[];
   startingItems: string[];
+  /**
+   * Background assigned to this class on the Quick Start path so a one-click party is still
+   * complete and flavored (maintainer decision, #53). Custom setup defaults to this too but
+   * the player may change it or pick "none".
+   */
+  defaultBackgroundId: string;
 }
 
 export const CLASS_REGISTRY: Record<string, ClassDef> = {
@@ -15,6 +21,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     baseStats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
     actionIds: ["action.slash", "action.shield_bash", "action.guard"],
     startingItems: ["item.iron_sword", "item.wooden_shield"],
+    defaultBackgroundId: "background.caravan_guard",
   },
   "class.acolyte": {
     id: "class.acolyte",
@@ -22,6 +29,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     baseStats: { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 3 },
     actionIds: ["action.mace_strike", "action.mend_wounds", "action.bless"],
     startingItems: ["item.padded_armor"],
+    defaultBackgroundId: "background.field_medic",
   },
   "class.arcanist": {
     id: "class.arcanist",
@@ -29,6 +37,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     baseStats: { maxHp: 11, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
     actionIds: ["action.fire_bolt", "action.frost_shard", "action.arcane_ward"],
     startingItems: ["item.apprentice_wand"],
+    defaultBackgroundId: "background.hedge_scholar",
   },
 };
 

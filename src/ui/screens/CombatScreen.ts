@@ -11,6 +11,7 @@ import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueu
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
 import { processTurnStart } from "../../combat/Condition.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
+import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 
 const HERO_COLOR = "#4488ff";
@@ -160,7 +161,9 @@ export class CombatScreen {
       const w = h.equippedItemIds.weapon ? ITEM_REGISTRY[h.equippedItemIds.weapon]?.displayName ?? h.equippedItemIds.weapon : "(none)";
       const a = h.equippedItemIds.armor ? ITEM_REGISTRY[h.equippedItemIds.armor]?.displayName ?? h.equippedItemIds.armor : "(none)";
       const t = h.equippedItemIds.trinket ? ITEM_REGISTRY[h.equippedItemIds.trinket]?.displayName ?? h.equippedItemIds.trinket : "(none)";
-      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b><br/>Weapon: ${w}<br/>Armor: ${a}<br/>Trinket: ${t}</div>`;
+      const bg = h.backgroundId ? BACKGROUND_REGISTRY[h.backgroundId] : undefined;
+      const bgHtml = bg ? `<br/>Background: ${bg.displayName} (${describeBackgroundEffect(bg)})` : "";
+      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b>${bgHtml}<br/>Weapon: ${w}<br/>Armor: ${a}<br/>Trinket: ${t}</div>`;
     }).join("");
     const bagHtml = `<div><b>Bag</b><br/>Items: ${inv.items.join(", ") || "(empty)"}<br/>Potions: ${inv.potions.join(", ") || "(empty)"}<br/>Gold: ${inv.gold}</div>`;
     panel.innerHTML = `<h3 style="margin:0 0 6px;font-size:14px;">Inventory</h3>${itemsHtml}<hr style="border-color:#444;">${bagHtml}`;
