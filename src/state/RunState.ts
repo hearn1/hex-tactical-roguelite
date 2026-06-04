@@ -27,6 +27,9 @@ export interface RunState {
   gold: number;
   party: PartyMember[];
   inventory: InventoryState;
+  /** Which map template (`MAP_TEMPLATES`) this run is playing. Defaults to the short
+   *  prototype graph when absent (legacy fixtures). New runs select "long". */
+  mapTemplateId?: string;
   mapState: MapState;
   runStatus: "active" | "won" | "lost";
   shopStates: Record<string, ShopInventory>;

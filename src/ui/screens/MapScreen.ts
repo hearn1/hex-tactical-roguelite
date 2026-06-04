@@ -1,7 +1,7 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
-import { NODE_REGISTRY, ALL_NODES } from "../../data/nodes.ts";
-import type { NodeDef } from "../../data/nodes.ts";
+import { NODE_REGISTRY, getMapTemplate } from "../../data/nodes.ts";
+import type { NodeDef, MapTemplate } from "../../data/nodes.ts";
 import { availableNextNodes, visitNode } from "../../run/MapGraph.ts";
 import { createCombatFromRun } from "../../state/GameState.ts";
 
@@ -18,9 +18,9 @@ const LAYER_COLORS: Record<string, string> = {
 
 const NODE_RADIUS = 28;
 
-function buildLayers(): NodeDef[][] {
+function buildLayers(nodes: NodeDef[]): NodeDef[][] {
   const layers: NodeDef[][] = [];
-  for (const node of ALL_NODES) {
+  for (const node of nodes) {
     while (layers.length <= node.layer) layers.push([]);
     layers[node.layer].push(node);
   }
@@ -34,18 +34,48 @@ export class MapScreen {
     this.app = app;
   }
 
+  /** Small legend so the player can read node type (and risk) before choosing a route. */
+  private buildLegend(): HTMLElement {
+    const legend = document.createElement("div");
+    legend.style.cssText =
+      "display:flex;flex-wrap:wrap;gap:10px;margin-top:4px;font-size:11px;color:#bbb;align-items:center;";
+    const entries: { type: string; label: string }[] = [
+      { type: "combat", label: "Combat" },
+      { type: "elite", label: "Elite (high risk)" },
+      { type: "shop", label: "Shop" },
+      { type: "camp", label: "Camp (rest)" },
+      { type: "event", label: "Event" },
+      { type: "recruit", label: "Recruit" },
+      { type: "boss", label: "Boss" },
+    ];
+    for (const entry of entries) {
+      const chip = document.createElement("span");
+      chip.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
+      const swatch = document.createElement("span");
+      swatch.style.cssText = `display:inline-block;width:10px;height:10px;border-radius:50%;background:${LAYER_COLORS[entry.type] ?? "#888"};`;
+      chip.appendChild(swatch);
+      chip.appendChild(document.createTextNode(entry.label));
+      legend.appendChild(chip);
+    }
+    return legend;
+  }
+
   render(): HTMLElement {
     const container = document.createElement("div");
     container.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:20px;";
 
+    const template: MapTemplate = getMapTemplate(gameState.run!.mapTemplateId);
+
     const title = document.createElement("h2");
-    title.textContent = "The Haunted Wilds";
+    title.textContent = template.name;
     container.appendChild(title);
+
+    container.appendChild(this.buildLegend());
 
     const mapEl = document.createElement("div");
     mapEl.style.cssText = "position:relative;width:800px;height:500px;margin-top:10px;";
 
-    const layers = buildLayers();
+    const layers = buildLayers(template.nodes);
     const mapState = gameState.run!.mapState;
     const available = availableNextNodes(mapState);
 
@@ -69,7 +99,7 @@ export class MapScreen {
       }
     }
 
-    for (const node of ALL_NODES) {
+    for (const node of template.nodes) {
       for (const nextId of node.nextNodeIds) {
         const from = nodeCoords.get(node.id);
         const to = nodeCoords.get(nextId);
@@ -85,7 +115,7 @@ export class MapScreen {
       }
     }
 
-    for (const node of ALL_NODES) {
+    for (const node of template.nodes) {
       const coords = nodeCoords.get(node.id);
       if (!coords) continue;
 
