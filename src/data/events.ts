@@ -1,4 +1,4 @@
-import type { CheckStat } from "../state/types.ts";
+import type { CheckStat, RunModifier } from "../state/types.ts";
 
 /**
  * Canonical ability-check declaration (F23). Defined here so this module is the single
@@ -17,12 +17,24 @@ export type EventEffect =
   | { type: "gold"; amount: number }
   | { type: "gold_cost"; amount: number }
   | { type: "hp_damage"; amount: number; target?: "random_hero" }
-  | { type: "stat_boost"; stat: "might" | "agility" | "spirit"; amount: number }
+  | { type: "stat_boost"; stat: CheckStat; amount: number }
   | { type: "potion"; potionId: string }
   | { type: "item"; itemId: string }
   | { type: "heal_party"; percent: number }
+  | { type: "xp"; amount: number; target: "party" | "random_hero" | "picked_hero" }
+  | { type: "buff"; modifier: RunModifier }
   | { type: "noop" }
   | CheckEffect;
+
+/**
+ * Declarative gate on an event choice. Evaluated by `evaluateRequirements` (pure); an unmet
+ * requirement disables the choice and shows its reason — choices are never hidden (UI Rule).
+ */
+export type ChoiceRequirement =
+  | { type: "minGold"; amount: number }
+  | { type: "hasItem"; itemId: string }
+  | { type: "livingHero" }
+  | { type: "partySizeAtLeast"; n: number };
 
 /**
  * An ability-check branch effect. The chosen hero's check resolves, then the matching
@@ -42,6 +54,8 @@ export interface EventChoice {
   label: string;
   description: string;
   effects: EventEffect[];
+  /** Optional gates; when any is unmet the choice renders disabled with the reason shown. */
+  requirements?: ChoiceRequirement[];
 }
 
 export interface EventDef {
@@ -145,4 +159,21 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       },
     ],
   },
+};
+
+/** Id of the shared pool used by event nodes that do not declare their own `eventPoolId`. */
+export const DEFAULT_EVENT_POOL_ID = "pool.default";
+
+/**
+ * Named event pools (L2): a node may name a curated pool via `NodeDef.eventPoolId`; nodes
+ * without one fall back to {@link DEFAULT_EVENT_POOL_ID}. Selection is seeded and lives in
+ * `selectEventForNode` (see `src/run/Events.ts`), never in the screen.
+ */
+export const EVENT_POOLS: Record<string, string[]> = {
+  [DEFAULT_EVENT_POOL_ID]: [
+    "event.strange_shrine",
+    "event.rogue_trader",
+    "event.healing_spring",
+    "event.crumbling_bridge",
+  ],
 };

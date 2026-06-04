@@ -6,6 +6,10 @@ export interface NodeDef {
   layer: number;
   encounterId?: string;
   shopPoolId?: string;
+  /** Curated event pool for this node (L2). Falls back to the default shared pool when absent. */
+  eventPoolId?: string;
+  /** Pins a specific event to this node, overriding pool selection (for signature scenes). */
+  eventId?: string;
   nextNodeIds: string[];
 }
 

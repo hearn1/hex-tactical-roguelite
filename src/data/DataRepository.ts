@@ -8,8 +8,8 @@ import type { EnemyDef } from "./enemies.ts";
 import { ENEMY_REGISTRY } from "./enemies.ts";
 import type { EncounterDef } from "./encounters.ts";
 import { ENCOUNTER_REGISTRY } from "./encounters.ts";
-import type { EventDef } from "./events.ts";
-import { EVENT_REGISTRY } from "./events.ts";
+import type { EventDef, EventEffect } from "./events.ts";
+import { EVENT_REGISTRY, EVENT_POOLS } from "./events.ts";
 import type { ItemDef } from "./items.ts";
 import { ITEM_REGISTRY } from "./items.ts";
 import type { NodeDef } from "./nodes.ts";
@@ -217,6 +217,7 @@ export class DataRepository {
     const allPotionIds = new Set(this.potions.keys());
     const allBackgroundIds = new Set(this.backgrounds.keys());
     const checkStats = new Set(["might", "agility", "spirit"]);
+    const statKeys = new Set(["maxHp", "armor", "move", "might", "agility", "spirit"]);
 
     for (const [id, def] of this.classes) {
       for (const aid of def.actionIds) {
@@ -273,6 +274,12 @@ export class DataRepository {
       if (def.encounterId && !allEncounterIds.has(def.encounterId)) {
         errors.push(`Node "${id}": encounter "${def.encounterId}" not found`);
       }
+      if (def.eventId && !allEventIds.has(def.eventId)) {
+        errors.push(`Node "${id}": event "${def.eventId}" not found`);
+      }
+      if (def.eventPoolId && !EVENT_POOLS[def.eventPoolId]) {
+        errors.push(`Node "${id}": event pool "${def.eventPoolId}" not found`);
+      }
     }
 
     for (const [id, def] of this.items) {
@@ -300,6 +307,48 @@ export class DataRepository {
       }
       if (effect.type === "statBonus" && !checkStats.has(effect.stat)) {
         errors.push(`Background "${id}": stat "${effect.stat}" is not a valid check stat`);
+      }
+    }
+
+    const validateEventEffect = (effect: EventEffect, where: string): void => {
+      if (effect.type === "item" && !allItemIds.has(effect.itemId)) {
+        errors.push(`${where}: item "${effect.itemId}" not found`);
+      } else if (effect.type === "potion" && !allPotionIds.has(effect.potionId)) {
+        errors.push(`${where}: potion "${effect.potionId}" not found`);
+      } else if (effect.type === "stat_boost" && !checkStats.has(effect.stat)) {
+        errors.push(`${where}: stat "${effect.stat}" is not a valid check stat`);
+      } else if (effect.type === "check") {
+        if (effect.check.dc <= 0) errors.push(`${where}: check DC must be > 0`);
+        if (!checkStats.has(effect.check.stat)) {
+          errors.push(`${where}: check stat "${effect.check.stat}" is not a valid check stat`);
+        }
+        for (const e of effect.onSuccess) validateEventEffect(e, `${where} (onSuccess)`);
+        for (const e of effect.onFailure) validateEventEffect(e, `${where} (onFailure)`);
+        for (const e of effect.onPartial ?? []) validateEventEffect(e, `${where} (onPartial)`);
+      } else if (effect.type === "buff" && effect.modifier.kind === "global_stat" && !statKeys.has(effect.modifier.stat)) {
+        errors.push(`${where}: buff stat "${effect.modifier.stat}" is not a valid stat`);
+      }
+    };
+
+    for (const [id, def] of this.events) {
+      for (const choice of def.choices) {
+        const where = `Event "${id}" choice "${choice.id}"`;
+        for (const effect of choice.effects) {
+          validateEventEffect(effect, where);
+        }
+        for (const req of choice.requirements ?? []) {
+          if (req.type === "hasItem" && !allItemIds.has(req.itemId)) {
+            errors.push(`${where}: required item "${req.itemId}" not found`);
+          }
+        }
+      }
+    }
+
+    for (const [poolId, eventIds] of Object.entries(EVENT_POOLS)) {
+      for (const eid of eventIds) {
+        if (!allEventIds.has(eid)) {
+          errors.push(`Event pool "${poolId}": event "${eid}" not found`);
+        }
       }
     }
 

@@ -190,6 +190,78 @@ describe("DataRepository validation rejects broken references", () => {
     bg.effect = original;
   });
 
+  it("detects an unknown item referenced by an event effect", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.rogue_trader")!;
+    const choice = ev.choices[0];
+    const original = [...choice.effects];
+    choice.effects.push({ type: "item", itemId: "item.nonexistent" });
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("item.nonexistent"))).toBe(true);
+    choice.effects = original;
+  });
+
+  it("detects an unknown potion nested inside a check branch", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.crumbling_bridge")!;
+    const choice = ev.choices[0];
+    const original = [...choice.effects];
+    choice.effects = [{
+      type: "check",
+      check: { stat: "agility", dc: 12 },
+      onSuccess: [{ type: "potion", potionId: "potion.nonexistent" }],
+      onFailure: [{ type: "noop" }],
+    }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("potion.nonexistent"))).toBe(true);
+    choice.effects = original;
+  });
+
+  it("detects a non-positive check DC", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.crumbling_bridge")!;
+    const choice = ev.choices[0];
+    const original = [...choice.effects];
+    choice.effects = [{
+      type: "check",
+      check: { stat: "agility", dc: 0 },
+      onSuccess: [{ type: "noop" }],
+      onFailure: [{ type: "noop" }],
+    }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("DC must be > 0"))).toBe(true);
+    choice.effects = original;
+  });
+
+  it("detects an unknown item in a choice requirement", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.rogue_trader")!;
+    const choice = ev.choices[0];
+    choice.requirements = [{ type: "hasItem", itemId: "item.nonexistent" }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("item.nonexistent"))).toBe(true);
+    delete choice.requirements;
+  });
+
+  it("detects a node referencing an unknown event pool", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const node = repo.getNode("node.event_1")!;
+    node.eventPoolId = "pool.nonexistent";
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("pool.nonexistent"))).toBe(true);
+    delete node.eventPoolId;
+  });
+
   it("validation fails when not loaded", () => {
     const repo = new DataRepository();
     const report = repo.validate();
