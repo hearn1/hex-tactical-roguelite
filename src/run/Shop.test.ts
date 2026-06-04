@@ -1,8 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { rollShopInventory, buyShopItem, buyShopPotion, useHealService, stashShopItem, equipShopItem, ITEM_PRICE, POTION_PRICE, HEAL_SERVICE_PRICE } from "./Shop.ts";
+import { rollShopInventory, buyShopItem, buyShopPotion, useHealService, stashShopItem, equipShopItem, applyShopService, ITEM_PRICE, POTION_PRICE } from "./Shop.ts";
 import { createRng } from "../core/rng.ts";
-import type { PartyMember } from "../state/RunState.ts";
+import type { PartyMember, RunState } from "../state/RunState.ts";
 import { createInventory } from "./Inventory.ts";
+import { HEAL_SERVICE_ID, REMOVE_DRAWBACK_SERVICE_ID, BUY_RUMOR_SERVICE_ID } from "../data/shopServices.ts";
 
 const makeParty = (): PartyMember[] => [
   {
@@ -29,6 +30,29 @@ const makeParty = (): PartyMember[] => [
   },
 ];
 
+function makeRun(overrides?: Partial<RunState>): RunState {
+  return {
+    seed: 42,
+    gold: 50,
+    party: makeParty(),
+    inventory: createInventory(),
+    mapState: {
+      currentNodeId: "node.shop_1",
+      visitedNodeIds: [],
+      nodesCleared: 0,
+      elitesDefeated: 0,
+      bossDefeated: false,
+    },
+    runStatus: "active",
+    shopStates: {},
+    recruitOffers: {},
+    runModifiers: [],
+    difficulty: "normal",
+    eventSelections: {},
+    ...overrides,
+  };
+}
+
 describe("rollShopInventory", () => {
   it("returns exactly 3 items and 2 potions", () => {
     const rng = createRng(42);
@@ -53,10 +77,10 @@ describe("rollShopInventory", () => {
     }
   });
 
-  it("healServiceUsed starts false", () => {
+  it("servicesUsed starts empty", () => {
     const rng = createRng(42);
     const shop = rollShopInventory(rng);
-    expect(shop.healServiceUsed).toBe(false);
+    expect(shop.servicesUsed).toEqual({});
   });
 
   it("deterministic with fixed seed", () => {
@@ -151,18 +175,18 @@ describe("useHealService", () => {
     expect(party[1].hp).toBe(14);
   });
 
-  it("marks healServiceUsed after use", () => {
+  it("marks service used after use", () => {
     const rng = createRng(42);
     const shop = rollShopInventory(rng);
     const party = makeParty();
     useHealService(shop, party);
-    expect(shop.healServiceUsed).toBe(true);
+    expect(shop.servicesUsed[HEAL_SERVICE_ID]).toBe(true);
   });
 
   it("returns false if already used", () => {
     const rng = createRng(42);
     const shop = rollShopInventory(rng);
-    shop.healServiceUsed = true;
+    shop.servicesUsed[HEAL_SERVICE_ID] = true;
     const party = makeParty();
     const result = useHealService(shop, party);
     expect(result).toBe(false);
@@ -175,5 +199,117 @@ describe("useHealService", () => {
     party[0].hp = 0;
     useHealService(shop, party);
     expect(party[0].hp).toBe(0);
+  });
+});
+
+describe("applyShopService — heal party", () => {
+  it("heals each living hero and deducts gold", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({ gold: 50 });
+    run.party[0].hp = 5;
+    run.party[1].hp = 12;
+
+    const msg = applyShopService(HEAL_SERVICE_ID, run, shop);
+
+    expect(msg).toBe("Party healed for 8 HP each!");
+    expect(shop.servicesUsed[HEAL_SERVICE_ID]).toBe(true);
+    expect(run.gold).toBe(35);
+    expect(run.party[0].hp).toBe(13);
+    expect(run.party[1].hp).toBe(14);
+  });
+
+  it("deducts gold exactly once", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({ gold: 50 });
+
+    applyShopService(HEAL_SERVICE_ID, run, shop);
+    applyShopService(HEAL_SERVICE_ID, run, shop);
+
+    expect(run.gold).toBe(35);
+  });
+
+  it("heals party up to maxHp cap", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({ gold: 50 });
+    run.party[0].hp = 17;
+    run.party[1].hp = 13;
+
+    applyShopService(HEAL_SERVICE_ID, run, shop);
+
+    expect(run.party[0].hp).toBe(18);
+    expect(run.party[1].hp).toBe(14);
+  });
+});
+
+describe("applyShopService — remove drawback", () => {
+  it("applies when a drawback exists and removes it", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({
+      gold: 50,
+      runModifiers: [{ kind: "gold_multiplier", value: 0.5 }],
+    });
+
+    const msg = applyShopService(REMOVE_DRAWBACK_SERVICE_ID, run, shop);
+
+    expect(msg).toContain("Removed drawback");
+    expect(shop.servicesUsed[REMOVE_DRAWBACK_SERVICE_ID]).toBe(true);
+    expect(run.runModifiers).toHaveLength(0);
+    expect(run.gold).toBe(40);
+  });
+
+  it("reports no drawbacks when none exist", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({ gold: 50 });
+
+    const msg = applyShopService(REMOVE_DRAWBACK_SERVICE_ID, run, shop);
+
+    expect(msg).toBe("No drawbacks to remove.");
+    expect(shop.servicesUsed[REMOVE_DRAWBACK_SERVICE_ID]).toBe(true);
+    expect(run.gold).toBe(40);
+  });
+});
+
+describe("applyShopService — buy rumor", () => {
+  it("reveals an upcoming node's type and title", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({
+      gold: 50,
+      mapState: {
+        currentNodeId: "node.shop_1",
+        visitedNodeIds: [],
+        nodesCleared: 0,
+        elitesDefeated: 0,
+        bossDefeated: false,
+      },
+    });
+
+    const msg = applyShopService(BUY_RUMOR_SERVICE_ID, run, shop);
+
+    expect(msg).toContain("Rumor reveals");
+    expect(shop.servicesUsed[BUY_RUMOR_SERVICE_ID]).toBe(true);
+    expect(run.gold).toBe(42);
+    expect(run.revealedForecasts).toBeDefined();
+    const forecastedKey = Object.keys(run.revealedForecasts!)[0];
+    expect(forecastedKey).toBeTruthy();
+  });
+
+  it("reports no nodes when current node has no next nodes", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({
+      gold: 50,
+      mapState: {
+        currentNodeId: "node.boss",
+        visitedNodeIds: [],
+        nodesCleared: 0,
+        elitesDefeated: 0,
+        bossDefeated: false,
+      },
+    });
+
+    const msg = applyShopService(BUY_RUMOR_SERVICE_ID, run, shop);
+
+    expect(msg).toBe("No upcoming nodes to reveal.");
+    expect(shop.servicesUsed[BUY_RUMOR_SERVICE_ID]).toBe(true);
+    expect(run.gold).toBe(42);
   });
 });

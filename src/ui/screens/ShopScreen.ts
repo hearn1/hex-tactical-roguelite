@@ -1,10 +1,11 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { RunState } from "../../state/RunState.ts";
-import { rollShopInventory, ITEM_PRICE, POTION_PRICE, HEAL_SERVICE_PRICE, buyShopItem, buyShopPotion, useHealService, equipShopItem, stashShopItem } from "../../run/Shop.ts";
+import { rollShopInventory, ITEM_PRICE, POTION_PRICE, buyShopItem, buyShopPotion, equipShopItem, stashShopItem, applyShopService } from "../../run/Shop.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { BACKGROUND_REGISTRY } from "../../data/backgrounds.ts";
+import { SHOP_SERVICE_REGISTRY } from "../../data/shopServices.ts";
 
 let pendingPurchasedItemId: string | null = null;
 let shopMessage: string = "";
@@ -246,46 +247,56 @@ export class ShopScreen {
     heading.style.cssText = "margin-bottom:8px;";
     panel.appendChild(heading);
 
-    const card = document.createElement("div");
-    card.style.cssText = `border:1px solid ${shop.healServiceUsed ? "#333" : "#555"};border-radius:6px;padding:8px;background:#2a2a4a;${shop.healServiceUsed ? "opacity:0.5;" : ""}`;
+    const mustResolvePurchase = pendingPurchasedItemId !== null;
 
-    const name = document.createElement("div");
-    name.style.cssText = "font-weight:bold;font-size:14px;";
-    name.textContent = "Heal Party";
-    card.appendChild(name);
+    for (const service of SHOP_SERVICE_REGISTRY) {
+      const isUsed = shop.servicesUsed[service.id] === true;
+      const availCheck = service.isAvailable(run, shop);
+      const canAfford = !isUsed && run.gold >= service.price && !mustResolvePurchase;
 
-    const desc = document.createElement("div");
-    desc.style.cssText = "font-size:11px;color:#aaa;margin:4px 0;";
-    desc.textContent = "Restore 8 HP to each living hero.";
-    card.appendChild(desc);
+      const card = document.createElement("div");
+      card.style.cssText = `border:1px solid ${isUsed ? "#333" : "#555"};border-radius:6px;padding:8px;margin-bottom:8px;background:#2a2a4a;${isUsed ? "opacity:0.5;" : ""}`;
 
-    const priceEl = document.createElement("div");
-    priceEl.style.cssText = "font-size:13px;color:#ff8;";
-    priceEl.textContent = shop.healServiceUsed ? "Already used" : `${HEAL_SERVICE_PRICE} gold`;
-    card.appendChild(priceEl);
+      const name = document.createElement("div");
+      name.style.cssText = "font-weight:bold;font-size:14px;";
+      name.textContent = service.displayName;
+      card.appendChild(name);
 
-    if (!shop.healServiceUsed) {
-      const mustResolvePurchase = pendingPurchasedItemId !== null;
-      const canAfford = run.gold >= HEAL_SERVICE_PRICE && !mustResolvePurchase;
-      const buyBtn = document.createElement("button");
-      buyBtn.setAttribute("data-testid", "shop-buy-heal-service");
-      buyBtn.textContent = mustResolvePurchase ? "Resolve item first" : canAfford ? "Buy" : "Not enough gold";
-      buyBtn.disabled = !canAfford;
-      buyBtn.title = mustResolvePurchase ? "Equip or stash the purchased item first." : canAfford ? "" : "Not enough gold";
-      buyBtn.style.cssText = "margin-top:4px;";
-      buyBtn.addEventListener("click", () => {
-        if (!canAfford || pendingPurchasedItemId) return;
-        if (useHealService(shop, run.party)) {
-          run.gold -= HEAL_SERVICE_PRICE;
-          run.inventory.gold = run.gold;
-          shopMessage = "Party healed for 8 HP each!";
+      const desc = document.createElement("div");
+      desc.style.cssText = "font-size:11px;color:#aaa;margin:4px 0;";
+      desc.textContent = service.description;
+      card.appendChild(desc);
+
+      const priceEl = document.createElement("div");
+      priceEl.style.cssText = "font-size:13px;color:#ff8;";
+      priceEl.textContent = isUsed ? "Already used" : `${service.price} gold`;
+      card.appendChild(priceEl);
+
+      if (!isUsed) {
+        const disabledReason = mustResolvePurchase
+          ? "Resolve item first"
+          : !availCheck.available
+            ? availCheck.reason
+            : !canAfford
+              ? "Not enough gold"
+              : null;
+
+        const buyBtn = document.createElement("button");
+        buyBtn.setAttribute("data-testid", `shop-buy-service-${service.id}`);
+        buyBtn.textContent = disabledReason ?? "Buy";
+        buyBtn.disabled = disabledReason !== null;
+        buyBtn.title = disabledReason ?? "";
+        buyBtn.style.cssText = "margin-top:4px;";
+        buyBtn.addEventListener("click", () => {
+          if (disabledReason || pendingPurchasedItemId) return;
+          shopMessage = applyShopService(service.id, run, shop);
           this.app.render();
-        }
-      });
-      card.appendChild(buyBtn);
-    }
+        });
+        card.appendChild(buyBtn);
+      }
 
-    panel.appendChild(card);
+      panel.appendChild(card);
+    }
 
     const partyHeading = document.createElement("h3");
     partyHeading.textContent = "Party";

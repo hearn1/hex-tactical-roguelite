@@ -189,7 +189,7 @@ describe("screen-transitions", () => {
     run.shopStates["node.shop_1"] = {
       items: [{ itemId: "item.padded_armor", sold: false }],
       potions: [],
-      healServiceUsed: false,
+      servicesUsed: {},
     };
     gameState.screen = "shop";
     app.render();
@@ -226,7 +226,7 @@ describe("screen-transitions", () => {
     run.shopStates["node.shop_1"] = {
       items: [{ itemId: "item.soldier_badge", sold: false }],
       potions: [],
-      healServiceUsed: false,
+      servicesUsed: {},
     };
     gameState.screen = "shop";
     app.render();
