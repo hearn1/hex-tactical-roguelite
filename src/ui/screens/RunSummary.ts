@@ -2,6 +2,7 @@ import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import { computeRenown } from "../../meta/Renown.ts";
 import { saveMetaProgression } from "../../meta/SaveLoad.ts";
+import { ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
 
 export class RunSummary {
   private app: App;
@@ -27,9 +28,16 @@ export class RunSummary {
 
     const breakdown = run ? computeRenown(run) : null;
 
+    const modDef = run?.adventureModifierId ? ADVENTURE_MODIFIER_REGISTRY[run.adventureModifierId] : undefined;
+
     const lines = [
       `Gold Accumulated: ${gold}`,
+      `Seed: ${run?.seed ?? "N/A"}`,
     ];
+
+    if (modDef) {
+      lines.push(`Adventure Modifier: ${modDef.displayName} — ${modDef.bonusDescription} / ${modDef.drawbackDescription}`);
+    }
 
     if (breakdown) {
       lines.push("");

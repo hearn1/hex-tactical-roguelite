@@ -1,5 +1,5 @@
 import { createRng } from "../core/rng.ts";
-import type { ScreenId, CombatState, Hex, UnitInstance, UnitStats } from "./types.ts";
+import type { ScreenId, CombatState, Hex, UnitInstance, UnitStats, RunModifier } from "./types.ts";
 import { hexesWithinRange, hexKey, distance } from "../core/hex.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
@@ -228,6 +228,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
   const totalEnemies = encounterDef.enemyGroups.reduce((sum, g) => sum + g.count, 0);
   const customPositions = encounterDef.positions;
   const fallbackPositions = scatterEnemyPositions(totalEnemies);
+  const isEliteEncounter = encounterDef.eliteTrait !== undefined;
   let enemyIndex = 0;
   for (const group of encounterDef.enemyGroups) {
     const enemyDef = ENEMY_REGISTRY[group.enemyId];
@@ -240,11 +241,15 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
       const name = actualCount > 1 ? `${enemyDef.displayName} ${i + 1}` : enemyDef.displayName;
       const instId = `enemy_${enemyDef.id}_${enemyIndex}`;
       const inst = createEnemyInstance(instId, group.enemyId as EnemyId, name, pos);
-      inst.stats.maxHp = scaleStat(inst.stats.maxHp, diffConfig.enemyHpMultiplier);
+      const modEffect = applyModifierCombatEffects(run.runModifiers, inst.stats.maxHp, isEliteEncounter);
+      inst.stats.maxHp = scaleStat(modEffect.maxHp, diffConfig.enemyHpMultiplier);
       inst.hp = inst.stats.maxHp;
       units.push(inst);
     }
   }
+  const modifierDamageBonus = run.runModifiers
+    .filter((m): m is { kind: "enemy_damage_bonus"; value: number } => m.kind === "enemy_damage_bonus")
+    .reduce((sum, m) => sum + m.value, 0);
 
   // Hold the Line passive (F29): heroes who took it begin combat already Guarded.
   for (const unit of units) {
@@ -303,6 +308,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     eliteRallyTriggered: hasEliteTrait ? false : undefined,
     encounterId,
     difficulty: run.difficulty,
+    modifierDamageBonus: modifierDamageBonus > 0 ? modifierDamageBonus : undefined,
   };
 }
 
@@ -367,6 +373,40 @@ export function resetGameState(seed?: number): void {
   resetCampScreenState();
   resetShopScreenState();
   resetLevelUpScreenState();
+}
+
+/**
+ * Reseed the global RNG from a run seed, making all subsequent draws deterministic.
+ * Call this once when a new run starts, before any run-derived RNG consumption.
+ */
+export function reseedRngFromRun(seed: number): void {
+  gameState.rng = createRng(seed);
+  gameState.rngSeed = seed;
+}
+
+/**
+ * Apply adventure modifier combat effects: scale enemy HP and add damage bonuses.
+ * Stacks with difficulty config — called from createCombatFromRun.
+ */
+export function applyModifierCombatEffects(
+  modifiers: RunModifier[],
+  baseMaxHp: number,
+  isElite: boolean,
+): { maxHp: number; damageBonus: number } {
+  let hpMult = 1.0;
+  let damageBonus = 0;
+  for (const mod of modifiers) {
+    if (mod.kind === "enemy_hp_multiplier") {
+      hpMult *= mod.value;
+    }
+    if (mod.kind === "enemy_damage_bonus") {
+      damageBonus += mod.value;
+    }
+  }
+  return {
+    maxHp: Math.ceil(baseMaxHp * hpMult),
+    damageBonus,
+  };
 }
 
 export const gameState: GameState = createGameState();

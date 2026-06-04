@@ -44,8 +44,6 @@ export interface RunState {
   gold: number;
   party: PartyMember[];
   inventory: InventoryState;
-  /** Which map template (`MAP_TEMPLATES`) this run is playing. Defaults to the short
-   *  prototype graph when absent (legacy fixtures). New runs select "long". */
   mapTemplateId?: string;
   mapState: MapState;
   runStatus: "active" | "won" | "lost";
@@ -55,6 +53,6 @@ export interface RunState {
   difficulty: Difficulty;
   eventSelections: Record<string, string>;
   summaryApplied?: boolean;
-  /** Nodes whose type + title have been revealed by Buy Rumor service. */
   revealedForecasts?: Record<string, true>;
+  adventureModifierId?: string;
 }

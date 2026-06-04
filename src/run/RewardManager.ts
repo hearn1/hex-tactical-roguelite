@@ -129,6 +129,26 @@ export function applyGoldModifiers(gold: number, modifiers: RunModifier[]): numb
   return result;
 }
 
+export function applyXpModifiers(xp: number, modifiers: RunModifier[]): number {
+  let result = xp;
+  for (const mod of modifiers) {
+    if (mod.kind === "reward_xp_multiplier") {
+      result = Math.floor(result * mod.value);
+    }
+  }
+  return result;
+}
+
+export function applyEliteRewardMultiplier(value: number, modifiers: RunModifier[]): number {
+  let result = value;
+  for (const mod of modifiers) {
+    if (mod.kind === "elite_reward_multiplier") {
+      result = Math.floor(result * mod.value);
+    }
+  }
+  return result;
+}
+
 export function applyDifficultyToReward(gold: number, difficulty: string): number {
   const config = DIFFICULTY_CONFIG[difficulty as keyof typeof DIFFICULTY_CONFIG] ?? DIFFICULTY_CONFIG.normal;
   return Math.floor(gold * config.rewardGoldMultiplier);

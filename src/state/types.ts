@@ -102,10 +102,13 @@ export type RunModifier =
   | { kind: "gold_multiplier"; value: number }
   | { kind: "global_stat"; stat: keyof UnitStats; value: number }
   | { kind: "first_hit_bonus_damage"; amount: number }
-  // Camp "Prepare for Combat" buff (F30 / #61): a readied party enters its next battle
-  // Blessed. Persists in `runModifiers` until the next combat consumes it (see
-  // `createCombatFromRun`). Lives in this single union per the L3 constraint — no forked buff type.
-  | { kind: "next_combat_blessing" };
+  | { kind: "next_combat_blessing" }
+  | { kind: "reward_xp_multiplier"; value: number }
+  | { kind: "enemy_hp_multiplier"; value: number }
+  | { kind: "enemy_damage_bonus"; value: number }
+  | { kind: "event_dc_bonus"; value: number }
+  | { kind: "event_reward_multiplier"; value: number }
+  | { kind: "elite_reward_multiplier"; value: number };
 
 /**
  * A telegraphed boss heavy attack that was "wound up" on a previous boss turn and resolves
@@ -139,4 +142,6 @@ export interface CombatState {
   eliteRallyTriggered?: boolean;
   encounterId?: string;
   difficulty?: "normal" | "hard";
+  /** Cumulative enemy damage bonus from adventure modifiers, stacks with difficulty. */
+  modifierDamageBonus?: number;
 }

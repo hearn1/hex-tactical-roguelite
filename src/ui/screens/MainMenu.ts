@@ -1,9 +1,10 @@
 import type { App } from "../App.ts";
-import { gameState } from "../../state/GameState.ts";
+import { gameState, reseedRngFromRun } from "../../state/GameState.ts";
 import type { Difficulty } from "../../state/RunState.ts";
 import { buildParty, createRunState, defaultPartySpecs } from "../../run/PartySetup.ts";
 import { applyMetaUpgradesToFreshRun } from "../../meta/Upgrades.ts";
 import { applyBackgrounds } from "../../run/Backgrounds.ts";
+import { generateModifierOffers, applyAdventureModifier, ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
 import { resetSetupScreenState } from "./SetupScreen.ts";
 
 export class MainMenu {
@@ -45,8 +46,25 @@ export class MainMenu {
     quickStartBtn.style.cssText = "padding:10px 24px;font-size:16px;";
     quickStartBtn.addEventListener("click", () => {
       const run = createRunState(buildParty(defaultPartySpecs()), currentDiff);
+      run.seed = gameState.rngSeed;
+      // Auto-pick the first modifier offer for Quick Start
+      const offers = generateModifierOffers(run.seed, 3);
+      if (offers.length > 0) {
+        run.adventureModifierId = offers[0];
+        applyAdventureModifier(run, offers[0]);
+      }
+      // Apply starting effects
+      const def = run.adventureModifierId ? ADVENTURE_MODIFIER_REGISTRY[run.adventureModifierId] : undefined;
+      if (def?.startingGoldDelta) {
+        run.gold = Math.max(0, run.gold + def.startingGoldDelta);
+        run.inventory.gold = run.gold;
+      }
+      if (def?.startingPotionId) {
+        run.inventory.potions.push(def.startingPotionId);
+      }
       applyBackgrounds(run);
       applyMetaUpgradesToFreshRun(run, gameState.meta);
+      reseedRngFromRun(run.seed);
       gameState.run = run;
       gameState.combat = null;
       gameState.screen = "map";
