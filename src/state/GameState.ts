@@ -252,6 +252,18 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     }
   }
 
+  // Camp "Prepare for Combat" buff (F30 / #61): a readied party enters Blessed. Consume every
+  // queued blessing here so the buff is spent by the next battle (it persisted across any
+  // non-combat nodes until now). Duration 2 survives the hero's first turn-start tick so the
+  // bonus is still live for their opening attack/heal, then Blessed is consumed on use.
+  const hadBlessing = run.runModifiers.some((m) => m.kind === "next_combat_blessing");
+  if (hadBlessing) {
+    run.runModifiers = run.runModifiers.filter((m) => m.kind !== "next_combat_blessing");
+    for (const unit of units) {
+      if (unit.team === "hero" && unit.hp > 0) applyCondition(unit, "blessed", 2);
+    }
+  }
+
   const turnQueue = buildTurnQueue(units, rng);
   const firstUnit = units.find((u) => u.instanceId === turnQueue[0])!;
   firstUnit.movePointsRemaining = firstUnit.stats.move;
@@ -259,15 +271,20 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
   const isBoss = encounterId === "encounter.boss_ogre_hexbreaker";
   const hasEliteTrait = encounterDef.eliteTrait !== undefined;
 
+  const log: CombatState["log"] = [
+    { kind: "initiative", text: `[T1] Battle begins: ${encounterDef.displayName}`, round: 1 },
+  ];
+  if (hadBlessing) {
+    log.push({ kind: "initiative", text: `[T1] The party was prepared — heroes enter Blessed.`, round: 1 });
+  }
+  log.push({ kind: "turn_start", text: `[T1] ${firstUnit.displayName}'s turn begins.`, round: 1 });
+
   return {
     round: 1,
     activeIndex: 0,
     turnQueue,
     units,
-    log: [
-      { kind: "initiative", text: `[T1] Battle begins: ${encounterDef.displayName}`, round: 1 },
-      { kind: "turn_start", text: `[T1] ${firstUnit.displayName}'s turn begins.`, round: 1 },
-    ],
+    log,
     status: "active",
     gridKeys,
     targetingActionId: null,

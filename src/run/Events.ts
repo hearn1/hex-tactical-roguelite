@@ -4,6 +4,7 @@ import type { RunModifier } from "../state/types.ts";
 import type { EventChoice, EventEffect, CheckEffect, ChoiceRequirement } from "../data/events.ts";
 import { DEFAULT_EVENT_POOL_ID, EVENT_POOLS, EVENT_REGISTRY } from "../data/events.ts";
 import { NODE_REGISTRY } from "../data/nodes.ts";
+import { POTION_REGISTRY } from "../data/potions.ts";
 import { applyXpToPartyMember } from "./Leveling.ts";
 import { enqueuePendingLevelUps } from "./LevelUp.ts";
 import { resolveCheck, checkModifierFor, formatCheckLog, type CheckResult } from "./AbilityCheck.ts";
@@ -20,6 +21,46 @@ export function trainPartyMember(pm: PartyMember, xp: number): ReturnType<typeof
   return applyXpToPartyMember(pm, xp);
 }
 
+/** Gold spent by the camp "Brew Potion" choice (F30 / #61). A small cost makes it a real tradeoff. */
+export const CAMP_BREW_POTION_COST = 10;
+/** Potion produced by the camp "Brew Potion" choice. */
+export const CAMP_BREW_POTION_ID = "potion.healing";
+
+export interface CampActionResult {
+  ok: boolean;
+  /** Human-readable log line for the camp outcome (success) or the reason it was blocked. */
+  message: string;
+}
+
+/**
+ * Camp "Brew Potion": spend {@link CAMP_BREW_POTION_COST} gold to add one Healing Potion to the
+ * run inventory (F30). Returns `ok: false` with a reason when the party can't afford it; the UI
+ * disables the choice ahead of time, so this is the defensive guard. Mirrors the gold bookkeeping
+ * used by event effects (both `run.gold` and `run.inventory.gold`).
+ */
+export function brewPotion(run: RunState): CampActionResult {
+  if (run.gold < CAMP_BREW_POTION_COST) {
+    return { ok: false, message: `Not enough gold to brew a potion (need ${CAMP_BREW_POTION_COST}).` };
+  }
+  run.gold -= CAMP_BREW_POTION_COST;
+  run.inventory.gold -= CAMP_BREW_POTION_COST;
+  run.inventory.potions.push(CAMP_BREW_POTION_ID);
+  const name = POTION_REGISTRY[CAMP_BREW_POTION_ID]?.displayName ?? CAMP_BREW_POTION_ID;
+  return { ok: true, message: `Brewed a ${name} (spent ${CAMP_BREW_POTION_COST} gold).` };
+}
+
+/**
+ * Camp "Prepare for Combat": queue a one-fight blessing on `run.runModifiers` (F30). The buff
+ * persists across non-combat nodes until the next battle consumes it ({@link createCombatFromRun}),
+ * letting the player save it for a chosen fight. Stored in the single {@link RunModifier} union
+ * per the L3 constraint — no separate buff type.
+ */
+export function prepareForCombat(run: RunState): CampActionResult {
+  const modifier: RunModifier = { kind: "next_combat_blessing" };
+  run.runModifiers.push(modifier);
+  return { ok: true, message: describeRunModifier(modifier) };
+}
+
 export function applyEventChoiceEffects(choice: EventChoice, run: RunState, rng: () => number): string[] {
   return applyEffectList(choice.effects, run, rng);
 }
@@ -33,6 +74,8 @@ export function describeRunModifier(mod: RunModifier): string {
       return `Party gains +${mod.value} ${mod.stat} for the run.`;
     case "first_hit_bonus_damage":
       return `Your first hit each battle deals +${mod.amount} damage.`;
+    case "next_combat_blessing":
+      return `The party is prepared — each hero is Blessed (+2 to their first attack or heal) at the start of the next battle.`;
   }
 }
 
