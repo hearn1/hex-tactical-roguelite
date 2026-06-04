@@ -20,6 +20,7 @@ import { resetRewardScreenState } from "../ui/screens/RewardScreen.ts";
 import { resetCampScreenState } from "../ui/screens/CampScreen.ts";
 import { resetShopScreenState } from "../ui/screens/ShopScreen.ts";
 import { resetLevelUpScreenState } from "../ui/screens/LevelUpScreen.ts";
+import { resetEventScreenState } from "../ui/screens/EventScreen.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -373,6 +374,7 @@ export function resetGameState(seed?: number): void {
   resetCampScreenState();
   resetShopScreenState();
   resetLevelUpScreenState();
+  resetEventScreenState();
 }
 
 /**
