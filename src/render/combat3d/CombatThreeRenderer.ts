@@ -4,6 +4,7 @@ import type { CombatState, Hex, UnitInstance } from "../../state/types.ts";
 import { getSpriteDef, type SpriteDef, type SpriteFrameId } from "../../data/sprites.ts";
 import { axialToWorld, HEX_WORLD_RADIUS } from "./hexWorld.ts";
 import { hexFromPickData } from "./picking.ts";
+import { CombatAnimationQueue, easeInOut, type CombatAnimationStep } from "./animationQueue.ts";
 
 export interface Combat3DHighlights {
   hoveredHex: Hex | null;
@@ -15,16 +16,25 @@ export interface Combat3DHighlights {
 export interface CombatThreeRendererOptions {
   onPickHex: (hex: Hex) => void;
   onHoverHex: (hex: Hex | null) => void;
+  onAnimationStateChange?: (animating: boolean) => void;
 }
 
 type UnitGroup = THREE.Group & {
   userData: {
     unitId: string;
+    defId: string;
     sprite: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
     hpFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
     activeRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
   };
 };
+
+interface VisualUnitState {
+  world: { x: number; z: number };
+  frame: SpriteFrameId;
+  alpha: number;
+  glow: "none" | "hit" | "heal";
+}
 
 const VIEW_WIDTH = 640;
 const VIEW_HEIGHT = 480;
@@ -54,8 +64,14 @@ export class CombatThreeRenderer {
   private readonly hpBackGeometry = new THREE.PlaneGeometry(0.7, 0.07);
   private readonly hpFillGeometry = new THREE.PlaneGeometry(0.7, 0.07);
   private readonly activeRingGeometry = new THREE.RingGeometry(0.45, 0.54, 40);
+  private readonly animationQueue = new CombatAnimationQueue();
+  private readonly visualUnits = new Map<string, VisualUnitState>();
+  private readonly activeStepStartWorlds = new Map<string, { x: number; z: number }>();
   private currentCombat: CombatState | null = null;
+  private currentHighlights: Combat3DHighlights | null = null;
   private animationId: number | null = null;
+  private lastFrameTimeMs = performance.now();
+  private lastAnimating = false;
 
   constructor(container: HTMLElement, options: CombatThreeRendererOptions) {
     assertWebGLAvailable();
@@ -84,9 +100,49 @@ export class CombatThreeRenderer {
 
   update(combat: CombatState, highlights: Combat3DHighlights): void {
     this.currentCombat = combat;
+    this.currentHighlights = highlights;
     this.syncTiles(combat, highlights);
     this.syncUnits(combat);
     this.renderFrame();
+  }
+
+  enqueueAnimations(steps: CombatAnimationStep | CombatAnimationStep[]): Promise<void> {
+    const list = Array.isArray(steps) ? steps : [steps];
+    if (list.length === 0) return Promise.resolve();
+    this.animationQueue.enqueue(list);
+    this.reportAnimationState();
+    return new Promise((resolve) => {
+      const poll = () => {
+        if (!this.animationQueue.isAnimating()) {
+          resolve();
+          return;
+        }
+        requestAnimationFrame(poll);
+      };
+      requestAnimationFrame(poll);
+    });
+  }
+
+  skipAnimations(): void {
+    for (const step of this.animationQueue.flush()) {
+      this.finishAnimationStep(step);
+    }
+    this.activeStepStartWorlds.clear();
+    this.restoreTileHighlights();
+    this.reportAnimationState();
+    this.renderFrame();
+  }
+
+  isAnimating(): boolean {
+    return this.animationQueue.isAnimating();
+  }
+
+  setAnimationSpeed(multiplier: number): void {
+    this.animationQueue.setSpeedMultiplier(multiplier);
+  }
+
+  getAnimationSpeed(): number {
+    return this.animationQueue.getSpeedMultiplier();
   }
 
   dispose(): void {
@@ -132,6 +188,10 @@ export class CombatThreeRenderer {
         this.dispose();
         return;
       }
+      const now = performance.now();
+      const dtMs = now - this.lastFrameTimeMs;
+      this.lastFrameTimeMs = now;
+      this.advanceAnimations(dtMs);
       this.renderFrame();
       this.animationId = requestAnimationFrame(loop);
     };
@@ -146,6 +206,151 @@ export class CombatThreeRenderer {
       if (hpBack) hpBack.quaternion.copy(this.camera.quaternion);
     }
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private advanceAnimations(dtMs: number): void {
+    const result = this.animationQueue.update(dtMs);
+    for (const step of result.started) {
+      this.startAnimationStep(step);
+    }
+
+    const active = this.animationQueue.getActiveStep();
+    if (active) {
+      this.applyAnimationStep(active, this.animationQueue.getProgress());
+    }
+
+    for (const step of result.finished) {
+      this.finishAnimationStep(step);
+    }
+    this.reportAnimationState();
+  }
+
+  private startAnimationStep(step: CombatAnimationStep): void {
+    this.activeStepStartWorlds.clear();
+    for (const unitId of unitIdsForStep(step)) {
+      const visual = this.visualUnits.get(unitId);
+      if (visual) {
+        this.activeStepStartWorlds.set(unitId, { ...visual.world });
+      }
+    }
+    if (step.kind === "move") {
+      this.ensureVisualWorld(step.unitId, axialToWorld(step.from));
+    }
+  }
+
+  private applyAnimationStep(step: CombatAnimationStep, progress: number): void {
+    const eased = easeInOut(progress);
+    this.clearTransientVisuals();
+
+    switch (step.kind) {
+      case "move": {
+        const from = axialToWorld(step.from);
+        const to = axialToWorld(step.to);
+        this.setVisual(step.unitId, {
+          world: {
+            x: from.x + (to.x - from.x) * eased,
+            z: from.z + (to.z - from.z) * eased,
+          },
+          frame: "walk",
+          alpha: 1,
+          glow: "none",
+        });
+        break;
+      }
+      case "attack": {
+        const attacker = this.visualUnits.get(step.attackerId);
+        if (attacker) {
+          const start = this.activeStepStartWorlds.get(step.attackerId) ?? attacker.world;
+          const target = this.firstTargetWorld(step.targetIds) ?? start;
+          const dx = target.x - start.x;
+          const dz = target.z - start.z;
+          const len = Math.hypot(dx, dz) || 1;
+          const lunge = Math.sin(Math.PI * progress) * 0.28;
+          attacker.world = { x: start.x + (dx / len) * lunge, z: start.z + (dz / len) * lunge };
+          attacker.frame = step.frame ?? "attack";
+          attacker.alpha = 1;
+          attacker.glow = "none";
+        }
+        break;
+      }
+      case "hit":
+      case "miss":
+      case "heal":
+      case "death": {
+        for (const unitId of step.unitIds) {
+          const visual = this.visualUnits.get(unitId);
+          if (!visual) continue;
+          visual.frame = step.kind === "heal" ? "cast" : step.kind === "death" ? "death" : "hit";
+          visual.glow = step.kind === "heal" ? "heal" : step.kind === "hit" ? "hit" : "none";
+          visual.alpha = step.kind === "death" ? 1 - eased : 1;
+        }
+        break;
+      }
+      case "aoeFlash":
+        this.applyTileFlash(step.hexKeys, progress);
+        break;
+      case "wait":
+        break;
+    }
+
+    this.applyVisualsToGroups();
+  }
+
+  private finishAnimationStep(step: CombatAnimationStep): void {
+    switch (step.kind) {
+      case "move": {
+        const to = axialToWorld(step.to);
+        this.setVisual(step.unitId, { world: to, frame: "idle", alpha: 1, glow: "none" });
+        break;
+      }
+      case "death":
+        for (const unitId of step.unitIds) {
+          const visual = this.visualUnits.get(unitId);
+          if (visual) {
+            visual.frame = "death";
+            visual.alpha = 0;
+            visual.glow = "none";
+          }
+        }
+        break;
+      case "aoeFlash":
+        this.restoreTileHighlights();
+        break;
+      case "attack":
+        for (const unitId of [step.attackerId, ...step.targetIds]) {
+          const visual = this.visualUnits.get(unitId);
+          const start = this.activeStepStartWorlds.get(unitId);
+          if (visual && start) visual.world = { ...start };
+          if (visual) {
+            visual.frame = "idle";
+            visual.glow = "none";
+            visual.alpha = 1;
+          }
+        }
+        break;
+      case "hit":
+      case "miss":
+      case "heal":
+        for (const unitId of step.unitIds) {
+          const visual = this.visualUnits.get(unitId);
+          if (visual) {
+            visual.frame = "idle";
+            visual.glow = "none";
+            visual.alpha = 1;
+          }
+        }
+        break;
+      case "wait":
+        break;
+    }
+    this.applyVisualsToGroups();
+  }
+
+  private clearTransientVisuals(): void {
+    for (const visual of this.visualUnits.values()) {
+      visual.frame = visual.alpha > 0 ? "idle" : visual.frame;
+      visual.glow = "none";
+    }
   }
 
   private syncTiles(combat: CombatState, highlights: Combat3DHighlights): void {
@@ -202,17 +407,18 @@ export class CombatThreeRenderer {
 
   private syncUnits(combat: CombatState): void {
     const activeId = combat.turnQueue[combat.activeIndex];
-    const liveUnits = combat.units.filter((unit) => unit.hp > 0);
-    const liveIds = new Set(liveUnits.map((unit) => unit.instanceId));
+    const renderUnits = combat.units.filter((unit) => unit.hp > 0 || (this.visualUnits.get(unit.instanceId)?.alpha ?? 0) > 0);
+    const renderIds = new Set(renderUnits.map((unit) => unit.instanceId));
 
     for (const [unitId, group] of this.unitGroups) {
-      if (liveIds.has(unitId)) continue;
+      if (renderIds.has(unitId)) continue;
       this.scene.remove(group);
       disposeGroupMaterials(group);
       this.unitGroups.delete(unitId);
+      this.visualUnits.delete(unitId);
     }
 
-    for (const unit of liveUnits) {
+    for (const unit of renderUnits) {
       let group = this.unitGroups.get(unit.instanceId);
       if (!group) {
         group = this.createUnitGroup(unit);
@@ -221,15 +427,25 @@ export class CombatThreeRenderer {
       }
 
       const world = axialToWorld(unit.pos);
-      group.position.set(world.x, 0, world.z);
+      const visual = this.visualUnits.get(unit.instanceId);
+      if (!visual || !this.animationQueue.hasQueuedUnit(unit.instanceId)) {
+        this.setVisual(unit.instanceId, {
+          world,
+          frame: unit.hp > 0 ? "idle" : "death",
+          alpha: unit.hp > 0 ? 1 : visual?.alpha ?? 0,
+          glow: "none",
+        });
+      }
       group.userData.unitId = unit.instanceId;
+      group.userData.defId = unit.defId;
       group.userData.sprite.userData.hexKey = hexKey(unit.pos);
       group.userData.sprite.userData.unitId = unit.instanceId;
 
       const sprite = getSpriteDef(unit.defId);
       const isAttackStance = unit.instanceId === activeId && combat.targetingActionId !== null && !unit.hasActed;
-      group.userData.sprite.material.map = this.getTexture(sprite, isAttackStance ? "attack" : "idle");
-      group.userData.sprite.material.needsUpdate = true;
+      const nextVisual = this.visualUnits.get(unit.instanceId);
+      const frame = nextVisual?.frame ?? (isAttackStance ? "attack" : "idle");
+      group.userData.sprite.material.map = this.getTexture(sprite, frame === "idle" && isAttackStance ? "attack" : frame);
 
       const spriteScale = sprite?.scale ?? 1;
       group.userData.sprite.scale.setScalar(spriteScale);
@@ -237,9 +453,74 @@ export class CombatThreeRenderer {
       group.userData.hpFill.scale.x = hpPct;
       group.userData.hpFill.position.x = -0.35 * (1 - hpPct);
       group.userData.hpFill.material.color.set(hpPct > 0.5 ? "#54d17a" : "#d65a5a");
-      group.userData.activeRing.visible = unit.instanceId === activeId;
+      group.userData.activeRing.visible = unit.instanceId === activeId && unit.hp > 0;
       group.userData.activeRing.material.color.copy(ACTIVE_COLOR);
+      this.applyVisualToGroup(unit.instanceId, group);
     }
+  }
+
+  private setVisual(unitId: string, visual: VisualUnitState): void {
+    this.visualUnits.set(unitId, visual);
+  }
+
+  private ensureVisualWorld(unitId: string, world: { x: number; z: number }): void {
+    const visual = this.visualUnits.get(unitId);
+    if (visual) {
+      visual.world = { ...world };
+      return;
+    }
+    this.visualUnits.set(unitId, { world: { ...world }, frame: "idle", alpha: 1, glow: "none" });
+  }
+
+  private firstTargetWorld(targetIds: string[]): { x: number; z: number } | null {
+    for (const targetId of targetIds) {
+      const visual = this.visualUnits.get(targetId);
+      if (visual) return visual.world;
+    }
+    return null;
+  }
+
+  private applyVisualsToGroups(): void {
+    for (const [unitId, group] of this.unitGroups) {
+      this.applyVisualToGroup(unitId, group);
+    }
+  }
+
+  private applyVisualToGroup(unitId: string, group: UnitGroup): void {
+    const visual = this.visualUnits.get(unitId);
+    if (!visual) return;
+    group.position.set(visual.world.x, 0, visual.world.z);
+    const spriteMaterial = group.userData.sprite.material;
+    spriteMaterial.map = this.getTexture(getSpriteDef(group.userData.defId), visual.frame);
+    spriteMaterial.opacity = visual.alpha;
+    spriteMaterial.color.set(visual.glow === "heal" ? "#99ffbb" : visual.glow === "hit" ? "#ff9a9a" : "#ffffff");
+    spriteMaterial.needsUpdate = true;
+    group.userData.hpFill.material.opacity = Math.min(0.95, visual.alpha);
+    group.userData.activeRing.material.opacity = Math.min(0.9, visual.alpha);
+    group.visible = visual.alpha > 0.02;
+  }
+
+  private applyTileFlash(hexKeys: string[], progress: number): void {
+    const pulse = Math.sin(Math.PI * progress);
+    for (const key of hexKeys) {
+      const mesh = this.tileMeshes.get(key);
+      if (!mesh) continue;
+      mesh.material.color.set("#f5c542");
+      mesh.material.emissive.setRGB(0.7 * pulse, 0.35 * pulse, 0.05 * pulse);
+    }
+  }
+
+  private restoreTileHighlights(): void {
+    if (this.currentCombat && this.currentHighlights) {
+      this.syncTiles(this.currentCombat, this.currentHighlights);
+    }
+  }
+
+  private reportAnimationState(): void {
+    const animating = this.animationQueue.isAnimating();
+    if (animating === this.lastAnimating) return;
+    this.lastAnimating = animating;
+    this.options.onAnimationStateChange?.(animating);
   }
 
   private createUnitGroup(unit: UnitInstance): UnitGroup {
@@ -279,6 +560,7 @@ export class CombatThreeRenderer {
     group.add(sprite, hpBack, hpFill, activeRing);
     group.userData = {
       unitId: unit.instanceId,
+      defId: unit.defId,
       sprite,
       hpFill,
       activeRing,
@@ -396,4 +678,21 @@ function disposeGroupMaterials(group: THREE.Group): void {
       material.dispose();
     }
   });
+}
+
+function unitIdsForStep(step: CombatAnimationStep): string[] {
+  switch (step.kind) {
+    case "move":
+      return [step.unitId];
+    case "attack":
+      return [step.attackerId, ...step.targetIds];
+    case "hit":
+    case "miss":
+    case "heal":
+    case "death":
+      return step.unitIds;
+    case "aoeFlash":
+    case "wait":
+      return [];
+  }
 }
