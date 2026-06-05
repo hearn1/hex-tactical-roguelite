@@ -24,3 +24,8 @@ For the first prototype, avoid directly copying SRD text and instead use origina
 - Original enemy names and encounters.
 
 This keeps the prototype focused and reduces licensing/product identity risk.
+
+## Third-Party Runtime Libraries
+
+- Three.js is used for the combat WebGL renderer foundation and is licensed under the MIT License.
+- Issue #90 placeholder billboard sprites are generated in code from original color palettes; no third-party sprite art is bundled in this slice.

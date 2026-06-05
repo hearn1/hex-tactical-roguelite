@@ -43,11 +43,24 @@ button:disabled {
 
 .combat-top {
   display: flex;
+  align-items: stretch;
 }
 
 .combat-canvas-wrap {
   border: 1px solid #444;
   background: #16213e;
+  width: 640px;
+  max-width: 100%;
+}
+
+.combat-canvas-wrap canvas {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.combat-three-canvas {
+  image-rendering: pixelated;
 }
 
 .turn-panel {

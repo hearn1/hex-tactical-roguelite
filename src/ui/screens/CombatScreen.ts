@@ -15,6 +15,7 @@ import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
+import { CombatThreeRenderer, type Combat3DHighlights } from "../../render/combat3d/CombatThreeRenderer.ts";
 
 const HERO_COLOR = "#4488ff";
 const ENEMY_COLOR = "#ff4444";
@@ -28,8 +29,9 @@ const ACTIVE_GLOW = "#ffcc00";
 export class CombatScreen {
   private app: App;
   private container!: HTMLElement;
-  private canvas!: HTMLCanvasElement;
-  private ctx!: CanvasRenderingContext2D;
+  private canvas: HTMLCanvasElement | null = null;
+  private ctx: CanvasRenderingContext2D | null = null;
+  private combatRenderer: CombatThreeRenderer | null = null;
   private hoveredHex: Hex | null = null;
   private enemyProcessing = false;
   private actionBarEl!: HTMLElement;
@@ -58,11 +60,7 @@ export class CombatScreen {
 
     const canvasWrap = document.createElement("div");
     canvasWrap.className = "combat-canvas-wrap";
-    this.canvas = document.createElement("canvas");
-    this.canvas.width = 640;
-    this.canvas.height = 480;
-    this.ctx = this.canvas.getContext("2d")!;
-    canvasWrap.appendChild(this.canvas);
+    this.mountCombatView(canvasWrap);
 
     this.turnPanelEl = this.buildTurnPanel();
     topRow.appendChild(canvasWrap);
@@ -85,13 +83,6 @@ export class CombatScreen {
     this.container.appendChild(endTurnBar);
     this.container.appendChild(this.inventoryPanelEl);
 
-    this.canvas.addEventListener("mousemove", (e) => this.onMouseMove(e));
-    this.canvas.addEventListener("click", (e) => this.onCanvasClick(e));
-    this.canvas.addEventListener("mouseleave", () => {
-      this.hoveredHex = null;
-      this.drawCanvas();
-    });
-
     this.drawCanvas();
     this.updatePanels();
 
@@ -105,6 +96,39 @@ export class CombatScreen {
     }
 
     return this.container;
+  }
+
+  private mountCombatView(canvasWrap: HTMLElement): void {
+    try {
+      this.combatRenderer = new CombatThreeRenderer(canvasWrap, {
+        onPickHex: (hex) => this.onHexClick(hex),
+        onHoverHex: (hex) => {
+          this.hoveredHex = hex;
+          this.drawCanvas();
+        },
+      });
+      return;
+    } catch (err) {
+      this.combatRenderer = null;
+      canvasWrap.setAttribute("data-renderer-fallback", "canvas");
+      canvasWrap.title = `Using canvas fallback: ${err instanceof Error ? err.message : "WebGL initialization failed"}`;
+    }
+
+    this.canvas = document.createElement("canvas");
+    this.canvas.width = 640;
+    this.canvas.height = 480;
+    this.ctx = this.canvas.getContext("2d");
+    if (this.ctx) {
+      this.ctx.imageSmoothingEnabled = false;
+    }
+    canvasWrap.appendChild(this.canvas);
+
+    this.canvas.addEventListener("mousemove", (e) => this.onMouseMove(e));
+    this.canvas.addEventListener("click", () => this.onCanvasClick());
+    this.canvas.addEventListener("mouseleave", () => {
+      this.hoveredHex = null;
+      this.drawCanvas();
+    });
   }
 
   private buildTurnPanel(): HTMLElement {
@@ -201,47 +225,36 @@ export class CombatScreen {
   private drawCanvas(): void {
     const cs = gameState.combat;
     if (!cs) return;
-    const ctx = this.ctx;
-    const w = this.canvas.width;
-    const h = this.canvas.height;
-    ctx.clearRect(0, 0, w, h);
-
     const activeUnit = this.getActiveUnit();
+    const highlights = this.getRenderHighlights(cs, activeUnit);
+
+    if (this.combatRenderer) {
+      this.combatRenderer.update(cs, highlights);
+      return;
+    }
+
+    const ctx = this.ctx;
+    const canvas = this.canvas;
+    if (!ctx || !canvas) return;
+    const w = canvas.width;
+    const h = canvas.height;
+    ctx.clearRect(0, 0, w, h);
 
     const gridHexes = cs.gridKeys.map(parseHexKey);
     for (const hex of gridHexes) {
       renderHexOutline(ctx, hex, GRID_COLOR, 1);
     }
 
-    let reachable: Map<string, number> | null = null;
-    if (activeUnit && activeUnit.team === "hero" && activeUnit.movePointsRemaining > 0 && !cs.targetingActionId) {
-      const occ = new Set(
-        cs.units.filter((u) => u.hp > 0 && u.instanceId !== activeUnit.instanceId).map((u) => hexKey(u.pos)),
-      );
-      reachable = reachableHexes(activeUnit.pos, activeUnit.movePointsRemaining, occ, new Set(cs.gridKeys));
+    for (const key of highlights.reachableKeys) {
+      fillHex(ctx, parseHexKey(key), REACHABLE_COLOR);
     }
 
-    if (reachable) {
-      for (const [key] of reachable) {
-        fillHex(ctx, parseHexKey(key), REACHABLE_COLOR);
-      }
+    for (const key of highlights.targetKeys) {
+      fillHex(ctx, parseHexKey(key), TARGET_COLOR);
     }
 
-    if (cs.targetingActionId && activeUnit) {
-      const actionDef = ACTION_REGISTRY[cs.targetingActionId];
-      if (actionDef) {
-        const targets = validTargets(actionDef, activeUnit, cs);
-        for (const t of targets) {
-          fillHex(ctx, t.pos, TARGET_COLOR);
-        }
-      }
-    }
-
-    const bossTelegraph = this.getLiveBossTelegraph(cs);
-    if (bossTelegraph) {
-      for (const key of bossTelegraph.targetHexes) {
-        fillHex(ctx, parseHexKey(key), TELEGRAPH_COLOR);
-      }
+    for (const key of highlights.telegraphKeys) {
+      fillHex(ctx, parseHexKey(key), TELEGRAPH_COLOR);
     }
 
     if (this.hoveredHex && cs.gridKeys.includes(hexKey(this.hoveredHex))) {
@@ -253,6 +266,44 @@ export class CombatScreen {
       const isActive = activeUnit !== null && activeUnit.instanceId === unit.instanceId;
       this.drawUnitToken(ctx, unit, isActive);
     }
+  }
+
+  private getRenderHighlights(cs: CombatState, activeUnit: UnitInstance | null): Combat3DHighlights {
+    const reachableKeys = new Set<string>();
+    const targetKeys = new Set<string>();
+    const telegraphKeys = new Set<string>();
+
+    if (activeUnit && activeUnit.team === "hero" && activeUnit.movePointsRemaining > 0 && !cs.targetingActionId) {
+      const occ = new Set(
+        cs.units.filter((u) => u.hp > 0 && u.instanceId !== activeUnit.instanceId).map((u) => hexKey(u.pos)),
+      );
+      for (const [key] of reachableHexes(activeUnit.pos, activeUnit.movePointsRemaining, occ, new Set(cs.gridKeys))) {
+        reachableKeys.add(key);
+      }
+    }
+
+    if (cs.targetingActionId && activeUnit) {
+      const actionDef = ACTION_REGISTRY[cs.targetingActionId];
+      if (actionDef) {
+        for (const target of validTargets(actionDef, activeUnit, cs)) {
+          targetKeys.add(hexKey(target.pos));
+        }
+      }
+    }
+
+    const bossTelegraph = this.getLiveBossTelegraph(cs);
+    if (bossTelegraph) {
+      for (const key of bossTelegraph.targetHexes) {
+        telegraphKeys.add(key);
+      }
+    }
+
+    return {
+      hoveredHex: this.hoveredHex,
+      reachableKeys,
+      targetKeys,
+      telegraphKeys,
+    };
   }
 
   private drawUnitToken(ctx: CanvasRenderingContext2D, unit: UnitInstance, isActive: boolean): void {
@@ -311,6 +362,7 @@ export class CombatScreen {
   }
 
   private onMouseMove(e: MouseEvent): void {
+    if (!this.canvas) return;
     const rect = this.canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -325,9 +377,12 @@ export class CombatScreen {
     this.drawCanvas();
   }
 
-  private onCanvasClick(_e: MouseEvent): void {
+  private onCanvasClick(): void {
     if (!this.hoveredHex) return;
-    const hex = this.hoveredHex;
+    this.onHexClick(this.hoveredHex);
+  }
+
+  private onHexClick(hex: Hex): void {
     const cs = gameState.combat;
     if (!cs || cs.status !== "active") return;
 
