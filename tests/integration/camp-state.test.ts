@@ -5,6 +5,8 @@ import { gameState, resetGameState } from "../../src/state/GameState.ts";
 import { createInventory } from "../../src/run/Inventory.ts";
 import { CLASS_REGISTRY } from "../../src/data/classes.ts";
 import type { PartyMember } from "../../src/state/RunState.ts";
+import { buildParty, createRunState, defaultPartySpecs } from "../../src/run/PartySetup.ts";
+import { getCampState } from "../../src/ui/screens/CampScreen.ts";
 
 function createDefaultParty(): PartyMember[] {
   const classIds = ["class.guardian", "class.acolyte", "class.arcanist"];
@@ -40,11 +42,33 @@ function setupCampRun(seed: number = 12345): void {
     },
     runStatus: "active",
     shopStates: {},
+    campStates: {},
     recruitOffers: {},
     runModifiers: [],
     difficulty: "normal",
     eventSelections: {},
   };
+}
+
+function createFreshCampRun(nodeId: string = "node.camp_1") {
+  const run = createRunState(buildParty(defaultPartySpecs()), "normal", "short");
+  run.seed = 12345;
+  run.mapState = {
+    currentNodeId: nodeId,
+    visitedNodeIds: ["node.start", nodeId],
+    nodesCleared: 2,
+    elitesDefeated: 0,
+    bossDefeated: false,
+  };
+  return run;
+}
+
+function findButton(root: HTMLElement, startsWith: string): HTMLButtonElement {
+  const button = Array.from(root.querySelectorAll("button")).find((b) =>
+    b.textContent?.startsWith(startsWith),
+  );
+  if (!button) throw new Error(`Missing button: ${startsWith}`);
+  return button as HTMLButtonElement;
 }
 
 describe("CampScreen state", () => {
@@ -54,6 +78,68 @@ describe("CampScreen state", () => {
 
   afterEach(() => {
     cleanup();
+  });
+
+  it("stores camp actions on RunState so a fresh run starts with fresh camp choices", () => {
+    const { root, app, clickButton } = mountApp();
+    const runA = createFreshCampRun("node.camp_1");
+    gameState.run = runA;
+    gameState.screen = "camp";
+    app.render();
+
+    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Confirm");
+
+    expect(runA.campStates["node.camp_1"].used).toEqual(["rest"]);
+    expect(runA.campStates["node.camp_1"].outcomes[0]).toContain("Party rested");
+
+    const runB = createFreshCampRun("node.camp_1");
+    gameState.run = runB;
+    gameState.screen = "camp";
+    app.render();
+
+    expect(getCampState(runB).used).toEqual([]);
+    const restButton = findButton(root, "Rest");
+    expect(restButton.disabled).toBe(false);
+    expect(restButton.textContent).not.toContain("Already done");
+  });
+
+  it("persists used actions when revisiting the same camp node in the same run", () => {
+    const { root, app, clickButton } = mountApp();
+    const run = createFreshCampRun("node.camp_1");
+    gameState.run = run;
+    gameState.screen = "camp";
+    app.render();
+
+    clickButton("Prepare for Combat (Bless the party next battle)");
+    clickButton("Confirm");
+    app.render();
+
+    expect(getCampState(run).used).toEqual(["prepare"]);
+    const prepareButton = findButton(root, "Prepare for Combat");
+    expect(prepareButton.disabled).toBe(true);
+    expect(prepareButton.textContent).toContain("Already done at this camp");
+  });
+
+  it("keeps different camp nodes fresh within the same run", () => {
+    const { root, app, clickButton } = mountApp();
+    const run = createFreshCampRun("node.camp_a");
+    gameState.run = run;
+    gameState.screen = "camp";
+    app.render();
+
+    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Confirm");
+    expect(run.campStates["node.camp_a"].used).toEqual(["rest"]);
+
+    run.mapState.currentNodeId = "node.camp_b";
+    run.mapState.visitedNodeIds.push("node.camp_b");
+    app.render();
+
+    expect(getCampState(run).used).toEqual([]);
+    const restButton = findButton(root, "Rest");
+    expect(restButton.disabled).toBe(false);
+    expect(restButton.textContent).not.toContain("Already");
   });
 
   it("Rest shows a preview, Confirm applies it, and Leave returns to map", () => {

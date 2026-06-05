@@ -170,6 +170,7 @@ function makeRun(party: PartyMember[]): RunState {
     },
     runStatus: "active",
     shopStates: {},
+    campStates: {},
     recruitOffers: {},
     runModifiers: [],
     difficulty: "normal",

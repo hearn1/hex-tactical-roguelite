@@ -56,6 +56,7 @@ const makeRun = (party: PartyMember[]): RunState => ({
   mapState: { currentNodeId: "node.start", visitedNodeIds: ["node.start"], nodesCleared: 0, elitesDefeated: 0, bossDefeated: false },
   runStatus: "active",
   shopStates: {},
+  campStates: {},
   recruitOffers: {},
   runModifiers: [],
   difficulty: "normal",

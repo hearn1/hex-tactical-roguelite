@@ -38,6 +38,12 @@ export interface PendingLevelUp {
 }
 
 export type Difficulty = "normal" | "hard";
+export type CampAction = "rest" | "train" | "brew" | "prepare";
+
+export interface CampNodeState {
+  used: CampAction[];
+  outcomes: string[];
+}
 
 export interface RunState {
   seed: number;
@@ -48,6 +54,7 @@ export interface RunState {
   mapState: MapState;
   runStatus: "active" | "won" | "lost";
   shopStates: Record<string, ShopInventory>;
+  campStates: Record<string, CampNodeState>;
   recruitOffers: Record<string, PartyMember[]>;
   runModifiers: RunModifier[];
   difficulty: Difficulty;

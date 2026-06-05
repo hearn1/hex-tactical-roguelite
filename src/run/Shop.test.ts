@@ -45,6 +45,7 @@ function makeRun(overrides?: Partial<RunState>): RunState {
     },
     runStatus: "active",
     shopStates: {},
+    campStates: {},
     recruitOffers: {},
     runModifiers: [],
     difficulty: "normal",

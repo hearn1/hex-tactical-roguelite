@@ -145,6 +145,7 @@ describe("createRunState", () => {
     expect(run.mapTemplateId).toBe("long");
     expect(run.mapState.currentNodeId).toBe("node.long_start");
     expect(run.mapState.visitedNodeIds).toEqual(["node.long_start"]);
+    expect(run.campStates).toEqual({});
   });
 
   it("can start a run on the short prototype template", () => {

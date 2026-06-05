@@ -10,9 +10,7 @@ import {
 import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
-
-/** Camp choices the player can take during a single visit. */
-type CampAction = "rest" | "train" | "brew" | "prepare";
+import type { CampAction, CampNodeState, RunState } from "../../state/RunState.ts";
 
 /** Actions that count as "recovery" — only one of these is allowed per camp visit (anti-glut). */
 const RECOVERY_ACTIONS: ReadonlySet<CampAction> = new Set<CampAction>(["rest", "brew"]);
@@ -20,32 +18,31 @@ const RECOVERY_ACTIONS: ReadonlySet<CampAction> = new Set<CampAction>(["rest", "
 const TRAIN_XP = 5;
 
 // Module-level state persists across CampScreen instances created by App.render().
-// A camp visit is multi-choice: the player can take several actions (each at most once) and the
-// outcomes accumulate in `outcomes` until they Leave. `recovery` gating limits Rest/Brew to one.
+// Keep only transient UI flow here; persistent per-camp choices/logs live on RunState.campStates.
 let phase: "menu" | "confirm" = "menu";
 let confirmAction: CampAction | null = null;
 let pickingHero: boolean = false;
-let outcomes: string[] = [];
-let used: Set<CampAction> = new Set();
-let lastNodeId: string | null = null;
-let lastNodesCleared: number = 0;
+let lastRenderedNodeId: string | null = null;
 
-function resetState(): void {
+function resetTransientState(): void {
   phase = "menu";
   confirmAction = null;
   pickingHero = false;
-  outcomes = [];
-  used = new Set();
-  lastNodeId = null;
-  lastNodesCleared = 0;
+  lastRenderedNodeId = null;
 }
 
 export function resetCampScreenState(): void {
-  resetState();
+  resetTransientState();
 }
 
-function recoveryUsed(): boolean {
-  for (const a of used) if (RECOVERY_ACTIONS.has(a)) return true;
+export function getCampState(run: RunState): CampNodeState {
+  const nodeId = run.mapState.currentNodeId;
+  run.campStates[nodeId] ??= { used: [], outcomes: [] };
+  return run.campStates[nodeId];
+}
+
+function recoveryUsed(campState: CampNodeState): boolean {
+  for (const a of campState.used) if (RECOVERY_ACTIONS.has(a)) return true;
   return false;
 }
 
@@ -56,20 +53,23 @@ export class CampScreen {
     this.app = app;
   }
 
-  private checkFreshVisit(): void {
+  private resetTransientStateForNode(): void {
     const run = gameState.run;
-    if (!run) { resetState(); return; }
-    const nd = run.mapState.currentNodeId;
-    const nc = run.mapState.nodesCleared;
-    if (nd !== lastNodeId || nc !== lastNodesCleared) {
-      resetState();
-      lastNodeId = nd;
-      lastNodesCleared = nc;
+    if (!run) {
+      resetTransientState();
+      return;
+    }
+    const nodeId = run.mapState.currentNodeId;
+    if (nodeId !== lastRenderedNodeId) {
+      phase = "menu";
+      confirmAction = null;
+      pickingHero = false;
+      lastRenderedNodeId = nodeId;
     }
   }
 
   render(): HTMLElement {
-    this.checkFreshVisit();
+    this.resetTransientStateForNode();
 
     const container = document.createElement("div");
     container.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:40px 20px;gap:16px;max-width:600px;margin:0 auto;";
@@ -100,17 +100,18 @@ export class CampScreen {
   /** A small log of everything the party has done at this camp, plus a bag summary. */
   private renderStatus(): HTMLElement {
     const run = gameState.run!;
+    const campState = getCampState(run);
     const wrap = document.createElement("div");
     wrap.style.cssText = "display:flex;flex-direction:column;gap:8px;width:320px;";
 
-    if (outcomes.length > 0) {
+    if (campState.outcomes.length > 0) {
       const log = document.createElement("div");
       log.style.cssText = "background:#1c1c1c;border:1px solid #333;border-radius:6px;padding:8px 12px;font-size:13px;color:#4f4;";
       const head = document.createElement("div");
       head.textContent = "Camp Log";
       head.style.cssText = "color:#9c9;font-weight:bold;margin-bottom:4px;";
       log.appendChild(head);
-      for (const line of outcomes) {
+      for (const line of campState.outcomes) {
         const row = document.createElement("div");
         row.textContent = `• ${line}`;
         log.appendChild(row);
@@ -169,8 +170,9 @@ export class CampScreen {
   /** Returns a disabled reason for a choice, or null when it is available. */
   private disabledReason(action: CampAction): string | null {
     const r = gameState.run!;
-    if (used.has(action)) return "Already done at this camp.";
-    if (RECOVERY_ACTIONS.has(action) && recoveryUsed()) return "Already recovered at this camp.";
+    const campState = getCampState(r);
+    if (campState.used.includes(action)) return "Already done at this camp.";
+    if (RECOVERY_ACTIONS.has(action) && recoveryUsed(campState)) return "Already recovered at this camp.";
     if (action === "brew" && r.gold < CAMP_BREW_POTION_COST) return `Requires ${CAMP_BREW_POTION_COST} gold.`;
     if (action === "train" && !r.party.some((p) => p.hp > 0)) return "Requires a living hero.";
     return null;
@@ -249,21 +251,26 @@ export class CampScreen {
 
   private applyAction(action: CampAction): void {
     const run = gameState.run!;
+    const campState = getCampState(run);
     if (action === "rest") {
       const before = run.party.map((p) => p.hp);
       restParty(run.party);
       const messages = run.party.map((p, i) => `${p.displayName}: ${before[i]} → ${p.hp} HP`);
-      outcomes.push(`Party rested! ${messages.join(", ")}`);
-      used.add("rest");
+      campState.outcomes.push(`Party rested! ${messages.join(", ")}`);
+      this.markUsed(campState, "rest");
     } else if (action === "brew") {
       const result = brewPotion(run);
-      outcomes.push(result.message);
-      if (result.ok) used.add("brew");
+      campState.outcomes.push(result.message);
+      if (result.ok) this.markUsed(campState, "brew");
     } else if (action === "prepare") {
       const result = prepareForCombat(run);
-      outcomes.push(result.message);
-      used.add("prepare");
+      campState.outcomes.push(result.message);
+      this.markUsed(campState, "prepare");
     }
+  }
+
+  private markUsed(campState: CampNodeState, action: CampAction): void {
+    if (!campState.used.includes(action)) campState.used.push(action);
   }
 
   private renderHeroPicker(): HTMLElement {
@@ -282,14 +289,15 @@ export class CampScreen {
       btn.textContent = `${classDef?.displayName ?? pm.classId} — ${pm.displayName} (Lv.${pm.level} ${pm.xp} XP)`;
       btn.style.cssText = "padding:8px 16px;font-size:13px;width:320px;";
       btn.addEventListener("click", () => {
+        const campState = getCampState(run);
         const result = trainPartyMember(pm, TRAIN_XP);
         let msg = `${pm.displayName} gains ${TRAIN_XP} XP (now ${pm.xp} XP).`;
         if (result.leveledUp) {
           msg += ` Reaches Level ${result.newLevel}!`;
           enqueuePendingLevelUps(gameState.pendingLevelUps, pm.instanceId, pm.classId, result.levelsGained);
         }
-        outcomes.push(msg);
-        used.add("train");
+        campState.outcomes.push(msg);
+        this.markUsed(campState, "train");
         pickingHero = false;
         this.app.render();
       });
