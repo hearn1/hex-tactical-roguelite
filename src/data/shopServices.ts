@@ -1,7 +1,8 @@
-import type { RunState, PartyMember } from "../state/RunState.ts";
+import type { RunState } from "../state/RunState.ts";
 import type { ShopInventory, RunModifier } from "../state/types.ts";
 import { NODE_REGISTRY } from "./nodes.ts";
 import { ensureRunRestState } from "../run/Rest.ts";
+import { applyShopDiscount } from "../run/ShopPricing.ts";
 
 export interface ShopServiceDef {
   id: string;
@@ -36,7 +37,8 @@ function healPartyApply(run: RunState, _shop: ShopInventory): string {
 
 function healPartyAvailable(run: RunState, shop: ShopInventory): { available: boolean; reason: string } {
   if (shop.servicesUsed[HEAL_SERVICE_ID]) return { available: false, reason: "Already used" };
-  if (run.gold < HEAL_PRICE) return { available: false, reason: `Requires ${HEAL_PRICE} gold` };
+  const price = applyShopDiscount(HEAL_PRICE, run.runModifiers);
+  if (run.gold < price) return { available: false, reason: `Requires ${price} gold` };
   return { available: true, reason: "" };
 }
 
@@ -59,7 +61,8 @@ function removeDrawbackApply(run: RunState, _shop: ShopInventory): string {
 
 function removeDrawbackAvailable(run: RunState, shop: ShopInventory): { available: boolean; reason: string } {
   if (shop.servicesUsed[REMOVE_DRAWBACK_SERVICE_ID]) return { available: false, reason: "Already used" };
-  if (run.gold < REMOVE_DRAWBACK_PRICE) return { available: false, reason: `Requires ${REMOVE_DRAWBACK_PRICE} gold` };
+  const price = applyShopDiscount(REMOVE_DRAWBACK_PRICE, run.runModifiers);
+  if (run.gold < price) return { available: false, reason: `Requires ${price} gold` };
   if (!findDrawback(run.runModifiers)) return { available: false, reason: "No drawbacks to remove" };
   return { available: true, reason: "" };
 }
@@ -68,21 +71,36 @@ function describeRunModifier(mod: RunModifier): string {
   if (mod.kind === "gold_multiplier") {
     return `Gold multiplier ${mod.value}x`;
   }
+  if (mod.kind === "shop_discount") {
+    return `Shop discount ${Math.round(mod.value * 100)}%`;
+  }
   return `Unknown modifier (${mod.kind})`;
 }
 
-function buyRumorApply(run: RunState, _shop: ShopInventory): string {
+export function revealUpcomingNodes(run: RunState, count: number): string[] {
   const nodeId = run.mapState.currentNodeId;
   const nodeDef = NODE_REGISTRY[nodeId];
-  if (!nodeDef || nodeDef.nextNodeIds.length === 0) return "No upcoming nodes to reveal.";
+  if (!nodeDef || nodeDef.nextNodeIds.length === 0 || count <= 0) return [];
 
   if (!run.revealedForecasts) run.revealedForecasts = {};
 
-  const unvisited = nodeDef.nextNodeIds.filter((id) => !run.mapState.visitedNodeIds.includes(id));
-  if (unvisited.length === 0) return "No upcoming nodes to reveal.";
+  const targets = nodeDef.nextNodeIds
+    .filter((id) => !run.mapState.visitedNodeIds.includes(id))
+    .filter((id) => !run.revealedForecasts?.[id])
+    .slice(0, count);
 
-  const targetId = unvisited[0];
-  run.revealedForecasts[targetId] = true;
+  for (const targetId of targets) {
+    run.revealedForecasts[targetId] = true;
+  }
+
+  return targets;
+}
+
+function buyRumorApply(run: RunState, _shop: ShopInventory): string {
+  const revealed = revealUpcomingNodes(run, 1);
+  if (revealed.length === 0) return "No upcoming nodes to reveal.";
+
+  const targetId = revealed[0];
   const target = NODE_REGISTRY[targetId];
   if (target) {
     return `Rumor reveals: "${target.title}" (${target.type}).`;
@@ -92,10 +110,13 @@ function buyRumorApply(run: RunState, _shop: ShopInventory): string {
 
 function buyRumorAvailable(run: RunState, shop: ShopInventory): { available: boolean; reason: string } {
   if (shop.servicesUsed[BUY_RUMOR_SERVICE_ID]) return { available: false, reason: "Already used" };
-  if (run.gold < RUMOR_PRICE) return { available: false, reason: `Requires ${RUMOR_PRICE} gold` };
+  const price = applyShopDiscount(RUMOR_PRICE, run.runModifiers);
+  if (run.gold < price) return { available: false, reason: `Requires ${price} gold` };
   const nodeDef = NODE_REGISTRY[run.mapState.currentNodeId];
   if (!nodeDef || nodeDef.nextNodeIds.length === 0) return { available: false, reason: "No upcoming nodes to reveal" };
-  const unvisited = nodeDef.nextNodeIds.filter((id) => !run.mapState.visitedNodeIds.includes(id));
+  const unvisited = nodeDef.nextNodeIds
+    .filter((id) => !run.mapState.visitedNodeIds.includes(id))
+    .filter((id) => !run.revealedForecasts?.[id]);
   if (unvisited.length === 0) return { available: false, reason: "No upcoming nodes to reveal" };
   return { available: true, reason: "" };
 }

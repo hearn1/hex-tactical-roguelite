@@ -1,12 +1,13 @@
 import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { RunState } from "../../state/RunState.ts";
-import { rollShopInventory, ITEM_PRICE, POTION_PRICE, buyShopItem, buyShopPotion, equipShopItem, stashShopItem, applyShopService } from "../../run/Shop.ts";
+import { rollShopInventory, getShopItemPrice, getShopPotionPrice, buyShopItem, buyShopPotion, equipShopItem, stashShopItem, applyShopService } from "../../run/Shop.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { BACKGROUND_REGISTRY } from "../../data/backgrounds.ts";
 import { SHOP_SERVICE_REGISTRY } from "../../data/shopServices.ts";
 import { ensureRunRestState } from "../../run/Rest.ts";
+import { applyShopDiscount } from "../../run/ShopPricing.ts";
 
 let pendingPurchasedItemId: string | null = null;
 let shopMessage: string = "";
@@ -102,7 +103,7 @@ export class ShopScreen {
     for (let i = 0; i < shop.items.length; i++) {
       const entry = shop.items[i];
       const def = ITEM_REGISTRY[entry.itemId];
-      const price = ITEM_PRICE[def?.rarity ?? "common"] ?? 8;
+      const price = getShopItemPrice(entry.itemId, run.runModifiers);
       const mustResolvePurchase = pendingPurchasedItemId !== null;
       const canAfford = run.gold >= price && !entry.sold && !mustResolvePurchase;
 
@@ -168,7 +169,7 @@ export class ShopScreen {
     for (let i = 0; i < shop.potions.length; i++) {
       const entry = shop.potions[i];
       const def = POTION_REGISTRY[entry.potionId];
-      const price = POTION_PRICE[entry.potionId] ?? 10;
+      const price = getShopPotionPrice(entry.potionId, run.runModifiers);
       const mustResolvePurchase = pendingPurchasedItemId !== null;
       const canAfford = run.gold >= price && !entry.sold && !mustResolvePurchase;
 
@@ -230,7 +231,8 @@ export class ShopScreen {
     for (const service of SHOP_SERVICE_REGISTRY) {
       const isUsed = shop.servicesUsed[service.id] === true;
       const availCheck = service.isAvailable(run, shop);
-      const canAfford = !isUsed && run.gold >= service.price && !mustResolvePurchase;
+      const price = applyShopDiscount(service.price, run.runModifiers);
+      const canAfford = !isUsed && run.gold >= price && !mustResolvePurchase;
 
       const card = document.createElement("div");
       card.style.cssText = `border:1px solid ${isUsed ? "#333" : "#555"};border-radius:6px;padding:8px;margin-bottom:8px;background:#2a2a4a;${isUsed ? "opacity:0.5;" : ""}`;
@@ -247,7 +249,7 @@ export class ShopScreen {
 
       const priceEl = document.createElement("div");
       priceEl.style.cssText = "font-size:13px;color:#ff8;";
-      priceEl.textContent = isUsed ? "Already used" : `${service.price} gold`;
+      priceEl.textContent = isUsed ? "Already used" : `${price} gold`;
       card.appendChild(priceEl);
 
       if (!isUsed) {

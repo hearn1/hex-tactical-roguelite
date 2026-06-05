@@ -395,12 +395,29 @@ export class DataRepository {
     }
 
     for (const [id, def] of this.backgrounds) {
-      const effect = def.effect;
-      if (effect.type === "potion" && !allPotionIds.has(effect.potionId)) {
-        errors.push(`Background "${id}": potion "${effect.potionId}" not found`);
+      if (!statKeys.has(def.statBonus.stat)) {
+        errors.push(`Background "${id}": stat "${def.statBonus.stat}" is not a valid stat`);
       }
-      if (effect.type === "statBonus" && !checkStats.has(effect.stat)) {
-        errors.push(`Background "${id}": stat "${effect.stat}" is not a valid check stat`);
+      if (def.startingItemId && !allItemIds.has(def.startingItemId)) {
+        errors.push(`Background "${id}": item "${def.startingItemId}" not found`);
+      }
+      if (def.startingPotionId && !allPotionIds.has(def.startingPotionId)) {
+        errors.push(`Background "${id}": potion "${def.startingPotionId}" not found`);
+      }
+      if (def.startingPotionCount !== undefined && def.startingPotionCount <= 0) {
+        errors.push(`Background "${id}": startingPotionCount must be > 0`);
+      }
+      if (def.perk.type === "xpMultiplier" && def.perk.value <= 0) {
+        errors.push(`Background "${id}": XP multiplier must be > 0`);
+      }
+      if (def.perk.type === "revealNodes" && def.perk.count <= 0) {
+        errors.push(`Background "${id}": reveal count must be > 0`);
+      }
+      if (def.perk.type === "bonusGold" && def.perk.amount < 0) {
+        errors.push(`Background "${id}": bonus gold must be >= 0`);
+      }
+      if (def.perk.type === "shopDiscount" && (def.perk.value < 0 || def.perk.value >= 1)) {
+        errors.push(`Background "${id}": shop discount must be between 0 and 1`);
       }
     }
 

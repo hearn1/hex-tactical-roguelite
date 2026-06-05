@@ -94,6 +94,8 @@ export function describeRunModifier(mod: RunModifier): string {
   switch (mod.kind) {
     case "gold_multiplier":
       return `Gold rewards boosted (x${mod.value}) for the run.`;
+    case "shop_discount":
+      return `Shop prices reduced by ${Math.round(mod.value * 100)}% for the run.`;
     case "global_stat":
       return `Party gains +${mod.value} ${mod.stat} for the run.`;
     case "first_hit_bonus_damage":

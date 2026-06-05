@@ -5,6 +5,8 @@ import { gameState, resetGameState } from "../../src/state/GameState.ts";
 import { initCombatState, createCombatFromRun } from "../../src/state/GameState.ts";
 import { setupDefaultRun, setupWonRun, setupLostRun, setupActiveRun } from "./helpers/seededRun.ts";
 import { ITEM_PRICE } from "../../src/run/Shop.ts";
+import { LEVELUP_PASSIVE_START_COMBAT_GUARDED } from "../../src/data/levelups.ts";
+import { NODE_REGISTRY } from "../../src/data/nodes.ts";
 
 describe("screen-transitions", () => {
   beforeEach(() => {
@@ -41,6 +43,31 @@ describe("screen-transitions", () => {
     expect(getScreen()).toBe("map");
     expect(gameState.run).not.toBeNull();
     expect(gameState.run!.party).toHaveLength(3);
+  });
+
+  it("SetupScreen: default backgrounds show composite summaries and apply on start", () => {
+    const { app, root, getScreen, clickButton } = mountApp();
+    gameState.screen = "main_menu";
+    app.render();
+    clickButton("Custom Party");
+
+    expect(root.textContent).toContain("Stat: +1 Might");
+    expect(root.textContent).toContain("Item: 1x Healing Potion");
+    expect(root.textContent).toContain("Perk: Start each combat Guarded");
+    expect(root.textContent).toContain("Perk: Reveal 2 upcoming nodes");
+
+    clickButton("Confirm Party");
+
+    expect(getScreen()).toBe("map");
+    const run = gameState.run!;
+    expect(run.party[0].passives).toContain(LEVELUP_PASSIVE_START_COMBAT_GUARDED);
+    expect(run.party[1].bonusStats.spirit).toBe(1);
+    expect(run.party[2].bonusStats.spirit).toBe(1);
+    expect(run.inventory.potions).toEqual(["potion.healing", "potion.healing"]);
+    expect(run.runModifiers).toContainEqual({ kind: "reward_xp_multiplier", value: 1.1 });
+    expect(Object.keys(run.revealedForecasts ?? {})).toEqual(
+      NODE_REGISTRY[run.mapState.currentNodeId].nextNodeIds.slice(0, 2),
+    );
   });
 
   it('MainMenu: "Meta Upgrades" transitions to meta_upgrades', () => {

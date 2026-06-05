@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { rollShopInventory, buyShopItem, buyShopPotion, useHealService, stashShopItem, equipShopItem, applyShopService, ITEM_PRICE, POTION_PRICE } from "./Shop.ts";
+import { rollShopInventory, buyShopItem, buyShopPotion, useHealService, stashShopItem, equipShopItem, applyShopService, getShopItemPrice, getShopPotionPrice } from "./Shop.ts";
+import { applyShopDiscount } from "./ShopPricing.ts";
 import { createRng } from "../core/rng.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
 import { createInventory } from "./Inventory.ts";
@@ -93,6 +94,22 @@ describe("rollShopInventory", () => {
     const b = rollShopInventory(rng2);
     expect(a.items.map((e) => e.itemId)).toEqual(b.items.map((e) => e.itemId));
     expect(a.potions.map((e) => e.potionId)).toEqual(b.potions.map((e) => e.potionId));
+  });
+});
+
+describe("shop pricing", () => {
+  it("applies shop_discount modifiers to item and potion prices", () => {
+    const modifiers = [{ kind: "shop_discount" as const, value: 0.1 }];
+
+    expect(getShopItemPrice("item.iron_sword", modifiers)).toBe(7);
+    expect(getShopPotionPrice("potion.healing", modifiers)).toBe(5);
+  });
+
+  it("stacks multiple shop discounts multiplicatively and floors to whole gold", () => {
+    expect(applyShopDiscount(100, [
+      { kind: "shop_discount", value: 0.1 },
+      { kind: "shop_discount", value: 0.2 },
+    ])).toBe(72);
   });
 });
 
@@ -219,6 +236,18 @@ describe("applyShopService — heal party", () => {
     expect(run.gold).toBe(35);
     expect(run.party[0].hp).toBe(13);
     expect(run.party[1].hp).toBe(14);
+  });
+
+  it("uses discounted service prices", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({
+      gold: 50,
+      runModifiers: [{ kind: "shop_discount", value: 0.1 }],
+    });
+
+    applyShopService(HEAL_SERVICE_ID, run, shop);
+
+    expect(run.gold).toBe(37);
   });
 
   it("deducts gold exactly once", () => {

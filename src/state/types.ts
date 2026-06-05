@@ -107,6 +107,7 @@ export interface ShopInventory {
 
 export type RunModifier =
   | { kind: "gold_multiplier"; value: number }
+  | { kind: "shop_discount"; value: number }
   | { kind: "global_stat"; stat: keyof UnitStats; value: number }
   | { kind: "first_hit_bonus_damage"; amount: number }
   | { kind: "next_combat_blessing" }
