@@ -206,12 +206,18 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     hasActed: false,
     equippedItemIds: { ...pm.equippedItemIds },
     bonusStats: { ...pm.bonusStats },
+    abilityScores: pm.abilityScores ? { ...pm.abilityScores } : undefined,
     backgroundId: pm.backgroundId,
     actionUpgrades: pm.actionUpgrades ? { ...pm.actionUpgrades } : undefined,
     passives: pm.passives ? [...pm.passives] : undefined,
     firstHealDone: false,
   };
   unit.stats = computeStats(unit);
+  if (pm.hp >= pm.maxHp) {
+    unit.hp = unit.stats.maxHp;
+  } else {
+    unit.hp = Math.min(pm.hp, unit.stats.maxHp);
+  }
   return unit;
 }
 
@@ -325,6 +331,7 @@ export function syncPartyFromCombat(combat: CombatState, run: RunState): void {
     const unit = combat.units.find((u) => u.instanceId === pm.instanceId);
     if (!unit) continue;
     pm.hp = unit.hp > 0 ? unit.hp : 1;
+    pm.maxHp = unit.stats.maxHp;
     pm.xp = unit.xp;
     pm.level = unit.level;
     pm.bonusStats = { ...(unit.bonusStats ?? {}) };

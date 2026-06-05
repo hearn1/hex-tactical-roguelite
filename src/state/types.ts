@@ -1,3 +1,5 @@
+import type { AbilityScores } from "../data/abilities.ts";
+
 export type ScreenId =
   | "main_menu"
   | "meta_upgrades"
@@ -75,6 +77,8 @@ export interface UnitInstance {
   hasActed: boolean;
   equippedItemIds: { weapon: string | null; armor: string | null; trinket: string | null };
   bonusStats: Partial<UnitStats>;
+  /** Hero ability scores from run setup. Enemies omit this and keep definition stats. */
+  abilityScores?: AbilityScores;
   /** Hero's chosen background (heroes only). Display-only here; the effect was applied at run start. */
   backgroundId?: string;
   /** Per-action level-up bonuses (F29). Copied from the party member at combat start. */

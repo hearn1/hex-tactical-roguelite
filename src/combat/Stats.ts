@@ -1,6 +1,7 @@
 import type { UnitInstance, UnitStats } from "../state/types.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
+import { abilityMod } from "../data/abilities.ts";
 
 export function computeStats(unit: UnitInstance): UnitStats {
   const baseDef = CLASS_REGISTRY[unit.defId];
@@ -24,6 +25,16 @@ export function computeStats(unit: UnitInstance): UnitStats {
       const val = unit.bonusStats[key];
       if (val !== undefined) bonuses[key] += val;
     }
+  }
+
+  if (unit.abilityScores) {
+    const scores = unit.abilityScores;
+    bonuses.might += Math.max(0, abilityMod(scores.str));
+    bonuses.agility += abilityMod(scores.dex);
+    if (scores.dex > 10) bonuses.armor += 1;
+    bonuses.maxHp += abilityMod(scores.con) * Math.max(1, unit.level);
+    if (unit.defId === "class.arcanist") bonuses.spirit += abilityMod(scores.int);
+    if (unit.defId === "class.acolyte") bonuses.spirit += abilityMod(scores.wis);
   }
 
   return {

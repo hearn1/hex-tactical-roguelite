@@ -1,9 +1,11 @@
 import type { App } from "../App.ts";
 import { gameState, reseedRngFromRun } from "../../state/GameState.ts";
 import type { Difficulty, PartyMember } from "../../state/RunState.ts";
+import type { UnitInstance } from "../../state/types.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { ACTION_REGISTRY } from "../../data/actions.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
+import { createRng } from "../../core/rng.ts";
 import {
   defaultPartySpecs,
   validatePartySetup,
@@ -12,6 +14,14 @@ import {
   RUN_SETUP_PARTY_SIZE,
 } from "../../run/PartySetup.ts";
 import type { PartySpec } from "../../run/PartySetup.ts";
+import {
+  ABILITY_KEYS,
+  ABILITY_LABELS,
+  abilityMod,
+  rollAbilityScores,
+} from "../../data/abilities.ts";
+import type { AbilityKey, AbilityRoll, AbilityScores } from "../../data/abilities.ts";
+import { computeStats } from "../../combat/Stats.ts";
 import {
   applyMetaUpgradesToFreshRun,
   getAmbiguousClassUpgrades,
@@ -34,6 +44,48 @@ let initialized = false;
 let seedInput: string = "";
 let modifierOffers: string[] = [];
 let chosenModifierId: string | null = null;
+let setupRollRng: () => number = createRng(Date.now());
+let abilityRollPools: Record<number, AbilityRoll[]> = {};
+let abilityAssignments: Record<number, Partial<Record<AbilityKey, number>>> = {};
+
+function parseSetupSeed(): number {
+  return parseInt(seedInput, 10) || Date.now();
+}
+
+function resetAbilityRollState(): void {
+  setupRollRng = createRng(parseSetupSeed());
+  abilityRollPools = {};
+  abilityAssignments = {};
+}
+
+function formatAbilityMod(score: number): string {
+  const mod = abilityMod(score);
+  return mod >= 0 ? `+${mod}` : `${mod}`;
+}
+
+function formatRoll(roll: AbilityRoll, index: number): string {
+  return `#${index + 1} ${roll.total} [${roll.dice.join(", ")} drop ${roll.dropped}]`;
+}
+
+function syncAssignedAbilityScores(index: number): void {
+  const rolls = abilityRollPools[index];
+  const assigned = abilityAssignments[index] ?? {};
+  if (!rolls || !ABILITY_KEYS.every((key) => assigned[key] !== undefined)) {
+    specs[index].abilityScores = undefined;
+    return;
+  }
+
+  const next: Partial<AbilityScores> = {};
+  for (const key of ABILITY_KEYS) {
+    const rollIndex = assigned[key];
+    if (rollIndex === undefined || !rolls[rollIndex]) {
+      specs[index].abilityScores = undefined;
+      return;
+    }
+    next[key] = rolls[rollIndex].total;
+  }
+  specs[index].abilityScores = next as AbilityScores;
+}
 
 /** Re-seed the setup screen with pre-filled defaults. Called when entering from the menu. */
 export function resetSetupScreenState(diff: Difficulty = "normal"): void {
@@ -45,8 +97,9 @@ export function resetSetupScreenState(diff: Difficulty = "normal"): void {
   assignments = {};
   seedInput = String(Date.now());
   chosenModifierId = null;
+  resetAbilityRollState();
   // Generate offers from the seed once setup screen state is reset
-  const seed = parseInt(seedInput, 10) || Date.now();
+  const seed = parseSetupSeed();
   modifierOffers = generateModifierOffers(seed, 3);
   initialized = true;
 }
@@ -96,9 +149,10 @@ export class SetupScreen {
     seedField.style.cssText = "padding:4px 8px;font-size:13px;flex:1;min-width:100px;font-family:monospace;";
     seedField.addEventListener("input", () => {
       seedInput = seedField.value;
-      const seed = parseInt(seedInput, 10) || Date.now();
+      const seed = parseSetupSeed();
       modifierOffers = generateModifierOffers(seed, 3);
       chosenModifierId = null;
+      setupRollRng = createRng(seed);
       this.renderModifierSection();
     });
     seedRow.appendChild(seedField);
@@ -280,14 +334,122 @@ export class SetupScreen {
     row.appendChild(header);
 
     row.appendChild(this.renderBackgroundPicker(spec, index));
+    row.appendChild(this.renderAbilityScores(spec, index));
 
     const errorEl = document.createElement("div");
     errorEl.style.cssText = "color:#f66;font-size:12px;min-height:14px;";
     row.appendChild(errorEl);
 
-    row.appendChild(this.renderClassPreview(spec.classId));
+    row.appendChild(this.renderClassPreview(spec.classId, spec.abilityScores));
 
     return { row, errorEl };
+  }
+
+  private renderAbilityScores(spec: PartySpec, index: number): HTMLElement {
+    const wrap = document.createElement("div");
+    wrap.style.cssText =
+      "display:flex;flex-direction:column;gap:8px;border-top:1px solid #333;padding-top:8px;";
+
+    const header = document.createElement("div");
+    header.style.cssText = "display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;";
+
+    const label = document.createElement("span");
+    label.textContent = "Ability Scores";
+    label.style.cssText = "font-size:13px;color:#ddd;font-weight:bold;";
+    header.appendChild(label);
+
+    const rollBtn = document.createElement("button");
+    rollBtn.textContent = "Roll 4d6 Drop Lowest";
+    rollBtn.style.cssText = "padding:5px 10px;font-size:12px;";
+    rollBtn.addEventListener("click", () => {
+      abilityRollPools[index] = rollAbilityScores(setupRollRng);
+      abilityAssignments[index] = {};
+      specs[index].abilityScores = undefined;
+      this.app.render();
+    });
+    header.appendChild(rollBtn);
+    wrap.appendChild(header);
+
+    const scoreLine = document.createElement("div");
+    scoreLine.style.cssText = "font-size:12px;color:#bbb;display:flex;gap:8px;flex-wrap:wrap;";
+    if (spec.abilityScores) {
+      for (const key of ABILITY_KEYS) {
+        const chip = document.createElement("span");
+        const score = spec.abilityScores[key];
+        chip.textContent = `${ABILITY_LABELS[key]} ${score} (${formatAbilityMod(score)})`;
+        chip.style.cssText = "padding:2px 6px;border:1px solid #444;border-radius:4px;background:#202020;";
+        scoreLine.appendChild(chip);
+      }
+    } else {
+      scoreLine.textContent = "Unassigned";
+      scoreLine.style.color = "#f80";
+    }
+    wrap.appendChild(scoreLine);
+
+    const rolls = abilityRollPools[index];
+    if (!rolls) return wrap;
+
+    const rollLine = document.createElement("div");
+    rollLine.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;";
+    rolls.forEach((roll, rollIndex) => {
+      const pill = document.createElement("span");
+      pill.textContent = formatRoll(roll, rollIndex);
+      pill.style.cssText = "font-size:11px;color:#ccc;border:1px solid #555;border-radius:4px;padding:2px 5px;";
+      rollLine.appendChild(pill);
+    });
+    wrap.appendChild(rollLine);
+
+    const grid = document.createElement("div");
+    grid.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:6px;";
+
+    const assigned = abilityAssignments[index] ?? {};
+    const usedRolls = new Set<number>(
+      Object.values(assigned).filter((rollIndex): rollIndex is number => rollIndex !== undefined),
+    );
+
+    for (const key of ABILITY_KEYS) {
+      const cell = document.createElement("label");
+      cell.style.cssText = "display:flex;gap:5px;align-items:center;font-size:12px;color:#bbb;";
+
+      const text = document.createElement("span");
+      text.textContent = ABILITY_LABELS[key];
+      text.style.cssText = "width:28px;color:#ddd;font-weight:bold;";
+      cell.appendChild(text);
+
+      const select = document.createElement("select");
+      select.style.cssText = "flex:1;min-width:72px;padding:3px 5px;font-size:12px;";
+
+      const blank = document.createElement("option");
+      blank.value = "";
+      blank.textContent = "--";
+      select.appendChild(blank);
+
+      rolls.forEach((roll, rollIndex) => {
+        const opt = document.createElement("option");
+        opt.value = String(rollIndex);
+        opt.textContent = `${roll.total}`;
+        opt.disabled = usedRolls.has(rollIndex) && assigned[key] !== rollIndex;
+        if (assigned[key] === rollIndex) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      select.addEventListener("change", () => {
+        abilityAssignments[index] = { ...(abilityAssignments[index] ?? {}) };
+        if (select.value === "") {
+          delete abilityAssignments[index][key];
+        } else {
+          abilityAssignments[index][key] = Number(select.value);
+        }
+        syncAssignedAbilityScores(index);
+        this.app.render();
+      });
+
+      cell.appendChild(select);
+      grid.appendChild(cell);
+    }
+    wrap.appendChild(grid);
+
+    return wrap;
   }
 
   /** Per-slot background dropdown: name + effect, reversible until Confirm, "none" allowed. */
@@ -335,7 +497,7 @@ export class SetupScreen {
     return wrap;
   }
 
-  private renderClassPreview(classId: string): HTMLElement {
+  private renderClassPreview(classId: string, abilityScores?: AbilityScores): HTMLElement {
     const wrap = document.createElement("div");
     wrap.style.cssText = "font-size:12px;color:#bbb;display:flex;flex-direction:column;gap:3px;";
 
@@ -354,6 +516,12 @@ export class SetupScreen {
     stats.textContent = `HP ${s.maxHp} · Armor ${s.armor} · Move ${s.move} · Might ${s.might} · Agility ${s.agility} · Spirit ${s.spirit}`;
     wrap.appendChild(stats);
 
+    const previewStats = this.computePreviewStats(classId, abilityScores);
+    const preview = document.createElement("div");
+    preview.textContent = `Preview: HP ${previewStats.maxHp} | Armor ${previewStats.armor} | Move ${previewStats.move} | Might ${previewStats.might} | Agility ${previewStats.agility} | Spirit ${previewStats.spirit}`;
+    preview.style.color = abilityScores ? "#8c8" : "#aaa";
+    wrap.appendChild(preview);
+
     const actionNames = def.actionIds.map((id) => ACTION_REGISTRY[id]?.displayName ?? id);
     const actions = document.createElement("div");
     actions.textContent = `Actions: ${actionNames.join(", ")}`;
@@ -365,6 +533,35 @@ export class SetupScreen {
     wrap.appendChild(gear);
 
     return wrap;
+  }
+
+  private computePreviewStats(classId: string, abilityScores?: AbilityScores) {
+    const def = CLASS_REGISTRY[classId];
+    const equippedItemIds: UnitInstance["equippedItemIds"] = { weapon: null, armor: null, trinket: null };
+    for (const itemId of def?.startingItems ?? []) {
+      const item = ITEM_REGISTRY[itemId];
+      if (!item) continue;
+      if (!equippedItemIds[item.slot]) equippedItemIds[item.slot] = itemId;
+    }
+
+    const unit: UnitInstance = {
+      instanceId: "preview",
+      defId: classId,
+      displayName: "Preview",
+      team: "hero",
+      level: 1,
+      xp: 0,
+      stats: { ...def.baseStats },
+      hp: def.baseStats.maxHp,
+      pos: { q: 0, r: 0 },
+      conditions: [],
+      movePointsRemaining: 0,
+      hasActed: false,
+      equippedItemIds,
+      bonusStats: {},
+      abilityScores,
+    };
+    return computeStats(unit);
   }
 
   private onConfirm(): void {
@@ -387,7 +584,7 @@ export class SetupScreen {
   }
 
   private startRun(party: PartyMember[], targetAssignments: Record<string, string>): void {
-    const seed = parseInt(seedInput, 10) || Date.now();
+    const seed = parseSetupSeed();
     const run = createRunState(party, difficulty);
     run.seed = seed;
 

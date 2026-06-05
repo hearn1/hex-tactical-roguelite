@@ -1,6 +1,7 @@
 import type { UnitInstance, UnitStats } from "../state/types.ts";
 import type { PartyMember } from "../state/RunState.ts";
 import { computeStats } from "../combat/Stats.ts";
+import { abilityMod } from "../data/abilities.ts";
 
 export const XP_THRESHOLDS = [0, 20, 50, 90, 140] as const;
 export const MAX_LEVEL = 5;
@@ -74,7 +75,7 @@ export function applyXp(unit: UnitInstance, xp: number): LevelUpResult {
     return { leveledUp: false, newLevel: currentLevel, gains: {}, levelsGained: [] };
   }
 
-  const maxHpDelta = totalGains.maxHp ?? 0;
+  const previousMaxHp = unit.stats.maxHp;
 
   for (const key of STAT_KEYS) {
     const val = totalGains[key];
@@ -87,8 +88,11 @@ export function applyXp(unit: UnitInstance, xp: number): LevelUpResult {
   const newStats = computeStats(unit);
   unit.stats = newStats;
 
+  const maxHpDelta = newStats.maxHp - previousMaxHp;
   if (maxHpDelta > 0) {
     unit.hp += maxHpDelta;
+  } else if (unit.hp > newStats.maxHp) {
+    unit.hp = newStats.maxHp;
   }
 
   return { leveledUp: true, newLevel: currentLevel, gains: totalGains, levelsGained };
@@ -123,11 +127,16 @@ export function applyXpToPartyMember(pm: PartyMember, xp: number): LevelUpResult
     return { leveledUp: false, newLevel: currentLevel, gains: {}, levelsGained: [] };
   }
 
-  const maxHpDelta = totalGains.maxHp ?? 0;
+  const conLevelDelta = pm.abilityScores ? abilityMod(pm.abilityScores.con) * levelsGained.length : 0;
+  const maxHpDelta = (totalGains.maxHp ?? 0) + conLevelDelta;
 
+  if (maxHpDelta !== 0) {
+    pm.maxHp = Math.max(1, pm.maxHp + maxHpDelta);
+  }
   if (maxHpDelta > 0) {
-    pm.maxHp += maxHpDelta;
     pm.hp += maxHpDelta;
+  } else if (pm.hp > pm.maxHp) {
+    pm.hp = pm.maxHp;
   }
 
   for (const key of STAT_KEYS) {
