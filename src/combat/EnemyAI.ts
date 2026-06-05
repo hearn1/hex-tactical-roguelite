@@ -136,6 +136,7 @@ function handleBossTelegraph(unit: UnitInstance, state: CombatState, rng: () => 
       .map(hexKey)
       .filter((key) => state.gridKeys.includes(key));
     state.bossTelegraph = {
+      sourceId: unit.instanceId,
       actionId: BOSS_TELEGRAPH_ACTION,
       targetHexes,
       setOnRound: state.round,

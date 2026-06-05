@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import { takeEnemyTurn } from "./EnemyAI.ts";
-import { resolveAction, checkVictoryDefeat } from "./Action.ts";
+import { resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "./Action.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 import { hexesWithinRange, hexKey, neighbors } from "../core/hex.ts";
@@ -79,6 +79,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
 
     // Telegraph is set, targeting the radius-1 ring around the boss.
     expect(state.bossTelegraph).not.toBeNull();
+    expect(state.bossTelegraph!.sourceId).toBe(boss.instanceId);
     expect(state.bossTelegraph!.actionId).toBe("action.ground_slam");
     const expectedRing = neighbors(boss.pos).map(hexKey);
     expect(new Set(state.bossTelegraph!.targetHexes)).toEqual(new Set(expectedRing));
@@ -217,5 +218,92 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     expect(fragile.hp).toBe(0);
     checkVictoryDefeat(state);
     expect(state.status).toBe("defeat");
+  });
+
+  it("clears a boss telegraph when its source dies even if combat remains active", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20);
+    const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian" });
+    const minion = makeUnit({
+      instanceId: "minion",
+      pos: { q: 2, r: 0 },
+      defId: "enemy.goblin_skirmisher",
+      team: "enemy",
+      displayName: "Minion",
+      stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 },
+      hp: 8,
+    });
+    const state = makeBossState([boss, hero, minion]);
+
+    takeEnemyTurn(boss, state, rng);
+    expect(state.bossTelegraph).not.toBeNull();
+
+    boss.hp = 0;
+    checkVictoryDefeat(state);
+    removeDefeatedFromQueue(state);
+
+    expect(state.status).toBe("active");
+    expect(state.bossTelegraph).toBeNull();
+  });
+
+  it("preserves a boss telegraph when an unrelated unit dies", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20);
+    const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian" });
+    const minion = makeUnit({
+      instanceId: "minion",
+      pos: { q: 2, r: 0 },
+      defId: "enemy.goblin_skirmisher",
+      team: "enemy",
+      displayName: "Minion",
+      stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 },
+      hp: 0,
+    });
+    const state = makeBossState([boss, hero, minion]);
+
+    takeEnemyTurn(boss, state, rng);
+    expect(state.bossTelegraph).not.toBeNull();
+
+    removeDefeatedFromQueue(state);
+
+    expect(state.bossTelegraph).not.toBeNull();
+    expect(state.bossTelegraph!.sourceId).toBe(boss.instanceId);
+  });
+
+  it("clears a boss telegraph on victory and defeat", () => {
+    const boss = makeBoss(0);
+    const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian" });
+    const victoryState = makeBossState([boss, hero]);
+    victoryState.bossTelegraph = {
+      sourceId: boss.instanceId,
+      actionId: "action.ground_slam",
+      targetHexes: neighbors(boss.pos).map(hexKey),
+      setOnRound: victoryState.round,
+    };
+
+    checkVictoryDefeat(victoryState);
+
+    expect(victoryState.status).toBe("victory");
+    expect(victoryState.bossTelegraph).toBeNull();
+
+    const fallenHero = makeUnit({
+      instanceId: "hero_1",
+      pos: { q: 1, r: 0 },
+      defId: "class.guardian",
+      hp: 0,
+    });
+    const defeatBoss = makeBoss(20);
+    const defeatState = makeBossState([defeatBoss, fallenHero]);
+    defeatState.bossTelegraph = {
+      sourceId: defeatBoss.instanceId,
+      actionId: "action.ground_slam",
+      targetHexes: neighbors(defeatBoss.pos).map(hexKey),
+      setOnRound: defeatState.round,
+    };
+
+    checkVictoryDefeat(defeatState);
+
+    expect(defeatState.status).toBe("defeat");
+    expect(defeatState.bossTelegraph).toBeNull();
   });
 });

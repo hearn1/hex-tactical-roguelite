@@ -1,7 +1,7 @@
 import type { App } from "../App.ts";
 import { gameState, initCombatState } from "../../state/GameState.ts";
 import { syncPartyFromCombat } from "../../state/GameState.ts";
-import type { CombatState, UnitInstance, Hex } from "../../state/types.ts";
+import type { BossTelegraph, CombatState, UnitInstance, Hex } from "../../state/types.ts";
 import { hexKey, parseHexKey, pixelToHex, hexEquals } from "../../core/hex.ts";
 import { renderHexOutline, fillHex } from "../HexRenderer.ts";
 import { reachableHexes } from "../../combat/Movement.ts";
@@ -237,8 +237,9 @@ export class CombatScreen {
       }
     }
 
-    if (cs.bossTelegraph) {
-      for (const key of cs.bossTelegraph.targetHexes) {
+    const bossTelegraph = this.getLiveBossTelegraph(cs);
+    if (bossTelegraph) {
+      for (const key of bossTelegraph.targetHexes) {
         fillHex(ctx, parseHexKey(key), TELEGRAPH_COLOR);
       }
     }
@@ -492,12 +493,18 @@ export class CombatScreen {
     const banner = this.telegraphBannerEl;
     if (!banner) return;
     const cs = gameState.combat;
-    if (cs && cs.bossTelegraph) {
+    if (cs && this.getLiveBossTelegraph(cs)) {
       banner.textContent = "⚠ Ground Slam incoming — clear the highlighted hexes!";
       banner.style.display = "block";
     } else {
       banner.style.display = "none";
     }
+  }
+
+  private getLiveBossTelegraph(cs: CombatState): BossTelegraph | null {
+    const telegraph = cs.bossTelegraph;
+    if (!telegraph) return null;
+    return cs.units.some((u) => u.instanceId === telegraph.sourceId && u.hp > 0) ? telegraph : null;
   }
 
   private updateTurnPanel(): void {
