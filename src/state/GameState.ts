@@ -184,6 +184,7 @@ export function initCombatState(rng: () => number): CombatState {
     status: "active",
     gridKeys,
     targetingActionId: null,
+    targetingPotionId: null,
     bossActionIndex: 0,
     bossReinforcementSpawned: false,
   };
@@ -310,6 +311,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     status: "active",
     gridKeys,
     targetingActionId: null,
+    targetingPotionId: null,
     bossActionIndex: isBoss ? 0 : undefined,
     bossReinforcementSpawned: isBoss ? false : undefined,
     bossTelegraph: isBoss ? null : undefined,

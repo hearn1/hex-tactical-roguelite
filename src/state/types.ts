@@ -147,4 +147,6 @@ export interface CombatState {
   difficulty?: "normal" | "hard";
   /** Cumulative enemy damage bonus from adventure modifiers, stacks with difficulty. */
   modifierDamageBonus?: number;
+  /** Potion id currently being aimed from the combat action bar, if any. */
+  targetingPotionId?: string | null;
 }

@@ -12,6 +12,8 @@ import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
 import { processTurnStart } from "../../combat/Condition.ts";
 import { resolveOncePerCombatBonus } from "../../combat/ItemHooks.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
+import { POTION_REGISTRY } from "../../data/potions.ts";
+import { consumePotion, validPotionTargets } from "../../run/Consumable.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
@@ -39,6 +41,7 @@ export class CombatScreen {
   private inventoryPanelEl!: HTMLElement;
   private invToggleBtn!: HTMLButtonElement;
   private telegraphBannerEl!: HTMLElement;
+  private potionMenuOpen = false;
 
   constructor(app: App) {
     this.app = app;
@@ -214,7 +217,13 @@ export class CombatScreen {
     }
 
     let reachable: Map<string, number> | null = null;
-    if (activeUnit && activeUnit.team === "hero" && activeUnit.movePointsRemaining > 0 && !cs.targetingActionId) {
+    if (
+      activeUnit &&
+      activeUnit.team === "hero" &&
+      activeUnit.movePointsRemaining > 0 &&
+      !cs.targetingActionId &&
+      !cs.targetingPotionId
+    ) {
       const occ = new Set(
         cs.units.filter((u) => u.hp > 0 && u.instanceId !== activeUnit.instanceId).map((u) => hexKey(u.pos)),
       );
@@ -234,6 +243,11 @@ export class CombatScreen {
         for (const t of targets) {
           fillHex(ctx, t.pos, TARGET_COLOR);
         }
+      }
+    } else if (cs.targetingPotionId && activeUnit) {
+      const targets = validPotionTargets(cs.targetingPotionId, activeUnit, cs);
+      for (const t of targets) {
+        fillHex(ctx, t.pos, TARGET_COLOR);
       }
     }
 
@@ -336,6 +350,8 @@ export class CombatScreen {
 
     if (cs.targetingActionId) {
       this.handleTargetClick(hex, cs, activeUnit);
+    } else if (cs.targetingPotionId) {
+      this.handlePotionTargetClick(hex, cs, activeUnit);
     } else if (activeUnit.movePointsRemaining > 0) {
       this.handleMoveClick(hex, cs, activeUnit);
     }
@@ -350,6 +366,35 @@ export class CombatScreen {
 
     resolveAction(actionDef, attacker, target, cs, gameState.rng);
     cs.targetingActionId = null;
+    checkVictoryDefeat(cs);
+
+    if (cs.status !== "active") {
+      this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat");
+    }
+
+    removeDefeatedFromQueue(cs);
+    this.drawCanvas();
+    this.updatePanels();
+  }
+
+  private handlePotionTargetClick(hex: Hex, cs: CombatState, actor: UnitInstance): void {
+    const potionId = cs.targetingPotionId;
+    if (!potionId || !gameState.run) return;
+    const targets = validPotionTargets(potionId, actor, cs);
+    const target = targets.find((t) => hexEquals(t.pos, hex));
+    if (!target) return;
+
+    const result = consumePotion(potionId, target.instanceId, {
+      run: gameState.run,
+      combat: cs,
+      actorId: actor.instanceId,
+      rng: gameState.rng,
+    });
+    if (!result.ok) {
+      cs.log.push({ kind: "action", text: `[T${cs.round}] ${result.reason ?? result.log}`, round: cs.round });
+    }
+    cs.targetingPotionId = null;
+    this.potionMenuOpen = false;
     checkVictoryDefeat(cs);
 
     if (cs.status !== "active") {
@@ -387,6 +432,8 @@ export class CombatScreen {
     if (!cs || cs.status !== "active") return;
 
     cs.targetingActionId = null;
+    cs.targetingPotionId = null;
+    this.potionMenuOpen = false;
     this.advanceTurn();
     this.processTurns();
   }
@@ -600,6 +647,8 @@ export class CombatScreen {
               cs.targetingActionId = null;
             } else {
               cs.targetingActionId = actionId;
+              cs.targetingPotionId = null;
+              this.potionMenuOpen = false;
             }
             this.updateActionBar();
             this.drawCanvas();
@@ -609,6 +658,70 @@ export class CombatScreen {
 
       bar.appendChild(btn);
     }
+
+    this.appendPotionControls(bar, activeUnit, cs);
+  }
+
+  private appendPotionControls(bar: HTMLElement, activeUnit: UnitInstance, cs: CombatState): void {
+    const run = gameState.run;
+    if (!run) return;
+
+    const potionCounts = new Map<string, number>();
+    for (const potionId of run.inventory.potions) {
+      potionCounts.set(potionId, (potionCounts.get(potionId) ?? 0) + 1);
+    }
+
+    const toggle = document.createElement("button");
+    toggle.className = "action-btn";
+    toggle.textContent = "Use Potion";
+    toggle.title = potionCounts.size > 0 ? "Choose a potion to target." : "No potions in bag";
+    if (this.potionMenuOpen) toggle.classList.add("targeting");
+    if (this.enemyProcessing || potionCounts.size === 0) {
+      toggle.disabled = this.enemyProcessing || potionCounts.size === 0;
+      if (potionCounts.size === 0) toggle.classList.add("disabled");
+    } else {
+      toggle.addEventListener("click", () => {
+        this.potionMenuOpen = !this.potionMenuOpen;
+        cs.targetingActionId = null;
+        if (!this.potionMenuOpen) cs.targetingPotionId = null;
+        this.updateActionBar();
+        this.drawCanvas();
+      });
+    }
+    bar.appendChild(toggle);
+
+    if (!this.potionMenuOpen) return;
+
+    const menu = document.createElement("div");
+    menu.style.cssText = "display:flex;gap:6px;flex-wrap:wrap;align-items:center;";
+
+    for (const [potionId, count] of potionCounts) {
+      const potion = POTION_REGISTRY[potionId];
+      if (!potion) continue;
+
+      const btn = document.createElement("button");
+      btn.className = "action-btn potion-action-btn";
+      btn.textContent = count > 1 ? `${potion.displayName} x${count}` : potion.displayName;
+      const rangeText = potion.effect.kind === "damage" ? `Range ${potion.effect.range}` : "Ally or self";
+      btn.title = `${potion.displayName} - ${rangeText}. ${potion.description}`;
+      if (cs.targetingPotionId === potionId) btn.classList.add("targeting");
+
+      const targets = validPotionTargets(potionId, activeUnit, cs);
+      if (targets.length === 0 || this.enemyProcessing) {
+        btn.classList.add("disabled");
+        btn.title = targets.length === 0 ? "No valid targets" : btn.title;
+      } else {
+        btn.addEventListener("click", () => {
+          cs.targetingActionId = null;
+          cs.targetingPotionId = cs.targetingPotionId === potionId ? null : potionId;
+          this.updateActionBar();
+          this.drawCanvas();
+        });
+      }
+      menu.appendChild(btn);
+    }
+
+    bar.appendChild(menu);
   }
 
   private updateLogPanel(): void {

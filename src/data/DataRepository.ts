@@ -22,6 +22,7 @@ import { REWARD_REGISTRY } from "./rewards.ts";
 import type { UpgradeDef } from "./upgrades.ts";
 import { UPGRADE_REGISTRY } from "./upgrades.ts";
 import type { LevelUpOption } from "./levelups.ts";
+import { roll } from "../core/dice.ts";
 import {
   LEVELUP_CHOICES,
   SHARED_FALLBACK_CHOICES,
@@ -348,6 +349,43 @@ export class DataRepository {
     }
 
     const validConditionIds = new Set(["guarded", "weakened", "blessed", "slowed", "rallied"]);
+
+    for (const [id, def] of this.potions) {
+      const effect = def.effect;
+      if (!effect) {
+        errors.push(`Potion "${id}": effect is required`);
+        continue;
+      }
+      if (effect.kind === "heal") {
+        if (effect.amount <= 0) errors.push(`Potion "${id}": heal amount must be > 0`);
+      } else if (effect.kind === "cleanse") {
+        if (effect.conditionIds.length === 0) {
+          errors.push(`Potion "${id}": cleanse must list at least one condition`);
+        }
+        for (const condId of effect.conditionIds) {
+          if (!validConditionIds.has(condId)) {
+            errors.push(`Potion "${id}": cleanse references unknown condition "${condId}"`);
+          }
+        }
+        if (effect.healAmount !== undefined && effect.healAmount <= 0) {
+          errors.push(`Potion "${id}": cleanse healAmount must be > 0`);
+        }
+      } else if (effect.kind === "damage") {
+        if (effect.range < 0) errors.push(`Potion "${id}": damage range must be >= 0`);
+        try {
+          roll(effect.formula, () => 0);
+        } catch {
+          errors.push(`Potion "${id}": damage formula "${effect.formula}" is invalid`);
+        }
+      } else if (effect.kind === "buff") {
+        if (!validConditionIds.has(effect.conditionId)) {
+          errors.push(`Potion "${id}": buff references unknown condition "${effect.conditionId}"`);
+        }
+        if (effect.duration <= 0) errors.push(`Potion "${id}": buff duration must be > 0`);
+      } else {
+        errors.push(`Potion "${id}": unknown effect kind`);
+      }
+    }
 
     for (const [id, def] of this.items) {
       if (def.grantedActionIds) {
