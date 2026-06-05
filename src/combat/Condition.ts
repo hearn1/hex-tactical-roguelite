@@ -32,3 +32,9 @@ export function processTurnStart(unit: UnitInstance): ConditionId[] {
 export function hasCondition(unit: UnitInstance, id: ConditionId): boolean {
   return unit.conditions.some((c) => c.id === id);
 }
+
+export function removeCondition(unit: UnitInstance, id: ConditionId): boolean {
+  const before = unit.conditions.length;
+  unit.conditions = unit.conditions.filter((c) => c.id !== id);
+  return unit.conditions.length !== before;
+}

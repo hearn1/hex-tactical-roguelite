@@ -191,6 +191,31 @@ describe("DataRepository validation rejects broken references", () => {
     bg.effect = original;
   });
 
+  it("detects a potion buff with an unknown condition", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const potion = repo.getPotion("potion.focus")!;
+    const original = potion.effect;
+    // @ts-expect-error - deliberately invalid condition to exercise the validator
+    potion.effect = { kind: "buff", conditionId: "bogus", duration: 1 };
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes('unknown condition "bogus"'))).toBe(true);
+    potion.effect = original;
+  });
+
+  it("detects a potion damage effect with an invalid formula", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const potion = repo.getPotion("potion.fire_flask")!;
+    const original = potion.effect;
+    potion.effect = { kind: "damage", formula: "not dice", range: 3 };
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("damage formula"))).toBe(true);
+    potion.effect = original;
+  });
+
   it("detects an unknown item referenced by an event effect", () => {
     const repo = new DataRepository();
     repo.loadAll();

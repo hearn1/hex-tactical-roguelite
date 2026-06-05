@@ -4,6 +4,7 @@ import { POTION_REGISTRY } from "../../data/potions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { PartyMember } from "../../state/RunState.ts";
+import { consumePotion, isPotionUsableOnMap } from "../../run/Consumable.ts";
 import {
   EQUIPMENT_SLOTS,
   STAT_KEYS,
@@ -14,6 +15,7 @@ import {
 } from "../../run/Equipment.ts";
 
 let selectedBagIndex: number | null = null;
+let selectedPotionIndex: number | null = null;
 let inventoryMessage = "";
 
 const SLOT_LABELS: Record<EquipmentSlot, string> = {
@@ -33,6 +35,7 @@ const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
 
 export function resetInventoryScreenState(): void {
   selectedBagIndex = null;
+  selectedPotionIndex = null;
   inventoryMessage = "";
 }
 
@@ -53,6 +56,9 @@ export class InventoryScreen {
 
     if (selectedBagIndex !== null && !run.inventory.items[selectedBagIndex]) {
       selectedBagIndex = null;
+    }
+    if (selectedPotionIndex !== null && !run.inventory.potions[selectedPotionIndex]) {
+      selectedPotionIndex = null;
     }
 
     const container = document.createElement("div");
@@ -120,6 +126,8 @@ export class InventoryScreen {
     const classDef = CLASS_REGISTRY[hero.classId];
     const selectedItemId = selectedBagIndex !== null ? gameState.run?.inventory.items[selectedBagIndex] : null;
     const selectedItemDef = selectedItemId ? ITEM_REGISTRY[selectedItemId] : undefined;
+    const selectedPotionId = selectedPotionIndex !== null ? gameState.run?.inventory.potions[selectedPotionIndex] : null;
+    const selectedPotionDef = selectedPotionId ? POTION_REGISTRY[selectedPotionId] : undefined;
     const stats = computePartyMemberStats(hero);
 
     const card = document.createElement("article");
@@ -147,6 +155,13 @@ export class InventoryScreen {
       equipBtn.textContent = `Equip ${SLOT_LABELS[selectedItemDef.slot]}`;
       equipBtn.addEventListener("click", () => this.onEquipSelected(hero, selectedItemDef.slot));
       top.appendChild(equipBtn);
+    } else if (selectedPotionDef && isPotionUsableOnMap(selectedPotionDef)) {
+      const useBtn = document.createElement("button");
+      useBtn.setAttribute("data-testid", `inventory-use-potion-${hero.instanceId}`);
+      useBtn.textContent = "Use";
+      useBtn.title = `Use ${selectedPotionDef.displayName} on ${hero.displayName}`;
+      useBtn.addEventListener("click", () => this.onUseSelectedPotion(hero));
+      top.appendChild(useBtn);
     }
 
     card.appendChild(top);
@@ -170,6 +185,11 @@ export class InventoryScreen {
 
     if (selectedItemId) {
       card.appendChild(this.renderPreview(hero, selectedItemId));
+    } else if (selectedPotionDef && isPotionUsableOnMap(selectedPotionDef)) {
+      const prompt = document.createElement("div");
+      prompt.style.cssText = "border-top:1px solid #444;margin-top:10px;padding-top:8px;font-size:12px;color:#9f9;";
+      prompt.textContent = `Ready to use ${selectedPotionDef.displayName}.`;
+      card.appendChild(prompt);
     }
 
     return card;
@@ -275,10 +295,28 @@ export class InventoryScreen {
       empty.textContent = "No potions in bag";
       panel.appendChild(empty);
     } else {
-      for (const potionId of run.inventory.potions) {
+      for (let i = 0; i < run.inventory.potions.length; i++) {
+        const potionId = run.inventory.potions[i];
         const potion = POTION_REGISTRY[potionId];
-        const card = document.createElement("div");
-        card.style.cssText = "border:1px solid #355;border-radius:6px;padding:8px;margin-bottom:8px;background:#1c2f2a;";
+        const selected = selectedPotionIndex === i;
+        const card = document.createElement("button");
+        card.setAttribute("data-testid", `inventory-potion-${i}`);
+        card.style.cssText =
+          `display:block;width:100%;text-align:left;border:1px solid ${selected ? "#8f8" : "#355"};border-radius:6px;padding:8px;margin-bottom:8px;background:${selected ? "#203f2f" : "#1c2f2a"};`;
+        card.disabled = !potion;
+        card.title = potion && isPotionUsableOnMap(potion) ? "Choose a hero to use this potion." : "Combat-only potion.";
+        card.addEventListener("click", () => {
+          selectedBagIndex = null;
+          if (!potion) return;
+          if (!isPotionUsableOnMap(potion)) {
+            selectedPotionIndex = null;
+            inventoryMessage = `${potion.displayName} can only be used in combat.`;
+          } else {
+            selectedPotionIndex = selected ? null : i;
+            inventoryMessage = selected ? "" : `Selected ${potion.displayName}. Choose a hero.`;
+          }
+          this.app.render();
+        });
         const name = document.createElement("div");
         name.style.cssText = "font-weight:bold;font-size:13px;";
         name.textContent = potion?.displayName ?? potionId;
@@ -287,6 +325,12 @@ export class InventoryScreen {
         desc.style.cssText = "font-size:11px;color:#aaa;margin-top:3px;";
         desc.textContent = potion?.description ?? "";
         card.appendChild(desc);
+        if (potion && !isPotionUsableOnMap(potion)) {
+          const tag = document.createElement("div");
+          tag.style.cssText = "font-size:11px;color:#fc8;margin-top:5px;";
+          tag.textContent = "Combat only";
+          card.appendChild(tag);
+        }
         panel.appendChild(card);
       }
     }
@@ -305,6 +349,7 @@ export class InventoryScreen {
     card.title = itemDef ? "" : "Unknown item cannot be equipped.";
     card.addEventListener("click", () => {
       selectedBagIndex = selected ? null : index;
+      selectedPotionIndex = null;
       inventoryMessage = selected ? "" : `Selected ${itemDef?.displayName ?? itemId}.`;
       this.app.render();
     });
@@ -341,6 +386,23 @@ export class InventoryScreen {
       inventoryMessage = `Equipped ${itemName} to ${hero.displayName}.`;
     }
     selectedBagIndex = null;
+    this.app.render();
+  }
+
+  private onUseSelectedPotion(hero: PartyMember): void {
+    const run = gameState.run;
+    if (!run || selectedPotionIndex === null) return;
+
+    const potionId = run.inventory.potions[selectedPotionIndex];
+    if (!potionId) {
+      selectedPotionIndex = null;
+      this.app.render();
+      return;
+    }
+
+    const result = consumePotion(potionId, hero.instanceId, { run, rng: gameState.rng });
+    inventoryMessage = result.ok ? result.log : result.reason ?? "Could not use potion.";
+    selectedPotionIndex = null;
     this.app.render();
   }
 }
