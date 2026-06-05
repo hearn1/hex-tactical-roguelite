@@ -287,6 +287,13 @@ export function autoPlayNonCombatScreen(root: HTMLElement): void {
       autoPlayEvent(root);
       break;
     }
+    case "levelup": {
+      const option = root.querySelector<HTMLElement>('[data-testid^="levelup-option-"]');
+      if (option) option.click();
+      const confirmBtn = root.querySelector<HTMLButtonElement>('[data-testid="levelup-confirm"]');
+      if (confirmBtn && !confirmBtn.disabled) confirmBtn.click();
+      break;
+    }
     case "recruit": {
       const recruitBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.trim() === "Recruit");
       if (recruitBtn) recruitBtn.click();

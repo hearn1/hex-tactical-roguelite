@@ -112,7 +112,7 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
     enemyGroups: [
       { enemyId: "enemy.bandit_brute", count: 1 },
       { enemyId: "enemy.cult_acolyte", count: 1 },
-      { enemyId: "enemy.goblin_skirmisher", count: 2 },
+      { enemyId: "enemy.goblin_skirmisher", count: 1 },
     ],
     rewardPoolId: "reward.uncommon",
     eliteTrait: "rally",
@@ -121,8 +121,16 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
     id: "encounter.long_toll_of_bones",
     displayName: "Toll of Bones",
     enemyGroups: [
-      { enemyId: "enemy.skeleton_archer", count: 2 },
+      { enemyId: "enemy.skeleton_archer", count: 3 },
       { enemyId: "enemy.bandit_brute", count: 1 },
+    ],
+  },
+  "encounter.long_thornwood_pursuit": {
+    id: "encounter.long_thornwood_pursuit",
+    displayName: "Thornwood Pursuit",
+    enemyGroups: [
+      { enemyId: "enemy.wolf", count: 2 },
+      { enemyId: "enemy.goblin_skirmisher", count: 2 },
     ],
   },
   "encounter.long_cult_vanguard": {
@@ -131,6 +139,34 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
     enemyGroups: [
       { enemyId: "enemy.cult_acolyte", count: 1 },
       { enemyId: "enemy.skeleton_archer", count: 2 },
+      { enemyId: "enemy.goblin_skirmisher", count: 1 },
+    ],
+    rewardPoolId: "reward.uncommon",
+  },
+  "encounter.long_blackwater_ford": {
+    id: "encounter.long_blackwater_ford",
+    displayName: "Blackwater Ford",
+    enemyGroups: [
+      { enemyId: "enemy.skeleton_archer", count: 2 },
+      { enemyId: "enemy.wolf", count: 2 },
+    ],
+  },
+  "encounter.long_ashen_lookout": {
+    id: "encounter.long_ashen_lookout",
+    displayName: "Ashen Lookout",
+    enemyGroups: [
+      { enemyId: "enemy.bandit_brute", count: 1 },
+      { enemyId: "enemy.goblin_skirmisher", count: 2 },
+      { enemyId: "enemy.skeleton_archer", count: 1 },
+    ],
+  },
+  "encounter.long_hexscar_patrol": {
+    id: "encounter.long_hexscar_patrol",
+    displayName: "Hexscar Patrol",
+    enemyGroups: [
+      { enemyId: "enemy.cult_acolyte", count: 1 },
+      { enemyId: "enemy.bandit_brute", count: 1 },
+      { enemyId: "enemy.wolf", count: 2 },
     ],
     rewardPoolId: "reward.uncommon",
   },
@@ -231,6 +267,13 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
  * (L1) — no per-system sub-stream — keeping runs reproducible (consistent with #66/F35).
  */
 export const ENCOUNTER_POOLS: Record<string, string[]> = {
+  "pool.long_combat": [
+    "encounter.long_thornwood_pursuit",
+    "encounter.long_cult_vanguard",
+    "encounter.long_blackwater_ford",
+    "encounter.long_ashen_lookout",
+    "encounter.long_hexscar_patrol",
+  ],
   "pool.standard_combat": [
     "encounter.road_ambush",
     "encounter.old_graveyard",

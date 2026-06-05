@@ -113,12 +113,12 @@ describe("selectEncounterFromPool", () => {
 
 describe("resolveNodeEncounterId", () => {
   it("draws from the pool for combat nodes and stays inside it", () => {
-    const node = NODE_REGISTRY["node.long_combat_a"];
-    expect(node.encounterPoolId).toBe("pool.standard_combat");
+    const node = NODE_REGISTRY["node.long_combat_d"];
+    expect(node.encounterPoolId).toBe("pool.long_combat");
     const rng = createRng(42);
     for (let i = 0; i < 20; i++) {
       const id = resolveNodeEncounterId(node, rng)!;
-      expect(ENCOUNTER_POOLS["pool.standard_combat"]).toContain(id);
+      expect(ENCOUNTER_POOLS["pool.long_combat"]).toContain(id);
     }
   });
 

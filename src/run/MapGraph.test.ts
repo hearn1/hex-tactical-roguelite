@@ -10,6 +10,9 @@ import {
 import type { MapState } from "./MapGraph.ts";
 import { ALL_NODES, NODE_REGISTRY, MAP_TEMPLATES, getMapTemplate } from "../data/nodes.ts";
 import type { MapTemplate } from "../data/nodes.ts";
+import { ENCOUNTER_REGISTRY } from "../data/encounters.ts";
+import { generateReward } from "./RewardManager.ts";
+import { levelForXp, nextThresholdXp } from "./Leveling.ts";
 
 function makeState(currentNodeId: string, visitedNodeIds: string[] = []): MapState {
   return {
@@ -19,6 +22,39 @@ function makeState(currentNodeId: string, visitedNodeIds: string[] = []): MapSta
     elitesDefeated: 0,
     bossDefeated: false,
   };
+}
+
+function reachesBossWithout(template: MapTemplate, blockedNodeId: string): boolean {
+  if (template.startNodeId === blockedNodeId || template.bossNodeId === blockedNodeId) return false;
+  const nodes = new Map(template.nodes.map((n) => [n.id, n]));
+  const visited = new Set<string>([template.startNodeId]);
+  const queue: string[] = [template.startNodeId];
+
+  while (queue.length > 0) {
+    const cur = queue.shift()!;
+    if (cur === template.bossNodeId) return true;
+    const node = nodes.get(cur);
+    if (!node) continue;
+    for (const next of node.nextNodeIds) {
+      if (next === blockedNodeId || visited.has(next)) continue;
+      visited.add(next);
+      queue.push(next);
+    }
+  }
+
+  return false;
+}
+
+function pathXpBeforeBoss(template: MapTemplate, path: string[]): number {
+  const nodes = new Map(template.nodes.map((n) => [n.id, n]));
+  return path
+    .filter((id) => id !== template.bossNodeId)
+    .map((id) => nodes.get(id)!)
+    .filter((node) => node.type === "combat" || node.type === "elite")
+    .reduce((total, node) => {
+      const encounter = ENCOUNTER_REGISTRY[node.encounterId!];
+      return total + generateReward(encounter, () => 0.5).xpPerHero;
+    }, 0);
 }
 
 describe("MapGraph navigation", () => {
@@ -97,15 +133,31 @@ describe.each(Object.values(MAP_TEMPLATES))("MapTemplate invariants: %s", (templ
   });
 });
 
-describe("long template structure (F26 / #57)", () => {
+describe("long template structure (#95)", () => {
   const template = MAP_TEMPLATES.long;
   const nodes = new Map(template.nodes.map((n) => [n.id, n]));
   const paths = enumerateRootToBossPaths(template);
 
-  it("has ~12 nodes across multiple layers", () => {
-    expect(template.nodes.length).toBe(12);
+  it("has 15-20 nodes across multiple layers", () => {
+    expect(template.nodes.length).toBeGreaterThanOrEqual(15);
+    expect(template.nodes.length).toBeLessThanOrEqual(20);
     const layerCount = new Set(template.nodes.map((n) => n.layer)).size;
-    expect(layerCount).toBeGreaterThanOrEqual(6);
+    expect(layerCount).toBeGreaterThanOrEqual(8);
+  });
+
+  it("has the requested single-act composition", () => {
+    const combatNodes = template.nodes.filter((n) => n.type === "combat");
+    const eliteNodes = template.nodes.filter((n) => n.type === "elite");
+    const bossNodes = template.nodes.filter((n) => n.type === "boss");
+    const nonCombatNodes = template.nodes.filter((n) =>
+      n.type === "shop" || n.type === "camp" || n.type === "event" || n.type === "recruit" || n.type === "pet",
+    );
+
+    expect(combatNodes).toHaveLength(8);
+    expect(eliteNodes).toHaveLength(1);
+    expect(nonCombatNodes).toHaveLength(4);
+    expect(bossNodes).toHaveLength(1);
+    expect(nonCombatNodes.filter((n) => n.type === "camp")).toHaveLength(2);
   });
 
   it("offers at least two meaningful branch points", () => {
@@ -120,11 +172,16 @@ describe("long template structure (F26 / #57)", () => {
     }
   });
 
-  it("every root->boss path crosses at least one recovery (camp) node", () => {
+  it("every root->boss path crosses both recovery (camp) segment boundaries", () => {
     for (const path of paths) {
-      const hasRecovery = path.some((id) => RECOVERY_NODE_TYPES.has(nodes.get(id)!.type));
-      expect(hasRecovery).toBe(true);
+      const recoveryIds = path.filter((id) => RECOVERY_NODE_TYPES.has(nodes.get(id)!.type));
+      expect(recoveryIds).toEqual(["node.long_camp_a", "node.long_camp_b"]);
     }
+  });
+
+  it("uses both camps as cut vertices", () => {
+    expect(reachesBossWithout(template, "node.long_camp_a")).toBe(false);
+    expect(reachesBossWithout(template, "node.long_camp_b")).toBe(false);
   });
 
   it("has an optional elite that at least one path skips and at least one path includes", () => {
@@ -140,6 +197,16 @@ describe("long template structure (F26 / #57)", () => {
       if (node.encounterId) {
         expect(NODE_REGISTRY[node.id]?.encounterId).toBe(node.encounterId);
       }
+    }
+  });
+
+  it("paces every root->boss path to level 4 before the boss without reaching level 5", () => {
+    const level5Threshold = nextThresholdXp(4)!;
+
+    for (const path of paths) {
+      const xp = pathXpBeforeBoss(template, path);
+      expect(levelForXp(xp), path.join(" -> ")).toBeGreaterThanOrEqual(4);
+      expect(xp, path.join(" -> ")).toBeLessThan(level5Threshold);
     }
   });
 });
