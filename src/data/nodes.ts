@@ -2,7 +2,7 @@ import { selectEncounterFromPool } from "./encounters.ts";
 
 export interface NodeDef {
   id: string;
-  type: "start" | "combat" | "elite" | "boss" | "shop" | "camp" | "event" | "recruit" | "pet";
+  type: NodeType;
   title: string;
   description: string;
   layer: number;
@@ -21,6 +21,8 @@ export interface NodeDef {
   eventId?: string;
   nextNodeIds: string[];
 }
+
+export type NodeType = "start" | "combat" | "elite" | "boss" | "shop" | "camp" | "event" | "recruit" | "pet";
 
 /** A self-contained act map: an ordered set of nodes from a single start to a single boss. */
 export interface MapTemplate {

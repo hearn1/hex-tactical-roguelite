@@ -28,6 +28,7 @@ import {
   LEVELUP_PASSIVE_START_COMBAT_GUARDED,
   LEVELUP_PASSIVE_FIRST_HEAL_BONUS,
 } from "./levelups.ts";
+import { ENVIRONMENT_THEMES, getNodeTypeThemeMap } from "./environmentThemes.ts";
 
 export interface ValidationReport {
   valid: boolean;
@@ -227,6 +228,24 @@ export class DataRepository {
     const checkStats = new Set(["might", "agility", "spirit"]);
     const statKeys = new Set(["maxHp", "armor", "move", "might", "agility", "spirit"]);
     const eventTags = new Set(["risk", "social", "treasure", "heal", "train", "moral"]);
+    const environmentThemeIds = new Set(Object.keys(ENVIRONMENT_THEMES));
+
+    if (environmentThemeIds.size < 2) {
+      errors.push("Environment themes: must define at least 2 themes");
+    }
+    for (const [id, theme] of Object.entries(ENVIRONMENT_THEMES)) {
+      if (!theme.ground.baseColor || !theme.ground.tileColor || !theme.ground.pattern) {
+        errors.push(`Environment theme "${id}": ground treatment is incomplete`);
+      }
+      if (!theme.sky.topColor || !theme.sky.horizonColor || !theme.sky.bottomColor) {
+        errors.push(`Environment theme "${id}": sky treatment is incomplete`);
+      }
+    }
+    for (const [nodeType, themeId] of Object.entries(getNodeTypeThemeMap())) {
+      if (!environmentThemeIds.has(themeId)) {
+        errors.push(`Node type "${nodeType}": environment theme "${themeId}" not found`);
+      }
+    }
 
     for (const [id, def] of this.classes) {
       for (const aid of def.actionIds) {

@@ -5,6 +5,7 @@ HTMLCanvasElement.prototype.getContext = function (type: string) {
     return {
       clearRect: () => {},
       fillRect: () => {},
+      strokeRect: () => {},
       beginPath: () => {},
       arc: () => {},
       fill: () => {},
@@ -15,6 +16,7 @@ HTMLCanvasElement.prototype.getContext = function (type: string) {
       lineTo: () => {},
       closePath: () => {},
       setTransform: () => {},
+      createLinearGradient: () => ({ addColorStop: () => {} }),
       save: () => {},
       restore: () => {},
     } as unknown as CanvasRenderingContext2D;
