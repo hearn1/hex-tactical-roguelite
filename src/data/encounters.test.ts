@@ -45,6 +45,7 @@ function makeRun(): RunState {
     },
     runStatus: "active",
     shopStates: {},
+    campStates: {},
     recruitOffers: {},
     runModifiers: [],
     difficulty: "normal",

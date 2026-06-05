@@ -23,6 +23,7 @@ function makeRunState(overrides: {
     },
     runStatus: overrides.runStatus,
     shopStates: {},
+    campStates: {},
     recruitOffers: {},
     runModifiers: [],
     difficulty: "normal",

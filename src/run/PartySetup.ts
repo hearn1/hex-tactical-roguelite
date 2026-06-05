@@ -132,6 +132,7 @@ export function createRunState(
     },
     runStatus: "active",
     shopStates: {},
+    campStates: {},
     recruitOffers: {},
     runModifiers: [],
     difficulty,
