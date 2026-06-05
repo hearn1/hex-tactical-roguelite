@@ -68,6 +68,31 @@ describe("screen-transitions", () => {
     expect(gameState.combat).not.toBeNull();
   });
 
+  it("Inventory: opens from map, equips a bag item, and returns to map", () => {
+    const { app, root, getScreen, clickTestId } = mountApp();
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.inventory.items.push("item.soldier_badge");
+    gameState.screen = "map";
+    app.render();
+
+    clickTestId("map-inventory-btn");
+
+    expect(getScreen()).toBe("inventory");
+    expect(root.textContent).toContain("Shared Bag");
+    clickTestId("inventory-bag-item-0");
+    expect(root.textContent).toContain("Might 3 -> 4 (+1)");
+
+    (root.querySelector('[data-testid="inventory-equip-hero_001"]') as HTMLButtonElement).click();
+
+    expect(run.party[0].equippedItemIds.trinket).toBe("item.soldier_badge");
+    expect(run.inventory.items).toEqual([]);
+    expect(root.textContent).toContain("Soldier Badge");
+
+    clickTestId("inventory-back-btn");
+    expect(getScreen()).toBe("map");
+  });
+
   it('Combat (with run): victory auto-transitions to reward', () => {
     const { app, getScreen } = mountApp();
     setupDefaultRun();

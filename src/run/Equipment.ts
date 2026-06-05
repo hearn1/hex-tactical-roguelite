@@ -1,0 +1,125 @@
+import { CLASS_REGISTRY } from "../data/classes.ts";
+import { ITEM_REGISTRY } from "../data/items.ts";
+import type { PartyMember } from "../state/RunState.ts";
+import type { UnitStats } from "../state/types.ts";
+import type { InventoryState } from "./Inventory.ts";
+
+export type EquipmentSlot = keyof PartyMember["equippedItemIds"];
+
+export const EQUIPMENT_SLOTS: EquipmentSlot[] = ["weapon", "armor", "trinket"];
+export const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "might", "agility", "spirit"];
+
+export interface EquipBagItemResult {
+  ok: boolean;
+  itemId: string | null;
+  replacedItemId: string | null;
+  reason?: string;
+}
+
+export interface EquipmentStatPreview {
+  current: UnitStats;
+  next: UnitStats;
+  diff: UnitStats;
+  slot: EquipmentSlot;
+  replacedItemId: string | null;
+}
+
+function zeroStats(): UnitStats {
+  return { maxHp: 0, armor: 0, move: 0, might: 0, agility: 0, spirit: 0 };
+}
+
+export function canEquipItemToSlot(itemId: string, slot: EquipmentSlot): boolean {
+  return ITEM_REGISTRY[itemId]?.slot === slot;
+}
+
+export function computePartyMemberStats(
+  partyMember: PartyMember,
+  equippedItemIds: PartyMember["equippedItemIds"] = partyMember.equippedItemIds,
+): UnitStats {
+  const classDef = CLASS_REGISTRY[partyMember.classId];
+  const base = classDef?.baseStats ?? {
+    maxHp: partyMember.maxHp,
+    armor: 0,
+    move: 0,
+    might: 0,
+    agility: 0,
+    spirit: 0,
+  };
+  const bonuses = zeroStats();
+
+  for (const slot of EQUIPMENT_SLOTS) {
+    const itemId = equippedItemIds[slot];
+    if (!itemId) continue;
+    const item = ITEM_REGISTRY[itemId];
+    if (!item?.statBonuses) continue;
+    for (const key of STAT_KEYS) {
+      bonuses[key] += item.statBonuses[key] ?? 0;
+    }
+  }
+
+  for (const key of STAT_KEYS) {
+    bonuses[key] += partyMember.bonusStats[key] ?? 0;
+  }
+
+  return {
+    maxHp: base.maxHp + bonuses.maxHp,
+    armor: base.armor + bonuses.armor,
+    move: base.move + bonuses.move,
+    might: base.might + bonuses.might,
+    agility: base.agility + bonuses.agility,
+    spirit: base.spirit + bonuses.spirit,
+  };
+}
+
+export function previewEquipItem(partyMember: PartyMember, itemId: string): EquipmentStatPreview | null {
+  const itemDef = ITEM_REGISTRY[itemId];
+  if (!itemDef) return null;
+
+  const slot = itemDef.slot;
+  const current = computePartyMemberStats(partyMember);
+  const nextEquipped = { ...partyMember.equippedItemIds, [slot]: itemId };
+  const next = computePartyMemberStats(partyMember, nextEquipped);
+  const diff = zeroStats();
+
+  for (const key of STAT_KEYS) {
+    diff[key] = next[key] - current[key];
+  }
+
+  return {
+    current,
+    next,
+    diff,
+    slot,
+    replacedItemId: partyMember.equippedItemIds[slot],
+  };
+}
+
+export function equipBagItemToPartyMember(
+  partyMember: PartyMember,
+  inventory: InventoryState,
+  bagIndex: number,
+  targetSlot: EquipmentSlot,
+): EquipBagItemResult {
+  const itemId = inventory.items[bagIndex] ?? null;
+  if (!itemId) {
+    return { ok: false, itemId: null, replacedItemId: null, reason: "No item in that bag slot." };
+  }
+
+  if (!canEquipItemToSlot(itemId, targetSlot)) {
+    const actualSlot = ITEM_REGISTRY[itemId]?.slot;
+    const reason = actualSlot
+      ? `${ITEM_REGISTRY[itemId]?.displayName ?? itemId} fits ${actualSlot}, not ${targetSlot}.`
+      : "Unknown item cannot be equipped.";
+    return { ok: false, itemId, replacedItemId: null, reason };
+  }
+
+  const replacedItemId = partyMember.equippedItemIds[targetSlot];
+  partyMember.equippedItemIds[targetSlot] = itemId;
+  inventory.items.splice(bagIndex, 1);
+
+  if (replacedItemId) {
+    inventory.items.push(replacedItemId);
+  }
+
+  return { ok: true, itemId, replacedItemId };
+}

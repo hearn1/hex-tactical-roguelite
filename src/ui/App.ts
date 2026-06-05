@@ -4,6 +4,7 @@ import { MainMenu } from "./screens/MainMenu.ts";
 import { CombatScreen } from "./screens/CombatScreen.ts";
 import { RewardScreen } from "./screens/RewardScreen.ts";
 import { MapScreen } from "./screens/MapScreen.ts";
+import { InventoryScreen } from "./screens/InventoryScreen.ts";
 import { RunSummary } from "./screens/RunSummary.ts";
 import { ShopScreen } from "./screens/ShopScreen.ts";
 import { CampScreen } from "./screens/CampScreen.ts";
@@ -38,6 +39,8 @@ export class App {
         return new SetupScreen(this).render();
       case "map":
         return new MapScreen(this).render();
+      case "inventory":
+        return new InventoryScreen(this).render();
       case "combat":
         return new CombatScreen(this).render();
       case "reward":

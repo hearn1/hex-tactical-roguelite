@@ -3,6 +3,7 @@ export type ScreenId =
   | "meta_upgrades"
   | "setup"
   | "map"
+  | "inventory"
   | "combat"
   | "reward"
   | "shop"

@@ -20,6 +20,7 @@ import { resetRewardScreenState } from "../ui/screens/RewardScreen.ts";
 import { resetCampScreenState } from "../ui/screens/CampScreen.ts";
 import { resetShopScreenState } from "../ui/screens/ShopScreen.ts";
 import { resetLevelUpScreenState } from "../ui/screens/LevelUpScreen.ts";
+import { resetInventoryScreenState } from "../ui/screens/InventoryScreen.ts";
 import { resetEventScreenState } from "../ui/screens/EventScreen.ts";
 import { resetRecruitScreenState } from "../ui/screens/RecruitScreen.ts";
 
@@ -380,6 +381,7 @@ export function resetGameState(seed?: number): void {
   resetCampScreenState();
   resetShopScreenState();
   resetLevelUpScreenState();
+  resetInventoryScreenState();
   resetEventScreenState();
   resetRecruitScreenState();
 }
