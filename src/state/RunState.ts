@@ -1,6 +1,7 @@
 import type { MapState } from "../run/MapGraph.ts";
 import type { UnitStats, ShopInventory, RunModifier, ActionUpgradeBonus } from "./types.ts";
 import type { InventoryState } from "../run/Inventory.ts";
+import type { AbilityScores } from "../data/abilities.ts";
 
 export interface PartyMember {
   instanceId: string;
@@ -11,6 +12,8 @@ export interface PartyMember {
   hp: number;
   maxHp: number;
   bonusStats: Partial<UnitStats>;
+  /** Six ability scores chosen during setup. Undefined preserves legacy zero-modifier behavior. */
+  abilityScores?: AbilityScores;
   equippedItemIds: {
     weapon: string | null;
     armor: string | null;

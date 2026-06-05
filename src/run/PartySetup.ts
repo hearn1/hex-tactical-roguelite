@@ -2,6 +2,8 @@ import type { RunState, PartyMember, Difficulty } from "../state/RunState.ts";
 import { CLASS_REGISTRY, HERO_DEFAULT_NAMES } from "../data/classes.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { DEFAULT_MAP_TEMPLATE_ID, getMapTemplate } from "../data/nodes.ts";
+import { abilityMod, createDefaultAbilityScores, isCompleteAbilityScores } from "../data/abilities.ts";
+import type { AbilityScores } from "../data/abilities.ts";
 import { createInventory } from "./Inventory.ts";
 
 /**
@@ -18,6 +20,8 @@ export const RUN_SETUP_PARTY_SIZE = 3;
 export interface PartySpec {
   classId: string;
   name: string;
+  /** Six assigned ability scores. Defaults/Quick Start use all-10 zero-modifier scores. */
+  abilityScores?: AbilityScores;
   /** Chosen background id, or null for "none". See `data/backgrounds.ts`. */
   backgroundId?: string | null;
 }
@@ -39,6 +43,7 @@ export function defaultPartySpecs(): PartySpec[] {
   return classIds.slice(0, RUN_SETUP_PARTY_SIZE).map((classId, i) => ({
     classId,
     name: HERO_DEFAULT_NAMES[classId] ?? CLASS_REGISTRY[classId]?.displayName ?? `Hero ${i + 1}`,
+    abilityScores: createDefaultAbilityScores(),
     // Seed each slot with its class-default background so Quick Start (which uses these
     // specs directly) produces a complete, flavored hero. Custom setup may change it.
     backgroundId: CLASS_REGISTRY[classId]?.defaultBackgroundId ?? null,
@@ -64,6 +69,8 @@ export function validatePartySetup(specs: PartySpec[]): PartyValidation {
       err = "Choose a class.";
     } else if (spec.name.trim().length === 0) {
       err = "Name cannot be empty.";
+    } else if (!isCompleteAbilityScores(spec.abilityScores)) {
+      err = "Assign all six ability scores.";
     }
     slotErrors.push(err);
     if (err && !reason) reason = err;
@@ -93,7 +100,8 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
         equippedItemIds[itemDef.slot] = itemId;
       }
     }
-    const maxHp = def?.baseStats.maxHp ?? 1;
+    const baseMaxHp = def?.baseStats.maxHp ?? 1;
+    const maxHp = Math.max(1, baseMaxHp + (spec.abilityScores ? abilityMod(spec.abilityScores.con) : 0));
     return {
       instanceId: `hero_00${i + 1}`,
       classId: spec.classId,
@@ -104,6 +112,7 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
       maxHp,
       bonusStats: {},
       equippedItemIds,
+      abilityScores: spec.abilityScores ? { ...spec.abilityScores } : undefined,
       // Effect is applied at run start by applyBackgrounds, not here. "none" → undefined.
       backgroundId: spec.backgroundId ?? undefined,
     };

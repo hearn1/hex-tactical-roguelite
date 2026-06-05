@@ -8,6 +8,9 @@ import {
 } from "./PartySetup.ts";
 import type { PartySpec } from "./PartySetup.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
+import { createDefaultAbilityScores } from "../data/abilities.ts";
+
+const scores = () => createDefaultAbilityScores();
 
 describe("defaultPartySpecs", () => {
   it("produces exactly RUN_SETUP_PARTY_SIZE specs with valid classes and names", () => {
@@ -19,9 +22,9 @@ describe("defaultPartySpecs", () => {
 
 describe("validatePartySetup", () => {
   const valid = (): PartySpec[] => [
-    { classId: "class.guardian", name: "Mara" },
-    { classId: "class.acolyte", name: "Sable" },
-    { classId: "class.arcanist", name: "Eldra" },
+    { classId: "class.guardian", name: "Mara", abilityScores: scores() },
+    { classId: "class.acolyte", name: "Sable", abilityScores: scores() },
+    { classId: "class.arcanist", name: "Eldra", abilityScores: scores() },
   ];
 
   it("accepts a full valid party", () => {
@@ -33,9 +36,9 @@ describe("validatePartySetup", () => {
 
   it("accepts duplicate classes", () => {
     const specs: PartySpec[] = [
-      { classId: "class.guardian", name: "Mara" },
-      { classId: "class.guardian", name: "Bran" },
-      { classId: "class.arcanist", name: "Eldra" },
+      { classId: "class.guardian", name: "Mara", abilityScores: scores() },
+      { classId: "class.guardian", name: "Bran", abilityScores: scores() },
+      { classId: "class.arcanist", name: "Eldra", abilityScores: scores() },
     ];
     expect(validatePartySetup(specs).ok).toBe(true);
   });
@@ -63,6 +66,14 @@ describe("validatePartySetup", () => {
     expect(v.slotErrors[0]).toBe("Choose a class.");
   });
 
+  it("rejects an unassigned ability score set", () => {
+    const specs = valid();
+    specs[1].abilityScores = undefined;
+    const v = validatePartySetup(specs);
+    expect(v.ok).toBe(false);
+    expect(v.slotErrors[1]).toBe("Assign all six ability scores.");
+  });
+
   it("rejects the wrong party size", () => {
     const specs = valid().slice(0, 2);
     const v = validatePartySetup(specs);
@@ -83,6 +94,7 @@ describe("buildParty", () => {
     expect(guardian.hp).toBe(guardian.maxHp);
     expect(guardian.maxHp).toBe(18);
     expect(guardian.bonusStats).toEqual({});
+    expect(guardian.abilityScores).toEqual(createDefaultAbilityScores());
     // Guardian auto-equips iron sword (weapon) and wooden shield (trinket).
     expect(guardian.equippedItemIds.weapon).toBe("item.iron_sword");
     expect(guardian.equippedItemIds.trinket).toBe("item.wooden_shield");
@@ -110,13 +122,25 @@ describe("buildParty", () => {
 
   it("stores the chosen background id on the hero", () => {
     const party = buildParty([
-      { classId: "class.guardian", name: "A", backgroundId: "background.cutpurse" },
-      { classId: "class.acolyte", name: "B" },
-      { classId: "class.arcanist", name: "C", backgroundId: null },
+      { classId: "class.guardian", name: "A", backgroundId: "background.cutpurse", abilityScores: scores() },
+      { classId: "class.acolyte", name: "B", abilityScores: scores() },
+      { classId: "class.arcanist", name: "C", backgroundId: null, abilityScores: scores() },
     ]);
     expect(party[0].backgroundId).toBe("background.cutpurse");
     expect(party[1].backgroundId).toBeUndefined();
     expect(party[2].backgroundId).toBeUndefined();
+  });
+
+  it("carries custom ability scores and applies CON to starting max HP", () => {
+    const customScores = { str: 16, dex: 14, con: 14, int: 10, wis: 8, cha: 12 };
+    const party = buildParty([
+      { classId: "class.guardian", name: "A", abilityScores: customScores },
+      { classId: "class.acolyte", name: "B", abilityScores: scores() },
+      { classId: "class.arcanist", name: "C", abilityScores: scores() },
+    ]);
+    expect(party[0].abilityScores).toEqual(customScores);
+    expect(party[0].maxHp).toBe(20);
+    expect(party[0].hp).toBe(20);
   });
 });
 
@@ -125,6 +149,13 @@ describe("defaultPartySpecs backgrounds", () => {
     const specs = defaultPartySpecs();
     for (const spec of specs) {
       expect(spec.backgroundId).toBe(CLASS_REGISTRY[spec.classId].defaultBackgroundId);
+    }
+  });
+
+  it("seeds each slot with all-10 ability scores", () => {
+    const specs = defaultPartySpecs();
+    for (const spec of specs) {
+      expect(spec.abilityScores).toEqual(createDefaultAbilityScores());
     }
   });
 
