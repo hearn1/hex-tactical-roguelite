@@ -98,13 +98,18 @@ function createEnemyInstance(instanceId: string, enemyId: EnemyId, name: string,
   };
 }
 
-const HERO_SPAWN_POSITIONS: Hex[] = [
+export const HERO_SPAWN_POSITIONS: Hex[] = [
   { q: -3, r: 0 },
   { q: -3, r: 1 },
-  { q: -3, r: -1 },
   { q: -3, r: 2 },
-  { q: -3, r: -2 },
+  { q: -3, r: 3 },
 ];
+
+for (const pos of HERO_SPAWN_POSITIONS) {
+  if (distance({ q: 0, r: 0 }, pos) > 3) {
+    throw new Error(`Hero spawn position ${hexKey(pos)} is outside the radius-3 combat grid.`);
+  }
+}
 
 export function scatterEnemyPositions(count: number): Hex[] {
   const positions: Hex[] = [
@@ -219,7 +224,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
 
   for (let i = 0; i < run.party.length; i++) {
     const pm = run.party[i];
-    const pos = HERO_SPAWN_POSITIONS[i] ?? { q: -3, r: i };
+    const pos = HERO_SPAWN_POSITIONS[Math.min(i, HERO_SPAWN_POSITIONS.length - 1)];
     units.push(createHeroFromPartyMember(pm, pos));
   }
 

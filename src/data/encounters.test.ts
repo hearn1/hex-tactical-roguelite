@@ -6,14 +6,14 @@ import {
   selectEncounterFromPool,
 } from "./encounters.ts";
 import { NODE_REGISTRY, resolveNodeEncounterId, ALL_NODES } from "./nodes.ts";
-import { createCombatFromRun } from "../state/GameState.ts";
+import { createCombatFromRun, HERO_SPAWN_POSITIONS } from "../state/GameState.ts";
 import type { RunState, PartyMember } from "../state/RunState.ts";
 import { createInventory } from "../run/Inventory.ts";
 import { CLASS_REGISTRY } from "./classes.ts";
 import { hexesWithinRange, hexKey } from "../core/hex.ts";
 
-function makeParty(): PartyMember[] {
-  return ["class.guardian", "class.acolyte", "class.arcanist"].map((classId, i) => {
+function makeParty(classIds: string[] = ["class.guardian", "class.acolyte", "class.arcanist"]): PartyMember[] {
+  return classIds.map((classId, i) => {
     const def = CLASS_REGISTRY[classId];
     return {
       instanceId: `hero_00${i + 1}`,
@@ -142,6 +142,46 @@ describe("resolveNodeEncounterId", () => {
 });
 
 describe("createCombatFromRun positioning", () => {
+  it("keeps every configured hero spawn inside the radius-3 grid", () => {
+    expect(HERO_SPAWN_POSITIONS).toEqual([
+      { q: -3, r: 0 },
+      { q: -3, r: 1 },
+      { q: -3, r: 2 },
+      { q: -3, r: 3 },
+    ]);
+    for (const pos of HERO_SPAWN_POSITIONS) {
+      expect(GRID.has(hexKey(pos)), `hero spawn ${hexKey(pos)} in grid`).toBe(true);
+    }
+  });
+
+  it("places a 4-member party entirely on the radius-3 grid", () => {
+    const run = makeRun();
+    run.party = makeParty(["class.guardian", "class.acolyte", "class.arcanist", "class.guardian"]);
+    const combat = createCombatFromRun(run, "encounter.road_ambush", createRng(5));
+    const heroes = combat.units.filter((u) => u.team === "hero");
+
+    expect(heroes).toHaveLength(4);
+    for (const hero of heroes) {
+      expect(GRID.has(hexKey(hero.pos)), `${hero.displayName} at ${hexKey(hero.pos)} in grid`).toBe(true);
+    }
+  });
+
+  it("keeps unexpected extra party members on-grid by reusing the final configured spawn", () => {
+    const run = makeRun();
+    run.party = makeParty([
+      "class.guardian",
+      "class.acolyte",
+      "class.arcanist",
+      "class.guardian",
+      "class.acolyte",
+    ]);
+    const combat = createCombatFromRun(run, "encounter.road_ambush", createRng(5));
+    const heroKeys = combat.units.filter((u) => u.team === "hero").map((u) => hexKey(u.pos));
+
+    expect(heroKeys.every((key) => GRID.has(key))).toBe(true);
+    expect(heroKeys.at(-1)).toBe(hexKey(HERO_SPAWN_POSITIONS.at(-1)!));
+  });
+
   it("places enemies on the encounter's declared positions when present", () => {
     const run = makeRun();
     const combat = createCombatFromRun(run, "encounter.shadowed_defile", createRng(5));
