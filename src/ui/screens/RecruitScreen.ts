@@ -7,17 +7,52 @@ import { ITEM_REGISTRY } from "../../data/items.ts";
 
 const PARTY_CAP = 4;
 
+type RecruitPhase = "menu" | "replace" | "result";
+
+let phase: RecruitPhase = "menu";
+let resultText: string = "";
+let pendingRecruit: PartyMember | null = null;
+let lastNodeId: string | null = null;
+let lastNodesCleared: number = 0;
+
+function resetState(): void {
+  phase = "menu";
+  resultText = "";
+  pendingRecruit = null;
+  lastNodeId = null;
+  lastNodesCleared = 0;
+}
+
+export function resetRecruitScreenState(): void {
+  resetState();
+}
+
 export class RecruitScreen {
   private app: App;
-  private phase: "menu" | "replace" | "result" = "menu";
-  private resultText: string = "";
-  private pendingRecruit: PartyMember | null = null;
 
   constructor(app: App) {
     this.app = app;
   }
 
+  private checkFreshVisit(): void {
+    const run = gameState.run;
+    if (!run) {
+      resetState();
+      return;
+    }
+
+    const nodeId = run.mapState.currentNodeId;
+    const nodesCleared = run.mapState.nodesCleared;
+    if (nodeId !== lastNodeId || nodesCleared !== lastNodesCleared) {
+      resetState();
+      lastNodeId = nodeId;
+      lastNodesCleared = nodesCleared;
+    }
+  }
+
   render(): HTMLElement {
+    this.checkFreshVisit();
+
     const run = gameState.run;
     if (!run) {
       gameState.screen = "main_menu";
@@ -43,16 +78,16 @@ export class RecruitScreen {
     desc.style.cssText = "color:#aaa;font-size:14px;text-align:center;";
     container.appendChild(desc);
 
-    if (this.phase === "replace" && this.pendingRecruit) {
-      const picker = this.renderReplacePicker(candidates, this.pendingRecruit);
+    if (phase === "replace" && pendingRecruit) {
+      const picker = this.renderReplacePicker(candidates, pendingRecruit);
       container.appendChild(picker);
       return container;
     }
 
-    if (this.phase === "result") {
+    if (phase === "result") {
       const resultEl = document.createElement("div");
       resultEl.style.cssText = "color:#4f4;font-weight:bold;font-size:16px;margin:12px 0;";
-      resultEl.textContent = this.resultText;
+      resultEl.textContent = resultText;
       container.appendChild(resultEl);
 
       const contBtn = document.createElement("button");
@@ -134,12 +169,12 @@ export class RecruitScreen {
     const run = gameState.run!;
     if (run.party.length < PARTY_CAP) {
       addRecruitToParty(run.party, cand, run.inventory.items);
-      this.resultText = `${cand.displayName} joins the party!`;
-      this.phase = "result";
+      resultText = `${cand.displayName} joins the party!`;
+      phase = "result";
       this.app.render();
     } else {
-      this.pendingRecruit = cand;
-      this.phase = "replace";
+      pendingRecruit = cand;
+      phase = "replace";
       this.app.render();
     }
   }
@@ -150,8 +185,8 @@ export class RecruitScreen {
     if (!hasPackMule) {
       run.runModifiers.push(createPackMuleModifier());
     }
-    this.resultText = "Pack Mule follows your party! Gold rewards increased by 20%.";
-    this.phase = "result";
+    resultText = "Pack Mule follows your party! Gold rewards increased by 20%.";
+    phase = "result";
     this.app.render();
   }
 
@@ -173,9 +208,9 @@ export class RecruitScreen {
       btn.style.cssText = "padding:8px 16px;font-size:13px;width:300px;";
       btn.addEventListener("click", () => {
         addRecruitToParty(run.party, recruit, run.inventory.items, i);
-        this.resultText = `${recruit.displayName} joins! ${pm.displayName} dismissed (items stashed).`;
-        this.phase = "result";
-        this.pendingRecruit = null;
+        resultText = `${recruit.displayName} joins! ${pm.displayName} dismissed (items stashed).`;
+        phase = "result";
+        pendingRecruit = null;
         this.app.render();
       });
       wrap.appendChild(btn);
@@ -185,8 +220,8 @@ export class RecruitScreen {
     cancelBtn.textContent = "Cancel";
     cancelBtn.style.cssText = "padding:8px 16px;font-size:13px;margin-top:8px;";
     cancelBtn.addEventListener("click", () => {
-      this.phase = "menu";
-      this.pendingRecruit = null;
+      phase = "menu";
+      pendingRecruit = null;
       this.app.render();
     });
     wrap.appendChild(cancelBtn);

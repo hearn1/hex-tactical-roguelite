@@ -280,6 +280,83 @@ describe("screen-transitions", () => {
     expect(getScreen()).toBe("map");
   });
 
+  it('Recruit: "Recruit" shows a result after App re-renders', () => {
+    const { app, root, getScreen, clickButton } = mountApp();
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.mapState.currentNodeId = "node.recruit_1";
+    gameState.screen = "recruit";
+    app.render();
+
+    clickButton("Recruit");
+
+    expect(run.party).toHaveLength(4);
+    expect(root.textContent).toContain("joins the party!");
+    clickButton("Continue");
+    expect(getScreen()).toBe("map");
+    expect(run.mapState.nodesCleared).toBe(1);
+  });
+
+  it("Recruit: full-party replacement picker and result survive re-render", () => {
+    const { app, root, clickButton } = mountApp();
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.mapState.currentNodeId = "node.recruit_1";
+    run.party.push({
+      ...run.party[0],
+      instanceId: "hero_004",
+      displayName: "Toren",
+      equippedItemIds: { ...run.party[0].equippedItemIds },
+      bonusStats: { ...run.party[0].bonusStats },
+    });
+    gameState.screen = "recruit";
+    app.render();
+
+    clickButton("Recruit");
+
+    expect(run.party).toHaveLength(4);
+    expect(root.textContent).toContain("Party is full. Replace which hero?");
+
+    const replaceBtn = Array.from(root.querySelectorAll("button")).find((b) => b.textContent?.includes("Toren"));
+    expect(replaceBtn).toBeTruthy();
+    replaceBtn!.click();
+
+    expect(run.party).toHaveLength(4);
+    expect(root.textContent).toContain("dismissed (items stashed).");
+  });
+
+  it('Recruit: "Accept" Pack Mule shows a result and adds one modifier', () => {
+    const { app, root, clickButton } = mountApp();
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.mapState.currentNodeId = "node.recruit_1";
+    gameState.screen = "recruit";
+    app.render();
+
+    clickButton("Accept");
+
+    expect(root.textContent).toContain("Pack Mule follows your party!");
+    expect(run.runModifiers.filter((m) => m.kind === "gold_multiplier")).toHaveLength(1);
+  });
+
+  it("Recruit: changing recruit nodes resets transient result state", () => {
+    const { app, root, clickButton } = mountApp();
+    setupDefaultRun();
+    const run = gameState.run!;
+    run.mapState.currentNodeId = "node.recruit_1";
+    gameState.screen = "recruit";
+    app.render();
+    clickButton("Accept");
+    expect(root.textContent).toContain("Pack Mule follows your party!");
+
+    run.mapState.currentNodeId = "node.long_recruit_a";
+    app.render();
+
+    expect(root.textContent).toContain("A Traveler Approaches");
+    expect(root.textContent).not.toContain("Pack Mule follows your party!");
+    expect(Array.from(root.querySelectorAll("button")).some((b) => b.textContent?.trim() === "Accept")).toBe(true);
+  });
+
   it('Pet: "Leave" transitions to map', () => {
     const { app, getScreen, clickButton } = mountApp();
     setupDefaultRun();
