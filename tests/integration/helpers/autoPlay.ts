@@ -271,12 +271,12 @@ export function autoPlayNonCombatScreen(root: HTMLElement): void {
     }
     case "camp": {
       const buttons = Array.from(root.querySelectorAll("button"));
-      // Pre-confirm preview: confirm the pending choice (e.g. Rest).
+      // Pre-confirm preview: confirm the pending choice (e.g. Long Rest).
       const confirmBtn = buttons.find((b) => b.textContent?.trim() === "Confirm");
       if (confirmBtn) { confirmBtn.click(); break; }
-      // Menu: take a Rest while still available (enabled buttons carry the bare label;
+      // Menu: take a Long Rest while still available (enabled buttons carry the bare label;
       // once used/gated the label is suffixed with a reason and no longer matches).
-      const restBtn = buttons.find((b) => b.textContent?.trim() === "Rest (Heal 40% max HP)");
+      const restBtn = buttons.find((b) => b.textContent?.trim() === "Long Rest");
       if (restBtn) { restBtn.click(); break; }
       // Then leave the camp.
       const leaveBtn = buttons.find((b) => b.textContent?.trim() === "Leave");

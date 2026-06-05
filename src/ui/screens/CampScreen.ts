@@ -1,12 +1,12 @@
 import type { App } from "../App.ts";
 import { gameState, routeAfterXp } from "../../state/GameState.ts";
 import {
-  restParty,
   trainPartyMember,
   brewPotion,
   prepareForCombat,
   CAMP_BREW_POTION_COST,
 } from "../../run/Events.ts";
+import { applyLongRest, ensureRunRestState } from "../../run/Rest.ts";
 import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
@@ -100,6 +100,7 @@ export class CampScreen {
   /** A small log of everything the party has done at this camp, plus a bag summary. */
   private renderStatus(): HTMLElement {
     const run = gameState.run!;
+    ensureRunRestState(run);
     const campState = getCampState(run);
     const wrap = document.createElement("div");
     wrap.style.cssText = "display:flex;flex-direction:column;gap:8px;width:320px;";
@@ -124,7 +125,7 @@ export class CampScreen {
     bag.style.cssText = "font-size:12px;color:#bbb;text-align:center;";
     const potionNames =
       run.inventory.potions.map((id) => POTION_REGISTRY[id]?.displayName ?? id).join(", ") || "(none)";
-    bag.textContent = `Gold: ${run.gold} — Potions: ${potionNames}`;
+    bag.textContent = `Gold: ${run.gold} - Camp Supplies: ${run.campSupplies ?? 0} - Potions: ${potionNames}`;
     wrap.appendChild(bag);
 
     return wrap;
@@ -139,8 +140,8 @@ export class CampScreen {
     const buttons = document.createElement("div");
     buttons.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:10px;";
 
-    // Rest (recovery)
-    buttons.appendChild(this.actionButton("rest", "Rest (Heal 40% max HP)", this.disabledReason("rest")));
+    // Long Rest (recovery)
+    buttons.appendChild(this.actionButton("rest", "Long Rest", this.disabledReason("rest")));
     // Train (not recovery; opens hero picker)
     buttons.appendChild(this.actionButton("train", `Train (+${TRAIN_XP} XP to a hero)`, this.disabledReason("train")));
     // Brew Potion (recovery)
@@ -170,9 +171,11 @@ export class CampScreen {
   /** Returns a disabled reason for a choice, or null when it is available. */
   private disabledReason(action: CampAction): string | null {
     const r = gameState.run!;
+    ensureRunRestState(r);
     const campState = getCampState(r);
     if (campState.used.includes(action)) return "Already done at this camp.";
     if (RECOVERY_ACTIONS.has(action) && recoveryUsed(campState)) return "Already recovered at this camp.";
+    if (action === "rest" && (r.campSupplies ?? 0) < r.party.length) return `Requires ${r.party.length} Camp Supplies.`;
     if (action === "brew" && r.gold < CAMP_BREW_POTION_COST) return `Requires ${CAMP_BREW_POTION_COST} gold.`;
     if (action === "train" && !r.party.some((p) => p.hp > 0)) return "Requires a living hero.";
     return null;
@@ -210,14 +213,11 @@ export class CampScreen {
     preview.style.cssText = "font-size:15px;color:#ddd;text-align:center;max-width:380px;";
 
     if (action === "rest") {
-      const lines = run.party
-        .filter((p) => p.hp > 0)
-        .map((p) => {
-          const heal = Math.max(1, Math.floor(p.maxHp * 0.4));
-          const after = Math.min(p.maxHp, p.hp + heal);
-          return `${p.displayName}: ${p.hp} → ${after} HP`;
-        });
-      preview.innerHTML = `<b>Rest</b><br/>Heal each living hero 40% of max HP.<br/><span style="font-size:13px;color:#bbb;">${lines.join("<br/>")}</span>`;
+      ensureRunRestState(run);
+      const lines = run.party.map((p) => {
+        return `${p.displayName}: ${p.hp} -> ${p.maxHp} HP, HD ${(p.hitDiceRemaining ?? p.level)}/${p.hitDiceTotal ?? p.level} -> ${p.hitDiceTotal ?? p.level}`;
+      });
+      preview.innerHTML = `<b>Long Rest</b><br/>Spend ${run.party.length} Camp Supplies (you have ${run.campSupplies ?? 0}) to fully heal, restore Hit Dice, and reset Short Rests.<br/><span style="font-size:13px;color:#bbb;">${lines.join("<br/>")}</span>`;
     } else if (action === "brew") {
       preview.innerHTML = `<b>Brew Potion</b><br/>Spend ${CAMP_BREW_POTION_COST} gold (you have ${run.gold}) to add 1 Healing Potion to your bag.`;
     } else if (action === "prepare") {
@@ -253,11 +253,10 @@ export class CampScreen {
     const run = gameState.run!;
     const campState = getCampState(run);
     if (action === "rest") {
-      const before = run.party.map((p) => p.hp);
-      restParty(run.party);
-      const messages = run.party.map((p, i) => `${p.displayName}: ${before[i]} → ${p.hp} HP`);
-      campState.outcomes.push(`Party rested! ${messages.join(", ")}`);
-      this.markUsed(campState, "rest");
+      const result = applyLongRest(run);
+      const messages = result.heroes.map((h) => `${h.displayName}: ${h.beforeHp} -> ${h.afterHp} HP`);
+      campState.outcomes.push(result.ok ? `${result.message} ${messages.join(", ")}` : result.message);
+      if (result.ok) this.markUsed(campState, "rest");
     } else if (action === "brew") {
       const result = brewPotion(run);
       campState.outcomes.push(result.message);

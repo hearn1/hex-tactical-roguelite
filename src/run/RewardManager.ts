@@ -13,6 +13,7 @@ export type RewardCard =
 export interface CombatReward {
   xpPerHero: number;
   gold: number;
+  campSupplies: number;
   cards: RewardCard[];
 }
 
@@ -116,7 +117,9 @@ export function generateReward(encounter: EncounterDef, rng: () => number): Comb
     }
   }
 
-  return { xpPerHero, gold, cards };
+  const campSupplies = 1 + Math.floor(rng() * 2);
+
+  return { xpPerHero, gold, campSupplies, cards };
 }
 
 export function applyGoldModifiers(gold: number, modifiers: RunModifier[]): number {
@@ -184,5 +187,7 @@ export function generateRewardWithInventory(
     { kind: "gold", amount: goldAmount },
   ];
 
-  return { xpPerHero, gold, cards };
+  const campSupplies = 1 + Math.floor(rng() * 2);
+
+  return { xpPerHero, gold, campSupplies, cards };
 }

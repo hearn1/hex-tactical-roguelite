@@ -1,6 +1,7 @@
 import type { RunState, PartyMember } from "../state/RunState.ts";
 import type { ShopInventory, RunModifier } from "../state/types.ts";
 import { NODE_REGISTRY } from "./nodes.ts";
+import { ensureRunRestState } from "../run/Rest.ts";
 
 export interface ShopServiceDef {
   id: string;
@@ -15,10 +16,12 @@ export interface ShopServiceDef {
 export const HEAL_SERVICE_ID = "service.heal_party";
 export const REMOVE_DRAWBACK_SERVICE_ID = "service.remove_drawback";
 export const BUY_RUMOR_SERVICE_ID = "service.buy_rumor";
+export const BUY_CAMP_SUPPLY_SERVICE_ID = "service.buy_camp_supply";
 
 export const HEAL_PRICE = 15;
 export const REMOVE_DRAWBACK_PRICE = 10;
 export const RUMOR_PRICE = 8;
+export const CAMP_SUPPLY_PRICE = 8;
 
 export const HEAL_AMOUNT = 8;
 
@@ -97,7 +100,28 @@ function buyRumorAvailable(run: RunState, shop: ShopInventory): { available: boo
   return { available: true, reason: "" };
 }
 
+function buyCampSupplyApply(run: RunState, _shop: ShopInventory): string {
+  ensureRunRestState(run);
+  run.campSupplies = (run.campSupplies ?? 0) + 1;
+  return "Bought 1 Camp Supply.";
+}
+
+function buyCampSupplyAvailable(run: RunState, shop: ShopInventory): { available: boolean; reason: string } {
+  if (shop.servicesUsed[BUY_CAMP_SUPPLY_SERVICE_ID]) return { available: false, reason: "Already used" };
+  if (run.gold < CAMP_SUPPLY_PRICE) return { available: false, reason: `Requires ${CAMP_SUPPLY_PRICE} gold` };
+  return { available: true, reason: "" };
+}
+
 export const SHOP_SERVICE_REGISTRY: ShopServiceDef[] = [
+  {
+    id: BUY_CAMP_SUPPLY_SERVICE_ID,
+    displayName: "Camp Supply",
+    description: "Add 1 Camp Supply for future Long Rests.",
+    price: CAMP_SUPPLY_PRICE,
+    oncePerShop: true,
+    apply: buyCampSupplyApply,
+    isAvailable: buyCampSupplyAvailable,
+  },
   {
     id: HEAL_SERVICE_ID,
     displayName: "Heal Party",

@@ -23,6 +23,7 @@ import { resetLevelUpScreenState } from "../ui/screens/LevelUpScreen.ts";
 import { resetInventoryScreenState } from "../ui/screens/InventoryScreen.ts";
 import { resetEventScreenState } from "../ui/screens/EventScreen.ts";
 import { resetRecruitScreenState } from "../ui/screens/RecruitScreen.ts";
+import { syncHitDiceForPartyMember } from "../run/Rest.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -336,6 +337,7 @@ export function syncPartyFromCombat(combat: CombatState, run: RunState): void {
     pm.level = unit.level;
     pm.bonusStats = { ...(unit.bonusStats ?? {}) };
     pm.equippedItemIds = { ...unit.equippedItemIds };
+    syncHitDiceForPartyMember(pm);
   }
 }
 
