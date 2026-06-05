@@ -1,67 +1,83 @@
 import type { CheckStat } from "../state/types.ts";
+import { ITEM_REGISTRY } from "./items.ts";
 import { POTION_REGISTRY } from "./potions.ts";
 
 /**
- * A background's mechanical effect. All effects are minor and readable (one stat point,
- * a little gold, or a single starter potion) and reuse existing run primitives so no new
- * combat code is needed:
- * - `statBonus` folds into `PartyMember.bonusStats`, so it flows into combat
- *   (`computeStats`) AND F23 non-combat checks (`checkModifierFor`) via the one shared
- *   `CheckStat`/`bonusStats` path.
- * - `gold` adds to `run.gold` at run start.
- * - `potion` pushes starter potions into the run inventory.
- * - `eventModifier` is a declared seam consumed by F24/F25 events; applying a background
- *   does nothing for this type today (no event-side wiring is built here).
+ * Backgrounds are composite choices: one small stat bonus, one starter item or potion,
+ * and one lightweight perk. Perks intentionally reuse existing run/combat levers.
  */
-export type BackgroundEffect =
-  | { type: "statBonus"; stat: CheckStat; amount: number }
-  | { type: "gold"; amount: number }
-  | { type: "potion"; potionId: string; count: number }
-  | { type: "eventModifier"; tag: string };
+export type BackgroundStat = CheckStat | "armor";
+
+export type BackgroundPerk =
+  | { type: "startCombatGuarded" }
+  | { type: "xpMultiplier"; value: number }
+  | { type: "revealNodes"; count: number }
+  | { type: "bonusGold"; amount: number }
+  | { type: "shopDiscount"; value: number };
+
+export interface BackgroundStatBonus {
+  stat: BackgroundStat;
+  amount: number;
+}
 
 export interface BackgroundDef {
   id: string;
   displayName: string;
   /** Short original flavor text shown in setup and hero panels. */
   flavor: string;
-  effect: BackgroundEffect;
+  statBonus: BackgroundStatBonus;
+  startingItemId?: string;
+  startingPotionId?: string;
+  startingPotionCount?: number;
+  perk: BackgroundPerk;
 }
 
 /**
- * Five original backgrounds, one minor effect each (maintainer-confirmed set, #53).
- * Covers the three check stats plus a gold and a potion lever. Any background can be
- * assigned to any class — they are flavor/utility, not class-locked.
+ * Five original backgrounds, evolved into #87's composite shape. Any background can be
+ * assigned to any class; they are flavor and utility, not class-locked.
  */
 export const BACKGROUND_REGISTRY: Record<string, BackgroundDef> = {
   "background.hedge_scholar": {
     id: "background.hedge_scholar",
     displayName: "Hedge Scholar",
     flavor: "Self-taught from borrowed books and long nights by the candle.",
-    effect: { type: "statBonus", stat: "spirit", amount: 1 },
+    statBonus: { stat: "spirit", amount: 1 },
+    startingItemId: "item.apprentice_wand",
+    perk: { type: "revealNodes", count: 2 },
   },
   "background.caravan_guard": {
     id: "background.caravan_guard",
     displayName: "Caravan Guard",
     flavor: "Years spent shielding wagons taught a steady arm and a hard stare.",
-    effect: { type: "statBonus", stat: "might", amount: 1 },
+    statBonus: { stat: "might", amount: 1 },
+    startingPotionId: "potion.healing",
+    startingPotionCount: 1,
+    perk: { type: "startCombatGuarded" },
   },
   "background.cutpurse": {
     id: "background.cutpurse",
     displayName: "Cutpurse",
     flavor: "Quick fingers and quicker feet, honed in crowded market lanes.",
-    effect: { type: "statBonus", stat: "agility", amount: 1 },
+    statBonus: { stat: "agility", amount: 1 },
+    startingItemId: "item.quickstep_buckle",
+    perk: { type: "bonusGold", amount: 10 },
   },
   "background.merchants_heir": {
     id: "background.merchants_heir",
     displayName: "Merchant's Heir",
     flavor: "Left the family ledgers behind, but not the family coin.",
-    effect: { type: "gold", amount: 10 },
+    statBonus: { stat: "armor", amount: 1 },
+    startingItemId: "item.lucky_charm",
+    perk: { type: "shopDiscount", value: 0.1 },
   },
   "background.field_medic": {
     id: "background.field_medic",
     displayName: "Field Medic",
     flavor: "Patched soldiers on the line and never travels without a remedy.",
-    effect: { type: "potion", potionId: "potion.healing", count: 1 },
+    statBonus: { stat: "spirit", amount: 1 },
+    startingPotionId: "potion.healing",
+    startingPotionCount: 1,
+    perk: { type: "xpMultiplier", value: 1.1 },
   },
 };
 
@@ -72,17 +88,41 @@ export function getBackground(id: string): BackgroundDef | undefined {
 
 /** Short human-readable summary of a background's mechanical effect, for setup + hero panels. */
 export function describeBackgroundEffect(def: BackgroundDef): string {
-  const e = def.effect;
-  switch (e.type) {
-    case "statBonus":
-      return `+${e.amount} ${e.stat.charAt(0).toUpperCase()}${e.stat.slice(1)} (checks)`;
-    case "gold":
-      return `+${e.amount} starting gold`;
-    case "potion": {
-      const name = POTION_REGISTRY[e.potionId]?.displayName ?? e.potionId;
-      return `Start with ${e.count}× ${name}`;
-    }
-    case "eventModifier":
-      return `Event affinity: ${e.tag}`;
+  const parts = [
+    `Stat: +${def.statBonus.amount} ${statLabel(def.statBonus.stat)}`,
+    `Item: ${describeStarter(def)}`,
+    `Perk: ${describeBackgroundPerk(def.perk)}`,
+  ];
+  return parts.join(" | ");
+}
+
+export function describeBackgroundPerk(perk: BackgroundPerk): string {
+  switch (perk.type) {
+    case "startCombatGuarded":
+      return "Start each combat Guarded";
+    case "xpMultiplier":
+      return `+${Math.round((perk.value - 1) * 100)}% XP gains`;
+    case "revealNodes":
+      return `Reveal ${perk.count} upcoming nodes`;
+    case "bonusGold":
+      return `+${perk.amount} starting gold`;
+    case "shopDiscount":
+      return `${Math.round(perk.value * 100)}% shop discount`;
   }
+}
+
+function describeStarter(def: BackgroundDef): string {
+  if (def.startingItemId) {
+    return ITEM_REGISTRY[def.startingItemId]?.displayName ?? def.startingItemId;
+  }
+  if (def.startingPotionId) {
+    const count = def.startingPotionCount ?? 1;
+    const name = POTION_REGISTRY[def.startingPotionId]?.displayName ?? def.startingPotionId;
+    return `${count}x ${name}`;
+  }
+  return "None";
+}
+
+function statLabel(stat: BackgroundStat): string {
+  return stat.charAt(0).toUpperCase() + stat.slice(1);
 }

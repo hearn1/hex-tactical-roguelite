@@ -115,7 +115,8 @@ describe("DataRepository", () => {
     const def = repo.getBackground("background.caravan_guard");
     expect(def).toBeDefined();
     expect(def!.displayName).toBe("Caravan Guard");
-    expect(def!.effect).toEqual({ type: "statBonus", stat: "might", amount: 1 });
+    expect(def!.statBonus).toEqual({ stat: "might", amount: 1 });
+    expect(def!.perk).toEqual({ type: "startCombatGuarded" });
   });
 
   it("getAllBackgrounds returns all backgrounds", () => {
@@ -183,12 +184,24 @@ describe("DataRepository validation rejects broken references", () => {
     const repo = new DataRepository();
     repo.loadAll();
     const bg = repo.getBackground("background.field_medic")!;
-    const original = bg.effect;
-    bg.effect = { type: "potion", potionId: "potion.nonexistent", count: 1 };
+    const original = bg.startingPotionId;
+    bg.startingPotionId = "potion.nonexistent";
     const report = repo.validate();
     expect(report.valid).toBe(false);
     expect(report.errors.some((e) => e.includes("potion.nonexistent"))).toBe(true);
-    bg.effect = original;
+    bg.startingPotionId = original;
+  });
+
+  it("detects an unknown item reference in a background", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const bg = repo.getBackground("background.cutpurse")!;
+    const original = bg.startingItemId;
+    bg.startingItemId = "item.nonexistent";
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("item.nonexistent"))).toBe(true);
+    bg.startingItemId = original;
   });
 
   it("detects an unknown item referenced by an event effect", () => {

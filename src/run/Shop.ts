@@ -1,8 +1,10 @@
 import type { ShopInventory } from "../state/types.ts";
-import type { PartyMember } from "../state/RunState.ts";
+import type { PartyMember, RunState } from "../state/RunState.ts";
+import type { RunModifier } from "../state/types.ts";
 import type { InventoryState } from "./Inventory.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { SHOP_SERVICE_REGISTRY } from "../data/shopServices.ts";
+import { applyShopDiscount } from "./ShopPricing.ts";
 
 export const ITEM_PRICE: Record<string, number> = {
   common: 8,
@@ -75,6 +77,17 @@ export function rollShopInventory(rng: () => number): ShopInventory {
   return { items, potions, servicesUsed: {} };
 }
 
+export function getShopItemPrice(itemId: string, modifiers: RunModifier[]): number {
+  const def = ITEM_REGISTRY[itemId];
+  const basePrice = ITEM_PRICE[def?.rarity ?? "common"] ?? 8;
+  return applyShopDiscount(basePrice, modifiers);
+}
+
+export function getShopPotionPrice(potionId: string, modifiers: RunModifier[]): number {
+  const basePrice = POTION_PRICE[potionId] ?? 10;
+  return applyShopDiscount(basePrice, modifiers);
+}
+
 export function buyShopItem(inventory: ShopInventory, itemIndex: number): boolean {
   const entry = inventory.items[itemIndex];
   if (!entry || entry.sold) return false;
@@ -121,14 +134,14 @@ export function useHealService(inventory: ShopInventory, party: PartyMember[]): 
 
 export function applyShopService(
   serviceId: string,
-  run: import("../state/RunState.ts").RunState,
+  run: RunState,
   shop: ShopInventory,
 ): string {
   const def = SHOP_SERVICE_REGISTRY.find((s) => s.id === serviceId);
   if (!def) return "Unknown service.";
   if (shop.servicesUsed[serviceId]) return "Already used.";
   shop.servicesUsed[serviceId] = true;
-  run.gold -= def.price;
+  run.gold -= applyShopDiscount(def.price, run.runModifiers);
   run.inventory.gold = run.gold;
   return def.apply(run, shop);
 }

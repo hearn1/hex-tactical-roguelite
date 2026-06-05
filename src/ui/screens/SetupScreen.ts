@@ -340,7 +340,7 @@ export class SetupScreen {
     errorEl.style.cssText = "color:#f66;font-size:12px;min-height:14px;";
     row.appendChild(errorEl);
 
-    row.appendChild(this.renderClassPreview(spec.classId, spec.abilityScores));
+    row.appendChild(this.renderClassPreview(spec.classId, spec.abilityScores, spec.backgroundId ?? undefined));
 
     return { row, errorEl };
   }
@@ -489,7 +489,7 @@ export class SetupScreen {
 
     select.addEventListener("change", () => {
       specs[index].backgroundId = select.value === "" ? null : select.value;
-      paintEffect();
+      this.app.render();
     });
 
     wrap.appendChild(select);
@@ -497,7 +497,7 @@ export class SetupScreen {
     return wrap;
   }
 
-  private renderClassPreview(classId: string, abilityScores?: AbilityScores): HTMLElement {
+  private renderClassPreview(classId: string, abilityScores?: AbilityScores, backgroundId?: string): HTMLElement {
     const wrap = document.createElement("div");
     wrap.style.cssText = "font-size:12px;color:#bbb;display:flex;flex-direction:column;gap:3px;";
 
@@ -516,7 +516,7 @@ export class SetupScreen {
     stats.textContent = `HP ${s.maxHp} · Armor ${s.armor} · Move ${s.move} · Might ${s.might} · Agility ${s.agility} · Spirit ${s.spirit}`;
     wrap.appendChild(stats);
 
-    const previewStats = this.computePreviewStats(classId, abilityScores);
+    const previewStats = this.computePreviewStats(classId, abilityScores, backgroundId);
     const preview = document.createElement("div");
     preview.textContent = `Preview: HP ${previewStats.maxHp} | Armor ${previewStats.armor} | Move ${previewStats.move} | Might ${previewStats.might} | Agility ${previewStats.agility} | Spirit ${previewStats.spirit}`;
     preview.style.color = abilityScores ? "#8c8" : "#aaa";
@@ -535,13 +535,22 @@ export class SetupScreen {
     return wrap;
   }
 
-  private computePreviewStats(classId: string, abilityScores?: AbilityScores) {
+  private computePreviewStats(classId: string, abilityScores?: AbilityScores, backgroundId?: string) {
     const def = CLASS_REGISTRY[classId];
     const equippedItemIds: UnitInstance["equippedItemIds"] = { weapon: null, armor: null, trinket: null };
     for (const itemId of def?.startingItems ?? []) {
       const item = ITEM_REGISTRY[itemId];
       if (!item) continue;
       if (!equippedItemIds[item.slot]) equippedItemIds[item.slot] = itemId;
+    }
+    const bonusStats: UnitInstance["bonusStats"] = {};
+    const bg = backgroundId ? BACKGROUND_REGISTRY[backgroundId] : undefined;
+    if (bg) {
+      bonusStats[bg.statBonus.stat] = (bonusStats[bg.statBonus.stat] ?? 0) + bg.statBonus.amount;
+      if (bg.startingItemId) {
+        const item = ITEM_REGISTRY[bg.startingItemId];
+        if (item && !equippedItemIds[item.slot]) equippedItemIds[item.slot] = bg.startingItemId;
+      }
     }
 
     const unit: UnitInstance = {
@@ -558,7 +567,7 @@ export class SetupScreen {
       movePointsRemaining: 0,
       hasActed: false,
       equippedItemIds,
-      bonusStats: {},
+      bonusStats,
       abilityScores,
     };
     return computeStats(unit);
