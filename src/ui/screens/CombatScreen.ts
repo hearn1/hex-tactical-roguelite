@@ -16,6 +16,7 @@ import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
+import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/environmentThemes.ts";
 import { CombatThreeRenderer, type Combat3DHighlights } from "../../render/combat3d/CombatThreeRenderer.ts";
 import type { CombatAnimationStep } from "../../render/combat3d/animationQueue.ts";
 
@@ -289,9 +290,12 @@ export class CombatScreen {
     const w = canvas.width;
     const h = canvas.height;
     ctx.clearRect(0, 0, w, h);
+    this.drawFallbackEnvironment(ctx, w, h, getEnvironmentTheme(cs.theme));
 
     const gridHexes = cs.gridKeys.map(parseHexKey);
+    const theme = getEnvironmentTheme(cs.theme);
     for (const hex of gridHexes) {
+      fillHex(ctx, hex, theme.ground.fallbackFill);
       renderHexOutline(ctx, hex, GRID_COLOR, 1);
     }
 
@@ -316,6 +320,27 @@ export class CombatScreen {
       const isActive = activeUnit !== null && activeUnit.instanceId === unit.instanceId;
       this.drawUnitToken(ctx, unit, isActive);
     }
+  }
+
+  private drawFallbackEnvironment(
+    ctx: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+    theme: EnvironmentThemeDef,
+  ): void {
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, theme.sky.topColor);
+    gradient.addColorStop(0.58, theme.sky.horizonColor);
+    gradient.addColorStop(1, theme.ground.baseColor);
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = theme.ground.lineColor;
+    ctx.globalAlpha = 0.22;
+    for (let x = -60; x < width; x += 90) {
+      ctx.fillRect(x, height * 0.68, 70, height * 0.32);
+    }
+    ctx.globalAlpha = 1;
   }
 
   private getRenderHighlights(cs: CombatState, activeUnit: UnitInstance | null): Combat3DHighlights {

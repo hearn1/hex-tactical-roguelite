@@ -1,4 +1,6 @@
 import type { AbilityScores } from "../data/abilities.ts";
+import type { CombatEnvironmentThemeId } from "../data/environmentThemes.ts";
+import type { NodeType } from "../data/nodes.ts";
 
 export type ScreenId =
   | "main_menu"
@@ -148,6 +150,10 @@ export interface CombatState {
   /** True once an elite encounter's "Rally" trait has fired (so it only triggers once). */
   eliteRallyTriggered?: boolean;
   encounterId?: string;
+  /** Map node type that launched this combat, used by renderers to pick themed environments. */
+  sourceNodeType?: NodeType;
+  /** Resolved visual environment theme for the combat arena. */
+  theme?: CombatEnvironmentThemeId;
   difficulty?: "normal" | "hard";
   /** Cumulative enemy damage bonus from adventure modifiers, stacks with difficulty. */
   modifierDamageBonus?: number;

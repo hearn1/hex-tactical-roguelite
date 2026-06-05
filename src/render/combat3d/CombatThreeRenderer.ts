@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { hexKey, parseHexKey } from "../../core/hex.ts";
 import type { CombatState, Hex, UnitInstance } from "../../state/types.ts";
 import { getSpriteDef, type SpriteDef, type SpriteFrameId } from "../../data/sprites.ts";
+import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/environmentThemes.ts";
 import { axialToWorld, HEX_WORLD_RADIUS } from "./hexWorld.ts";
 import { hexFromPickData } from "./picking.ts";
 import { CombatAnimationQueue, easeInOut, type CombatAnimationStep } from "./animationQueue.ts";
@@ -38,8 +39,6 @@ interface VisualUnitState {
 
 const VIEW_WIDTH = 640;
 const VIEW_HEIGHT = 480;
-const BASE_TILE_COLOR = new THREE.Color("#27344d");
-const BASE_TILE_EMISSIVE = new THREE.Color("#02050a");
 const REACHABLE_COLOR = new THREE.Color("#257d4b");
 const TARGET_COLOR = new THREE.Color("#9d3434");
 const TELEGRAPH_COLOR = new THREE.Color("#c87922");
@@ -59,6 +58,8 @@ export class CombatThreeRenderer {
   private readonly tileMeshes = new Map<string, THREE.Mesh<THREE.CylinderGeometry, THREE.MeshStandardMaterial>>();
   private readonly unitGroups = new Map<string, UnitGroup>();
   private readonly textureCache = new Map<string, THREE.CanvasTexture>();
+  private readonly groundGeometry = new THREE.PlaneGeometry(18, 16);
+  private readonly skyGeometry = new THREE.SphereGeometry(30, 32, 16);
   private readonly tileGeometry = new THREE.CylinderGeometry(HEX_WORLD_RADIUS * 0.96, HEX_WORLD_RADIUS * 0.96, 0.08, 6);
   private readonly unitGeometry = new THREE.PlaneGeometry(UNIT_WIDTH, UNIT_HEIGHT);
   private readonly hpBackGeometry = new THREE.PlaneGeometry(0.7, 0.07);
@@ -67,8 +68,13 @@ export class CombatThreeRenderer {
   private readonly animationQueue = new CombatAnimationQueue();
   private readonly visualUnits = new Map<string, VisualUnitState>();
   private readonly activeStepStartWorlds = new Map<string, { x: number; z: number }>();
+  private readonly environmentGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
+  private readonly skyDome: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
+  private ambientLight!: THREE.AmbientLight;
+  private directionalLight!: THREE.DirectionalLight;
   private currentCombat: CombatState | null = null;
   private currentHighlights: Combat3DHighlights | null = null;
+  private currentThemeId: string | null = null;
   private animationId: number | null = null;
   private lastFrameTimeMs = performance.now();
   private lastAnimating = false;
@@ -82,6 +88,21 @@ export class CombatThreeRenderer {
     this.camera = new THREE.OrthographicCamera(-5.7, 5.7, 4.25, -4.25, 0.1, 100);
     this.camera.position.set(5.2, 6.8, 7.4);
     this.camera.lookAt(0, 0, 0);
+
+    this.environmentGround = new THREE.Mesh(
+      this.groundGeometry,
+      new THREE.MeshStandardMaterial({ roughness: 0.95, metalness: 0 }),
+    );
+    this.environmentGround.rotation.x = -Math.PI / 2;
+    this.environmentGround.position.y = -0.08;
+    this.environmentGround.renderOrder = -10;
+
+    this.skyDome = new THREE.Mesh(
+      this.skyGeometry,
+      new THREE.MeshBasicMaterial({ side: THREE.BackSide, depthWrite: false }),
+    );
+    this.skyDome.renderOrder = -20;
+    this.scene.add(this.skyDome, this.environmentGround);
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -101,7 +122,8 @@ export class CombatThreeRenderer {
   update(combat: CombatState, highlights: Combat3DHighlights): void {
     this.currentCombat = combat;
     this.currentHighlights = highlights;
-    this.syncTiles(combat, highlights);
+    const theme = this.syncEnvironment(combat.theme);
+    this.syncTiles(combat, highlights, theme);
     this.syncUnits(combat);
     this.renderFrame();
   }
@@ -151,6 +173,8 @@ export class CombatThreeRenderer {
       this.animationId = null;
     }
     this.tileGeometry.dispose();
+    this.groundGeometry.dispose();
+    this.skyGeometry.dispose();
     this.unitGeometry.dispose();
     this.hpBackGeometry.dispose();
     this.hpFillGeometry.dispose();
@@ -162,10 +186,10 @@ export class CombatThreeRenderer {
   }
 
   private addLights(): void {
-    const ambient = new THREE.AmbientLight("#dbeafe", 1.2);
-    const directional = new THREE.DirectionalLight("#ffffff", 1.4);
-    directional.position.set(3, 8, 4);
-    this.scene.add(ambient, directional);
+    this.ambientLight = new THREE.AmbientLight("#dbeafe", 1.2);
+    this.directionalLight = new THREE.DirectionalLight("#ffffff", 1.4);
+    this.directionalLight.position.set(3, 8, 4);
+    this.scene.add(this.ambientLight, this.directionalLight);
   }
 
   private bindPointerEvents(): void {
@@ -353,7 +377,29 @@ export class CombatThreeRenderer {
     }
   }
 
-  private syncTiles(combat: CombatState, highlights: Combat3DHighlights): void {
+  private syncEnvironment(themeId: string | undefined): EnvironmentThemeDef {
+    const theme = getEnvironmentTheme(themeId);
+    if (this.currentThemeId === theme.id) return theme;
+
+    this.currentThemeId = theme.id;
+    this.scene.background = new THREE.Color(theme.sky.topColor);
+    this.scene.fog = new THREE.Fog(theme.sky.horizonColor, 11, 27);
+
+    this.environmentGround.material.map = this.getEnvironmentGroundTexture(theme);
+    this.environmentGround.material.color.set("#ffffff");
+    this.environmentGround.material.needsUpdate = true;
+
+    this.skyDome.material.map = this.getEnvironmentSkyTexture(theme);
+    this.skyDome.material.needsUpdate = true;
+
+    this.ambientLight.color.set(theme.lighting.ambientColor);
+    this.ambientLight.intensity = theme.lighting.ambientIntensity;
+    this.directionalLight.color.set(theme.lighting.directionalColor);
+    this.directionalLight.intensity = theme.lighting.directionalIntensity;
+    return theme;
+  }
+
+  private syncTiles(combat: CombatState, highlights: Combat3DHighlights, theme: EnvironmentThemeDef): void {
     const liveKeys = new Set(combat.gridKeys);
     for (const [key, mesh] of this.tileMeshes) {
       if (liveKeys.has(key)) continue;
@@ -367,8 +413,8 @@ export class CombatThreeRenderer {
       let mesh = this.tileMeshes.get(key);
       if (!mesh) {
         const material = new THREE.MeshStandardMaterial({
-          color: BASE_TILE_COLOR.clone(),
-          emissive: BASE_TILE_EMISSIVE.clone(),
+          color: new THREE.Color(theme.ground.tileColor),
+          emissive: new THREE.Color(theme.ground.tileEmissive),
           roughness: 0.9,
           metalness: 0,
         });
@@ -383,8 +429,8 @@ export class CombatThreeRenderer {
       }
 
       const material = mesh.material;
-      material.color.copy(BASE_TILE_COLOR);
-      material.emissive.copy(BASE_TILE_EMISSIVE);
+      material.color.set(theme.ground.tileColor);
+      material.emissive.set(theme.ground.tileEmissive);
 
       if (highlights.reachableKeys.has(key)) {
         material.color.copy(REACHABLE_COLOR);
@@ -512,7 +558,8 @@ export class CombatThreeRenderer {
 
   private restoreTileHighlights(): void {
     if (this.currentCombat && this.currentHighlights) {
-      this.syncTiles(this.currentCombat, this.currentHighlights);
+      const theme = getEnvironmentTheme(this.currentThemeId);
+      this.syncTiles(this.currentCombat, this.currentHighlights, theme);
     }
   }
 
@@ -583,6 +630,49 @@ export class CombatThreeRenderer {
     const texture = new THREE.CanvasTexture(canvas);
     texture.magFilter = THREE.NearestFilter;
     texture.minFilter = THREE.NearestFilter;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    this.textureCache.set(cacheKey, texture);
+    return texture;
+  }
+
+  private getEnvironmentGroundTexture(theme: EnvironmentThemeDef): THREE.CanvasTexture {
+    const cacheKey = `environment-ground:${theme.id}`;
+    const cached = this.textureCache.get(cacheKey);
+    if (cached) return cached;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not create environment ground canvas.");
+    drawEnvironmentGround(ctx, theme);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(5, 4);
+    texture.magFilter = THREE.NearestFilter;
+    texture.minFilter = THREE.NearestFilter;
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.needsUpdate = true;
+    this.textureCache.set(cacheKey, texture);
+    return texture;
+  }
+
+  private getEnvironmentSkyTexture(theme: EnvironmentThemeDef): THREE.CanvasTexture {
+    const cacheKey = `environment-sky:${theme.id}`;
+    const cached = this.textureCache.get(cacheKey);
+    if (cached) return cached;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = 64;
+    canvas.height = 128;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Could not create environment sky canvas.");
+    drawEnvironmentSky(ctx, theme);
+
+    const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.needsUpdate = true;
     this.textureCache.set(cacheKey, texture);
@@ -666,6 +756,113 @@ function drawPlaceholderSprite(ctx: CanvasRenderingContext2D, sprite: SpriteDef 
     ctx.fillStyle = palette.accent;
     ctx.fillRect(24, attacking ? 9 : 13, 5, 3);
   }
+}
+
+function drawEnvironmentGround(ctx: CanvasRenderingContext2D, theme: EnvironmentThemeDef): void {
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = theme.ground.baseColor;
+  ctx.fillRect(0, 0, 128, 128);
+  ctx.strokeStyle = theme.ground.lineColor;
+  ctx.fillStyle = theme.ground.accentColor;
+
+  if (theme.ground.pattern === "stone") {
+    for (let y = 0; y < 128; y += 16) {
+      const offset = (y / 16) % 2 === 0 ? 0 : 12;
+      for (let x = -offset; x < 128; x += 24) {
+        ctx.strokeRect(x, y, 24, 16);
+      }
+    }
+    ctx.globalAlpha = 0.22;
+    for (let i = 0; i < 9; i++) ctx.fillRect(10 + i * 13, 11 + (i % 4) * 25, 7, 3);
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  if (theme.ground.pattern === "arena") {
+    ctx.strokeStyle = theme.ground.accentColor;
+    ctx.lineWidth = 3;
+    for (let radius = 20; radius <= 64; radius += 16) {
+      ctx.beginPath();
+      ctx.arc(64, 64, radius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = theme.ground.lineColor;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 10; i++) {
+      ctx.beginPath();
+      ctx.moveTo(64, 64);
+      ctx.lineTo((i * 19) % 128, (i * 31) % 128);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  if (theme.ground.pattern === "planks") {
+    ctx.lineWidth = 2;
+    for (let y = 0; y < 128; y += 18) {
+      ctx.fillStyle = y % 36 === 0 ? theme.ground.baseColor : theme.ground.accentColor;
+      ctx.globalAlpha = y % 36 === 0 ? 1 : 0.2;
+      ctx.fillRect(0, y, 128, 18);
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(128, y);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  if (theme.ground.pattern === "earth") {
+    ctx.globalAlpha = 0.3;
+    for (let i = 0; i < 18; i++) {
+      ctx.beginPath();
+      ctx.arc((i * 23) % 128, (i * 41) % 128, 3 + (i % 4), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = theme.ground.lineColor;
+    for (let x = 8; x < 128; x += 24) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x - 12, 128);
+      ctx.stroke();
+    }
+    return;
+  }
+
+  if (theme.ground.pattern === "mystic") {
+    ctx.globalAlpha = 0.55;
+    ctx.strokeStyle = theme.ground.accentColor;
+    for (let i = 0; i < 7; i++) {
+      ctx.beginPath();
+      ctx.arc(18 + i * 16, 22 + (i % 3) * 32, 8, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+
+  for (let y = 8; y < 128; y += 18) {
+    for (let x = (y / 18) % 2 === 0 ? 6 : 16; x < 128; x += 26) {
+      ctx.fillRect(x, y, 5, 10);
+      ctx.fillRect(x + 8, y + 5, 3, 6);
+    }
+  }
+}
+
+function drawEnvironmentSky(ctx: CanvasRenderingContext2D, theme: EnvironmentThemeDef): void {
+  const gradient = ctx.createLinearGradient(0, 0, 0, 128);
+  gradient.addColorStop(0, theme.sky.topColor);
+  gradient.addColorStop(0.62, theme.sky.horizonColor);
+  gradient.addColorStop(1, theme.sky.bottomColor);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 64, 128);
+
+  ctx.globalAlpha = 0.16;
+  ctx.fillStyle = theme.ground.accentColor;
+  ctx.fillRect(0, 76, 64, 5);
+  ctx.fillRect(0, 91, 64, 3);
+  ctx.globalAlpha = 1;
 }
 
 function disposeGroupMaterials(group: THREE.Group): void {

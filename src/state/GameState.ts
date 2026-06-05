@@ -16,6 +16,8 @@ import { resolveOncePerCombatBonus } from "../combat/ItemHooks.ts";
 import type { MetaProgressionState } from "../meta/MetaProgression.ts";
 import { createDefaultMetaProgression } from "../meta/MetaProgression.ts";
 import { DIFFICULTY_CONFIG, scaleStat } from "../data/difficulty.ts";
+import { nodeTypeToEnvironmentTheme } from "../data/environmentThemes.ts";
+import type { NodeType } from "../data/nodes.ts";
 import { resetRewardScreenState } from "../ui/screens/RewardScreen.ts";
 import { resetCampScreenState } from "../ui/screens/CampScreen.ts";
 import { resetShopScreenState } from "../ui/screens/ShopScreen.ts";
@@ -187,6 +189,7 @@ export function initCombatState(rng: () => number): CombatState {
     targetingActionId: null,
     bossActionIndex: 0,
     bossReinforcementSpawned: false,
+    theme: nodeTypeToEnvironmentTheme("combat"),
   };
 }
 
@@ -222,7 +225,12 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
   return unit;
 }
 
-export function createCombatFromRun(run: RunState, encounterId: string, rng: () => number): CombatState {
+export function createCombatFromRun(
+  run: RunState,
+  encounterId: string,
+  rng: () => number,
+  sourceNodeType?: NodeType,
+): CombatState {
   const encounterDef = ENCOUNTER_REGISTRY[encounterId];
   if (!encounterDef) throw new Error(`Unknown encounter: ${encounterId}`);
 
@@ -291,6 +299,7 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
 
   const isBoss = encounterId === "encounter.boss_ogre_hexbreaker";
   const hasEliteTrait = encounterDef.eliteTrait !== undefined;
+  const theme = nodeTypeToEnvironmentTheme(sourceNodeType, encounterId);
 
   const log: CombatState["log"] = [
     { kind: "initiative", text: `[T1] Battle begins: ${encounterDef.displayName}`, round: 1 },
@@ -322,6 +331,8 @@ export function createCombatFromRun(run: RunState, encounterId: string, rng: () 
     bossTelegraph: isBoss ? null : undefined,
     eliteRallyTriggered: hasEliteTrait ? false : undefined,
     encounterId,
+    sourceNodeType,
+    theme,
     difficulty: run.difficulty,
     modifierDamageBonus: modifierDamageBonus > 0 ? modifierDamageBonus : undefined,
   };

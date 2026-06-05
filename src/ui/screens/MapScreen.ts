@@ -287,7 +287,7 @@ export class MapScreen {
     if (nodeDef.type === "combat" || nodeDef.type === "boss" || nodeDef.type === "elite") {
       const encounterId = resolveNodeEncounterId(nodeDef, gameState.rng);
       if (encounterId) {
-        gameState.combat = createCombatFromRun(run, encounterId, gameState.rng);
+        gameState.combat = createCombatFromRun(run, encounterId, gameState.rng, nodeDef.type);
         gameState.screen = "combat";
         this.app.render();
       }
