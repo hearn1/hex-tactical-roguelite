@@ -148,15 +148,15 @@ const SHORT_NODES: NodeDef[] = [
 ];
 
 /**
- * "long" template — the full single-act expedition (F26 / #57). ~12 nodes across 8 layers
- * with multiple meaningful branch points. Structural invariants (verified by tests in
+ * "long" template - the expanded single-act expedition (#95). Fifteen nodes across the
+ * haunted wilds with multiple meaningful branch points. Structural invariants (verified by tests in
  * MapGraph.test.ts):
  *   - The boss is reachable from every valid path.
- *   - `node.long_shop_a` and `node.long_camp_a` are cut vertices, so every root->boss path
- *     crosses at least one shop and at least one recovery (camp) node.
+ *   - `node.long_camp_a` and `node.long_camp_b` are cut vertices, so every root->boss path
+ *     crosses both recovery segment boundaries.
  *   - The elite (`node.long_elite_a`) sits on an optional, skippable high-risk branch.
  * Fresh encounters are authored below in encounters.ts (`encounter.long_*`); per the
- * resolved plan they compose the existing enemy roster pending F27's variety pack.
+ * resolved plan they compose the existing enemy roster pending larger content packs.
  */
 const LONG_NODES: NodeDef[] = [
   {
@@ -165,9 +165,9 @@ const LONG_NODES: NodeDef[] = [
     title: "Wayfarer's Rest",
     description: "The party sets out into the depths of the haunted wilds.",
     layer: 0,
-    nextNodeIds: ["node.long_combat_a", "node.long_event_a"],
+    nextNodeIds: ["node.long_combat_a", "node.long_combat_b"],
   },
-  // Layer 1 — opening branch: a fight (toward the optional elite) or a safer event.
+  // Layer 1 - opening branch: a direct road fight or a mire route.
   {
     id: "node.long_combat_a",
     type: "combat",
@@ -175,38 +175,38 @@ const LONG_NODES: NodeDef[] = [
     description: "Goblin raiders have barricaded the old gate.",
     layer: 1,
     encounterId: "encounter.long_gatehouse",
-    encounterPoolId: "pool.standard_combat",
-    nextNodeIds: ["node.long_elite_a", "node.long_shop_a"],
-  },
-  {
-    id: "node.long_event_a",
-    type: "event",
-    title: "Weathered Waystone",
-    description: "An old waystone hums with faded magic.",
-    layer: 1,
-    nextNodeIds: ["node.long_shop_a", "node.long_combat_b"],
-  },
-  // Layer 2 — optional high-risk elite, or a standard skirmish, both feeding the supply hub.
-  {
-    id: "node.long_elite_a",
-    type: "elite",
-    title: "The Iron Sergeant",
-    description: "A scarred veteran and her honor guard bar the way. (Optional, high risk.)",
-    layer: 2,
-    encounterId: "encounter.long_iron_sergeant_elite",
-    nextNodeIds: ["node.long_shop_a"],
+    nextNodeIds: ["node.long_shop_a", "node.long_combat_c"],
   },
   {
     id: "node.long_combat_b",
     type: "combat",
     title: "Mire Crossing",
     description: "Wolves harry travelers at the boggy ford.",
-    layer: 2,
+    layer: 1,
     encounterId: "encounter.long_mire_crossing",
-    encounterPoolId: "pool.standard_combat",
+    nextNodeIds: ["node.long_shop_a", "node.long_combat_c"],
+  },
+  // Layer 2 - optional early skirmish feeding the supply hub.
+  {
+    id: "node.long_combat_c",
+    type: "combat",
+    title: "Toll of Bones",
+    description: "Skeletal sentries demand a grim toll from anyone leaving the mire.",
+    layer: 2,
+    encounterId: "encounter.long_toll_of_bones",
     nextNodeIds: ["node.long_shop_a"],
   },
-  // Layer 3 — guaranteed supply hub: every path converges here.
+  {
+    id: "node.long_combat_d",
+    type: "combat",
+    title: "Thornwood Pursuit",
+    description: "A fast raiding pack tries to drive the party away from the old trail.",
+    layer: 5,
+    encounterId: "encounter.long_thornwood_pursuit",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.long_event_a"],
+  },
+  // Layer 3 - guaranteed supply hub: every path converges here.
   {
     id: "node.long_shop_a",
     type: "shop",
@@ -214,62 +214,91 @@ const LONG_NODES: NodeDef[] = [
     description: "A well-stocked caravan trades with passing wanderers.",
     layer: 3,
     shopPoolId: "shop.basic",
-    nextNodeIds: ["node.long_event_b", "node.long_combat_c"],
+    nextNodeIds: ["node.long_camp_a"],
   },
-  // Layer 4 — choose your approach to the rest stop.
+  // Layer 6 - event beat between the middle fights.
   {
-    id: "node.long_event_b",
+    id: "node.long_event_a",
     type: "event",
-    title: "Whispering Hollow",
-    description: "Voices drift from a hollow beneath the roots.",
-    layer: 4,
-    nextNodeIds: ["node.long_camp_a"],
+    title: "Weathered Waystone",
+    description: "An old waystone hums with faded magic.",
+    layer: 6,
+    nextNodeIds: ["node.long_combat_f"],
   },
   {
-    id: "node.long_combat_c",
+    id: "node.long_combat_e",
     type: "combat",
-    title: "Toll of Bones",
-    description: "Skeletal sentries demand a grim toll.",
-    layer: 4,
-    encounterId: "encounter.long_toll_of_bones",
-    encounterPoolId: "pool.standard_combat",
-    nextNodeIds: ["node.long_camp_a"],
+    title: "Cult Vanguard",
+    description: "The Hexbreaker's cultists make a desperate stand among broken idols.",
+    layer: 5,
+    encounterId: "encounter.long_cult_vanguard",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.long_event_a"],
   },
-  // Layer 5 — guaranteed recovery: every path converges here before the final push.
+  // Layer 4 - guaranteed recovery and first segment boundary.
   {
     id: "node.long_camp_a",
     type: "camp",
     title: "Sheltered Hollow",
-    description: "A defensible camp to rest before the lair.",
-    layer: 5,
-    nextNodeIds: ["node.long_combat_d", "node.long_recruit_a"],
+    description: "A defensible hollow splits the journey into a new leg.",
+    layer: 4,
+    nextNodeIds: ["node.long_combat_d", "node.long_combat_e"],
   },
-  // Layer 6 — final approach branch: one last fight, or a recruit to bolster the party.
+  // Layers 7-10 - final approach, including the second camp and optional elite.
   {
-    id: "node.long_combat_d",
+    id: "node.long_combat_f",
     type: "combat",
-    title: "Cult Vanguard",
-    description: "The Hexbreaker's cultists make a desperate stand.",
-    layer: 6,
-    encounterId: "encounter.long_cult_vanguard",
-    encounterPoolId: "pool.standard_combat",
-    nextNodeIds: ["node.long_boss"],
+    title: "Blackwater Ford",
+    description: "Archers and wolves wait where the black stream cuts the road.",
+    layer: 7,
+    encounterId: "encounter.long_blackwater_ford",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.long_combat_g"],
   },
   {
-    id: "node.long_recruit_a",
-    type: "recruit",
-    title: "Captive Survivor",
-    description: "A freed prisoner offers to fight at your side.",
-    layer: 6,
+    id: "node.long_camp_b",
+    type: "camp",
+    title: "Last Lantern Camp",
+    description: "A wind-bent lantern marks the final safe ground before the lair.",
+    layer: 9,
+    nextNodeIds: ["node.long_combat_h", "node.long_elite_a"],
+  },
+  {
+    id: "node.long_combat_g",
+    type: "combat",
+    title: "Ashen Lookout",
+    description: "A hilltop watch has spotted the party's approach.",
+    layer: 8,
+    encounterId: "encounter.long_ashen_lookout",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.long_camp_b"],
+  },
+  {
+    id: "node.long_elite_a",
+    type: "elite",
+    title: "The Iron Sergeant",
+    description: "A scarred veteran and her honor guard bar the direct route. (Optional, high risk.)",
+    layer: 10,
+    encounterId: "encounter.long_iron_sergeant_elite",
+    nextNodeIds: ["node.long_combat_h"],
+  },
+  {
+    id: "node.long_combat_h",
+    type: "combat",
+    title: "Hexscar Patrol",
+    description: "The Hexbreaker's outer guards circle the cracked stone road.",
+    layer: 10,
+    encounterId: "encounter.long_hexscar_patrol",
+    encounterPoolId: "pool.long_combat",
     nextNodeIds: ["node.long_boss"],
   },
-  // Layer 7 — the boss.
+  // Layer 11 - the boss.
   {
     id: "node.long_boss",
     type: "boss",
     title: "The Hexbreaker's Lair",
     description: "The Ogre Hexbreaker awaits in the heart of the wilds.",
-    layer: 7,
+    layer: 11,
     encounterId: "encounter.boss_ogre_hexbreaker",
     nextNodeIds: [],
   },

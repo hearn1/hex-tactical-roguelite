@@ -46,9 +46,9 @@ describe("map templates full runs", () => {
     gameState.screen = "map";
     mounted.app.render();
 
-    const safety = runFullFlow(mounted, 40);
+    const safety = runFullFlow(mounted, 80);
 
-    expect(safety).toBeLessThan(40);
+    expect(safety).toBeLessThan(80);
     expect(mounted.getScreen()).toBe("run_summary");
     // A victorious long run resolves more nodes than the short prototype.
     expect(gameState.run?.mapState.nodesCleared).toBeGreaterThan(0);

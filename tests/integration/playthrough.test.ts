@@ -8,7 +8,7 @@ import { setupLowHealthRun } from "./helpers/seededRun.ts";
 function runFullFlow(mounted: ReturnType<typeof mountApp>): void {
   const { app, getScreen, root } = mounted;
   let safety = 0;
-  while (getScreen() !== "run_summary" && safety < 30) {
+  while (getScreen() !== "run_summary" && safety < 80) {
     safety++;
     const screen = getScreen();
 
