@@ -553,9 +553,11 @@ export function checkVictoryDefeat(state: CombatState): void {
 
   if (enemiesAlive.length === 0) {
     state.status = "victory";
+    state.bossTelegraph = null;
     state.log.push({ kind: "victory", text: `[T${state.round}] Victory.`, round: state.round });
   } else if (heroesAlive.length === 0) {
     state.status = "defeat";
+    state.bossTelegraph = null;
     state.log.push({ kind: "defeat_squad", text: `[T${state.round}] Defeat.`, round: state.round });
   }
 }
@@ -565,6 +567,9 @@ export function removeDefeatedFromQueue(state: CombatState): void {
     state.units.filter((u) => u.hp <= 0).map((u) => u.instanceId),
   );
   if (deadIds.size === 0) return;
+  if (state.bossTelegraph && deadIds.has(state.bossTelegraph.sourceId)) {
+    state.bossTelegraph = null;
+  }
   const before = state.activeIndex;
   const activeId = state.turnQueue[state.activeIndex];
   const activeDead = deadIds.has(activeId);

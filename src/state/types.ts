@@ -117,6 +117,8 @@ export type RunModifier =
  * only the resolution damage rolls draw from the shared seeded stream.
  */
 export interface BossTelegraph {
+  /** Unit instance that wound up the telegraph. */
+  sourceId: string;
   /** The action whose effect lands on resolution (e.g. `action.ground_slam`). */
   actionId: string;
   /** Axial hex keys (`q,r`) that will be struck when the telegraph resolves. */
