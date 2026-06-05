@@ -242,6 +242,7 @@ export class DataRepository {
       if (def.defaultBackgroundId && !allBackgroundIds.has(def.defaultBackgroundId)) {
         errors.push(`Class "${id}": default background "${def.defaultBackgroundId}" not found`);
       }
+      if (![6, 8, 10, 12].includes(def.hitDieSize)) errors.push(`Class "${id}": hitDieSize must be a standard die`);
       const stats = def.baseStats;
       if (stats.maxHp <= 0) errors.push(`Class "${id}": maxHp must be > 0`);
       if (stats.armor < 0) errors.push(`Class "${id}": armor must be >= 0`);

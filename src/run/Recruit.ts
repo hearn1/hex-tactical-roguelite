@@ -2,6 +2,7 @@ import type { PartyMember } from "../state/RunState.ts";
 import type { RunModifier } from "../state/types.ts";
 import { CLASS_REGISTRY, HERO_DEFAULT_NAMES } from "../data/classes.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
+import { syncHitDiceForPartyMember } from "./Rest.ts";
 
 export function createPackMuleModifier(): RunModifier {
   return { kind: "gold_multiplier", value: 1.2 };
@@ -30,7 +31,7 @@ export function generateRecruitCandidates(rng: () => number, nodeId: string): Pa
         equippedItemIds[slot] = itemId;
       }
     }
-    return {
+    const recruit: PartyMember = {
       instanceId: `recruit_${nodeId}_${i}`,
       classId,
       displayName,
@@ -41,6 +42,8 @@ export function generateRecruitCandidates(rng: () => number, nodeId: string): Pa
       bonusStats: {},
       equippedItemIds,
     };
+    syncHitDiceForPartyMember(recruit);
+    return recruit;
   });
 }
 

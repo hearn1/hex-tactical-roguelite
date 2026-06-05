@@ -5,6 +5,7 @@ import { DEFAULT_MAP_TEMPLATE_ID, getMapTemplate } from "../data/nodes.ts";
 import { abilityMod, createDefaultAbilityScores, isCompleteAbilityScores } from "../data/abilities.ts";
 import type { AbilityScores } from "../data/abilities.ts";
 import { createInventory } from "./Inventory.ts";
+import { STARTING_CAMP_SUPPLIES, syncHitDiceForPartyMember } from "./Rest.ts";
 
 /**
  * Number of heroes the run-setup flow builds.
@@ -102,7 +103,7 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
     }
     const baseMaxHp = def?.baseStats.maxHp ?? 1;
     const maxHp = Math.max(1, baseMaxHp + (spec.abilityScores ? abilityMod(spec.abilityScores.con) : 0));
-    return {
+    const member: PartyMember = {
       instanceId: `hero_00${i + 1}`,
       classId: spec.classId,
       displayName: spec.name.trim(),
@@ -116,6 +117,8 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
       // Effect is applied at run start by applyBackgrounds, not here. "none" → undefined.
       backgroundId: spec.backgroundId ?? undefined,
     };
+    syncHitDiceForPartyMember(member);
+    return member;
   });
 }
 
@@ -129,6 +132,8 @@ export function createRunState(
   return {
     seed: Date.now(),
     gold: 30,
+    campSupplies: STARTING_CAMP_SUPPLIES,
+    shortRestsSinceLongRest: 0,
     party,
     inventory: createInventory(),
     mapTemplateId: template.id,

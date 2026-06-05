@@ -10,6 +10,7 @@ import { CLASS_REGISTRY } from "../../data/classes.ts";
 import type { UnitInstance } from "../../state/types.ts";
 import { visitNode } from "../../run/MapGraph.ts";
 import { NODE_REGISTRY } from "../../data/nodes.ts";
+import { ensureRunRestState, syncHitDiceForPartyMember } from "../../run/Rest.ts";
 
 let rewardCache: CombatReward | null = null;
 let chosenCardIndex: number | null = null;
@@ -66,7 +67,11 @@ export class RewardScreen {
         }
       }
       inv.gold += rewardCache.gold;
-      if (run) run.gold += rewardCache.gold;
+      if (run) {
+        ensureRunRestState(run);
+        run.gold += rewardCache.gold;
+        run.campSupplies = (run.campSupplies ?? 0) + rewardCache.campSupplies;
+      }
 
       const survivors = cs.units.filter((u) => u.team === "hero" && u.hp > 0);
       for (const hero of survivors) {
@@ -104,6 +109,12 @@ export class RewardScreen {
     const goldLine = document.createElement("div");
     goldLine.textContent = `Gold +${rewardCache.gold} (total: ${inv.gold})`;
     container.appendChild(goldLine);
+
+    if (run) {
+      const suppliesLine = document.createElement("div");
+      suppliesLine.textContent = `Camp Supplies +${rewardCache.campSupplies} (total: ${run.campSupplies ?? 0})`;
+      container.appendChild(suppliesLine);
+    }
 
     if (chosenCardIndex === null) {
       const cardLabel = document.createElement("div");
@@ -280,6 +291,7 @@ export class RewardScreen {
             pm.level = unit.level;
             // Persist the reward-time auto level-up stat gains so chosen upgrades stack on top (F29).
             pm.bonusStats = { ...unit.bonusStats };
+            syncHitDiceForPartyMember(pm);
           }
         }
         const nd = NODE_REGISTRY[run.mapState.currentNodeId];

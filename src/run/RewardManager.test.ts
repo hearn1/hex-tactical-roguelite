@@ -43,6 +43,13 @@ describe("generateReward", () => {
     expect(reward.cards[2].kind).toBe("gold");
   });
 
+  it("awards 1-2 Camp Supplies automatically", () => {
+    const rng = createRng(42);
+    const reward = generateReward(threeEnemyEncounter, rng);
+    expect(reward.campSupplies).toBeGreaterThanOrEqual(1);
+    expect(reward.campSupplies).toBeLessThanOrEqual(2);
+  });
+
   it("deterministic with fixed seed", () => {
     const rng1 = createRng(99);
     const rng2 = createRng(99);

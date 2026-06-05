@@ -6,6 +6,7 @@ import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { BACKGROUND_REGISTRY } from "../../data/backgrounds.ts";
 import { SHOP_SERVICE_REGISTRY } from "../../data/shopServices.ts";
+import { ensureRunRestState } from "../../run/Rest.ts";
 
 let pendingPurchasedItemId: string | null = null;
 let shopMessage: string = "";
@@ -35,6 +36,7 @@ export class ShopScreen {
       run.shopStates[nodeId] = rollShopInventory(gameState.rng);
     }
     const shop = run.shopStates[nodeId];
+    ensureRunRestState(run);
 
     const container = document.createElement("div");
     container.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:20px;gap:16px;max-width:800px;margin:0 auto;";
@@ -45,7 +47,7 @@ export class ShopScreen {
 
     const goldLine = document.createElement("div");
     goldLine.style.cssText = "font-size:16px;color:#ff8;";
-    goldLine.textContent = `Gold: ${run.gold}`;
+    goldLine.textContent = `Gold: ${run.gold} | Camp Supplies: ${run.campSupplies ?? 0}`;
     container.appendChild(goldLine);
 
     const grid = document.createElement("div");

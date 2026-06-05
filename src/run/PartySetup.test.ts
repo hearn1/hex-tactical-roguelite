@@ -93,6 +93,9 @@ describe("buildParty", () => {
     expect(guardian.xp).toBe(0);
     expect(guardian.hp).toBe(guardian.maxHp);
     expect(guardian.maxHp).toBe(18);
+    expect(guardian.hitDieSize).toBe(10);
+    expect(guardian.hitDiceTotal).toBe(1);
+    expect(guardian.hitDiceRemaining).toBe(1);
     expect(guardian.bonusStats).toEqual({});
     expect(guardian.abilityScores).toEqual(createDefaultAbilityScores());
     // Guardian auto-equips iron sword (weapon) and wooden shield (trinket).
@@ -173,6 +176,8 @@ describe("createRunState", () => {
     expect(run.difficulty).toBe("hard");
     expect(run.runStatus).toBe("active");
     expect(run.gold).toBe(30);
+    expect(run.campSupplies).toBe(3);
+    expect(run.shortRestsSinceLongRest).toBe(0);
     expect(run.mapTemplateId).toBe("long");
     expect(run.mapState.currentNodeId).toBe("node.long_start");
     expect(run.mapState.visitedNodeIds).toEqual(["node.long_start"]);

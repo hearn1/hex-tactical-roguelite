@@ -5,6 +5,12 @@ import type { NodeDef, MapTemplate } from "../../data/nodes.ts";
 import { availableNextNodes, visitNode } from "../../run/MapGraph.ts";
 import { createCombatFromRun } from "../../state/GameState.ts";
 import { ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
+import {
+  applyShortRest,
+  canAnyHeroSpendHitDice,
+  ensureRunRestState,
+  shortRestsRemaining,
+} from "../../run/Rest.ts";
 
 const LAYER_COLORS: Record<string, string> = {
   start: "#4a8",
@@ -18,6 +24,7 @@ const LAYER_COLORS: Record<string, string> = {
 };
 
 const NODE_RADIUS = 28;
+let shortRestMessage = "";
 
 function buildLayers(nodes: NodeDef[]): NodeDef[][] {
   const layers: NodeDef[][] = [];
@@ -206,15 +213,45 @@ export class MapScreen {
     mapEl.appendChild(svg);
 
     const infoBar = document.createElement("div");
-    infoBar.style.cssText = "margin-top:8px;font-size:13px;color:#aaa;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;";
+    infoBar.style.cssText = "margin-top:8px;font-size:13px;color:#aaa;display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:center;";
     const run = gameState.run!;
+    ensureRunRestState(run);
     const modDef = run.adventureModifierId ? ADVENTURE_MODIFIER_REGISTRY[run.adventureModifierId] : undefined;
     const modText = modDef
       ? `Modifier: ${modDef.displayName} (${modDef.bonusDescription} / ${modDef.drawbackDescription})`
       : "Modifier: None";
-    infoBar.innerHTML = `<span>Gold: ${run.gold}</span><span>Cleared: ${run.mapState.nodesCleared}</span><span>Boss: ${run.mapState.bossDefeated ? "Yes" : "No"}</span><span style="color:#8cf;">${modText}</span><span style="color:#888;font-size:11px;">Seed: ${run.seed}</span>`;
+    const remaining = shortRestsRemaining(run);
+    infoBar.innerHTML = `<span>Gold: ${run.gold}</span><span>Camp Supplies: ${run.campSupplies ?? 0}</span><span>Short Rests remaining before next Long Rest: ${remaining}</span><span>Cleared: ${run.mapState.nodesCleared}</span><span>Boss: ${run.mapState.bossDefeated ? "Yes" : "No"}</span><span style="color:#8cf;">${modText}</span><span style="color:#888;font-size:11px;">Seed: ${run.seed}</span>`;
+
+    const shortRestBtn = document.createElement("button");
+    shortRestBtn.setAttribute("data-testid", "map-short-rest");
+    shortRestBtn.textContent = "Short Rest";
+    shortRestBtn.style.cssText = "padding:6px 12px;font-size:12px;";
+    const disabledReason = this.shortRestDisabledReason(run);
+    if (disabledReason) {
+      shortRestBtn.disabled = true;
+      shortRestBtn.title = disabledReason;
+      shortRestBtn.textContent = `Short Rest - ${disabledReason}`;
+      shortRestBtn.style.opacity = "0.55";
+    } else {
+      shortRestBtn.addEventListener("click", () => {
+        const result = applyShortRest(run, gameState.rng);
+        shortRestMessage = result.ok
+          ? `${result.message} ${result.heroes.map((h) => `${h.displayName}: ${h.beforeHp}->${h.afterHp} HP (${h.diceSpent} HD)`).join(", ")}`
+          : result.message;
+        this.app.render();
+      });
+    }
+    infoBar.appendChild(shortRestBtn);
     container.appendChild(mapEl);
     container.appendChild(infoBar);
+
+    if (shortRestMessage) {
+      const msg = document.createElement("div");
+      msg.style.cssText = "margin-top:6px;color:#9f9;font-size:13px;text-align:center;";
+      msg.textContent = shortRestMessage;
+      container.appendChild(msg);
+    }
 
     const inventoryBtn = document.createElement("button");
     inventoryBtn.textContent = "Inventory";
@@ -227,6 +264,12 @@ export class MapScreen {
     container.appendChild(inventoryBtn);
 
     return container;
+  }
+
+  private shortRestDisabledReason(run: NonNullable<typeof gameState.run>): string | null {
+    if (shortRestsRemaining(run) <= 0) return "none remaining";
+    if (!canAnyHeroSpendHitDice(run.party)) return "no wounded hero with Hit Dice";
+    return null;
   }
 
   private onNodeClick(nodeId: string): void {

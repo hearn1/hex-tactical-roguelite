@@ -3,7 +3,7 @@ import { rollShopInventory, buyShopItem, buyShopPotion, useHealService, stashSho
 import { createRng } from "../core/rng.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
 import { createInventory } from "./Inventory.ts";
-import { HEAL_SERVICE_ID, REMOVE_DRAWBACK_SERVICE_ID, BUY_RUMOR_SERVICE_ID } from "../data/shopServices.ts";
+import { HEAL_SERVICE_ID, REMOVE_DRAWBACK_SERVICE_ID, BUY_RUMOR_SERVICE_ID, BUY_CAMP_SUPPLY_SERVICE_ID } from "../data/shopServices.ts";
 
 const makeParty = (): PartyMember[] => [
   {
@@ -314,5 +314,19 @@ describe("applyShopService — buy rumor", () => {
     expect(msg).toBe("No upcoming nodes to reveal.");
     expect(shop.servicesUsed[BUY_RUMOR_SERVICE_ID]).toBe(true);
     expect(run.gold).toBe(42);
+  });
+});
+
+describe("applyShopService — camp supply", () => {
+  it("buys one Camp Supply and deducts gold", () => {
+    const shop = rollShopInventory(createRng(42));
+    const run = makeRun({ gold: 50, campSupplies: 1 });
+
+    const msg = applyShopService(BUY_CAMP_SUPPLY_SERVICE_ID, run, shop);
+
+    expect(msg).toBe("Bought 1 Camp Supply.");
+    expect(shop.servicesUsed[BUY_CAMP_SUPPLY_SERVICE_ID]).toBe(true);
+    expect(run.gold).toBe(42);
+    expect(run.campSupplies).toBe(2);
   });
 });

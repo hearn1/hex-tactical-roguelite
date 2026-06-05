@@ -48,6 +48,19 @@ describe("screen-smoke", () => {
     expect(() => app.render()).not.toThrow();
   });
 
+  it("map shows Camp Supplies and Short Rest resources", () => {
+    const { app, root } = mountApp();
+    setupDefaultRun();
+    gameState.run!.party[0].hp = 1;
+    gameState.screen = "map";
+    app.render();
+
+    expect(root.textContent).toContain("Camp Supplies: 3");
+    expect(root.textContent).toContain("Short Rests remaining before next Long Rest: 2");
+    const btn = root.querySelector("[data-testid='map-short-rest']") as HTMLButtonElement | null;
+    expect(btn?.disabled).toBe(false);
+  });
+
   it("combat renders without throwing", () => {
     const { app } = mountApp();
     gameState.screen = "combat";

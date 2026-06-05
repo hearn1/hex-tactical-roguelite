@@ -87,11 +87,11 @@ describe("CampScreen state", () => {
     gameState.screen = "camp";
     app.render();
 
-    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Long Rest");
     clickButton("Confirm");
 
     expect(runA.campStates["node.camp_1"].used).toEqual(["rest"]);
-    expect(runA.campStates["node.camp_1"].outcomes[0]).toContain("Party rested");
+    expect(runA.campStates["node.camp_1"].outcomes[0]).toContain("Long Rest complete");
 
     const runB = createFreshCampRun("node.camp_1");
     gameState.run = runB;
@@ -99,7 +99,7 @@ describe("CampScreen state", () => {
     app.render();
 
     expect(getCampState(runB).used).toEqual([]);
-    const restButton = findButton(root, "Rest");
+    const restButton = findButton(root, "Long Rest");
     expect(restButton.disabled).toBe(false);
     expect(restButton.textContent).not.toContain("Already done");
   });
@@ -128,16 +128,17 @@ describe("CampScreen state", () => {
     gameState.screen = "camp";
     app.render();
 
-    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Long Rest");
     clickButton("Confirm");
     expect(run.campStates["node.camp_a"].used).toEqual(["rest"]);
 
     run.mapState.currentNodeId = "node.camp_b";
     run.mapState.visitedNodeIds.push("node.camp_b");
+    run.campSupplies = run.party.length;
     app.render();
 
     expect(getCampState(run).used).toEqual([]);
-    const restButton = findButton(root, "Rest");
+    const restButton = findButton(root, "Long Rest");
     expect(restButton.disabled).toBe(false);
     expect(restButton.textContent).not.toContain("Already");
   });
@@ -148,13 +149,13 @@ describe("CampScreen state", () => {
     gameState.screen = "camp";
     app.render();
 
-    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Long Rest");
     // Pre-confirm preview shows the heal before it applies, and stays reversible.
-    expect(root.textContent).toContain("Heal each living hero");
+    expect(root.textContent).toContain("fully heal");
     expect(root.textContent).toContain("Confirm");
 
     clickButton("Confirm");
-    expect(root.textContent).toContain("rested");
+    expect(root.textContent).toContain("Long Rest complete");
 
     clickButton("Leave");
     expect(getScreen()).toBe("map");
@@ -166,14 +167,26 @@ describe("CampScreen state", () => {
     gameState.screen = "camp";
     app.render();
 
-    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Long Rest");
     expect(root.textContent).toContain("Confirm");
 
     clickButton("Cancel");
     expect(root.textContent).toContain("Brew Potion");
-    expect(root.textContent).not.toContain("Heal each living hero");
+    expect(root.textContent).not.toContain("fully heal");
     // Nothing recorded in the camp log.
-    expect(root.textContent).not.toContain("rested");
+    expect(root.textContent).not.toContain("Long Rest complete");
+  });
+
+  it("blocks Long Rest when Camp Supplies are insufficient", () => {
+    const { root, app } = mountApp();
+    setupCampRun();
+    gameState.run!.campSupplies = 2;
+    gameState.screen = "camp";
+    app.render();
+
+    const restButton = findButton(root, "Long Rest");
+    expect(restButton.disabled).toBe(true);
+    expect(restButton.textContent).toContain("Requires 3 Camp Supplies");
   });
 
   it("Train button transitions to hero picker, picking hero shows result", () => {
@@ -205,7 +218,7 @@ describe("CampScreen state", () => {
     expect(root.textContent).toContain("Choose a hero to train");
 
     clickButton("Cancel");
-    expect(root.textContent).toContain("Rest (Heal 40% max HP)");
+    expect(root.textContent).toContain("Long Rest");
     expect(root.textContent).toContain("Train (+5 XP to a hero)");
     expect(root.textContent).not.toContain("Choose a hero to train");
   });
@@ -232,7 +245,7 @@ describe("CampScreen state", () => {
     gameState.screen = "camp";
     app.render();
 
-    clickButton("Rest (Heal 40% max HP)");
+    clickButton("Long Rest");
     clickButton("Confirm");
 
     const brewBtn = Array.from(root.querySelectorAll("button")).find((b) =>
@@ -254,7 +267,7 @@ describe("CampScreen state", () => {
 
     expect(gameState.run!.runModifiers.some((m) => m.kind === "next_combat_blessing")).toBe(true);
     // Prepare is not recovery — Rest is still available afterwards.
-    expect(root.textContent).toContain("Rest (Heal 40% max HP)");
+    expect(root.textContent).toContain("Long Rest");
   });
 
   it("Leave increments nodesCleared exactly once", () => {

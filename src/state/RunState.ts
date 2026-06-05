@@ -11,6 +11,12 @@ export interface PartyMember {
   xp: number;
   hp: number;
   maxHp: number;
+  /** Class-dependent hit die used for Short Rest healing (Guardian d10, Acolyte d8, Arcanist d6). */
+  hitDieSize?: number;
+  /** Total hit dice available after a Long Rest; tracks hero level. */
+  hitDiceTotal?: number;
+  /** Unspent hit dice available for Short Rest healing. */
+  hitDiceRemaining?: number;
   bonusStats: Partial<UnitStats>;
   /** Six ability scores chosen during setup. Undefined preserves legacy zero-modifier behavior. */
   abilityScores?: AbilityScores;
@@ -51,6 +57,8 @@ export interface CampNodeState {
 export interface RunState {
   seed: number;
   gold: number;
+  campSupplies?: number;
+  shortRestsSinceLongRest?: number;
   party: PartyMember[];
   inventory: InventoryState;
   mapTemplateId?: string;

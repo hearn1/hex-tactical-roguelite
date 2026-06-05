@@ -2,6 +2,7 @@ import type { UnitInstance, UnitStats } from "../state/types.ts";
 import type { PartyMember } from "../state/RunState.ts";
 import { computeStats } from "../combat/Stats.ts";
 import { abilityMod } from "../data/abilities.ts";
+import { syncHitDiceForPartyMember } from "./Rest.ts";
 
 export const XP_THRESHOLDS = [0, 20, 50, 90, 140] as const;
 export const MAX_LEVEL = 5;
