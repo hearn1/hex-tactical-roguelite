@@ -2,10 +2,11 @@ import type { App } from "../App.ts";
 import { gameState, initCombatState } from "../../state/GameState.ts";
 import { syncPartyFromCombat } from "../../state/GameState.ts";
 import type { BossTelegraph, CombatState, UnitInstance, Hex } from "../../state/types.ts";
-import { hexKey, parseHexKey, pixelToHex, hexEquals } from "../../core/hex.ts";
+import { distance, hexKey, parseHexKey, pixelToHex, hexEquals } from "../../core/hex.ts";
 import { renderHexOutline, fillHex } from "../HexRenderer.ts";
 import { reachableHexes } from "../../combat/Movement.ts";
 import { ACTION_REGISTRY } from "../../data/actions.ts";
+import type { ActionDef } from "../../data/actions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "../../combat/Action.ts";
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
@@ -16,6 +17,7 @@ import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgr
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
 import { CombatThreeRenderer, type Combat3DHighlights } from "../../render/combat3d/CombatThreeRenderer.ts";
+import type { CombatAnimationStep } from "../../render/combat3d/animationQueue.ts";
 
 const HERO_COLOR = "#4488ff";
 const ENEMY_COLOR = "#ff4444";
@@ -26,6 +28,17 @@ const TARGET_COLOR = "rgba(255,50,50,0.35)";
 const TELEGRAPH_COLOR = "rgba(255,140,0,0.45)";
 const ACTIVE_GLOW = "#ffcc00";
 
+interface UnitSnapshot {
+  hp: number;
+  pos: Hex;
+  conditions: string;
+}
+
+interface CombatSnapshot {
+  units: Map<string, UnitSnapshot>;
+  logLength: number;
+}
+
 export class CombatScreen {
   private app: App;
   private container!: HTMLElement;
@@ -34,10 +47,14 @@ export class CombatScreen {
   private combatRenderer: CombatThreeRenderer | null = null;
   private hoveredHex: Hex | null = null;
   private enemyProcessing = false;
+  private animationBlocking = false;
+  private animationSpeed = 1;
   private actionBarEl!: HTMLElement;
   private turnPanelEl!: HTMLElement;
   private logPanelEl!: HTMLElement;
   private endTurnBtn!: HTMLButtonElement;
+  private animSpeedBtn!: HTMLButtonElement;
+  private skipAnimBtn!: HTMLButtonElement;
   private inventoryPanelEl!: HTMLElement;
   private invToggleBtn!: HTMLButtonElement;
   private telegraphBannerEl!: HTMLElement;
@@ -106,7 +123,14 @@ export class CombatScreen {
           this.hoveredHex = hex;
           this.drawCanvas();
         },
+        onAnimationStateChange: (animating) => {
+          this.animationBlocking = animating;
+          this.setControlsEnabled(!animating && !this.enemyProcessing);
+          this.updateEndTurnButton();
+          this.updateActionBar();
+        },
       });
+      this.combatRenderer.setAnimationSpeed(this.animationSpeed);
       return;
     } catch (err) {
       this.combatRenderer = null;
@@ -169,7 +193,33 @@ export class CombatScreen {
     this.invToggleBtn.id = "inventory-toggle-btn";
     this.invToggleBtn.addEventListener("click", () => this.toggleInventory());
     bar.appendChild(this.invToggleBtn);
+    this.animSpeedBtn = document.createElement("button");
+    this.animSpeedBtn.textContent = "Anim 1x";
+    this.animSpeedBtn.title = "Animation speed";
+    this.animSpeedBtn.addEventListener("click", () => this.cycleAnimationSpeed());
+    bar.appendChild(this.animSpeedBtn);
+    this.skipAnimBtn = document.createElement("button");
+    this.skipAnimBtn.textContent = "Skip Anim";
+    this.skipAnimBtn.title = "Skip current combat animations";
+    this.skipAnimBtn.addEventListener("click", () => this.skipAnimations());
+    bar.appendChild(this.skipAnimBtn);
     return bar;
+  }
+
+  private cycleAnimationSpeed(): void {
+    const speeds = [1, 1.5, 2, 4];
+    const idx = speeds.indexOf(this.animationSpeed);
+    this.animationSpeed = speeds[(idx + 1) % speeds.length] ?? 1;
+    if (this.combatRenderer) {
+      this.combatRenderer.setAnimationSpeed(this.animationSpeed);
+    }
+    if (this.animSpeedBtn) {
+      this.animSpeedBtn.textContent = `Anim ${this.animationSpeed}x`;
+    }
+  }
+
+  private skipAnimations(): void {
+    this.combatRenderer?.skipAnimations();
   }
 
   private toggleInventory(): void {
@@ -385,6 +435,7 @@ export class CombatScreen {
   private onHexClick(hex: Hex): void {
     const cs = gameState.combat;
     if (!cs || cs.status !== "active") return;
+    if (this.animationBlocking || this.enemyProcessing) return;
 
     const activeUnit = this.getActiveUnit();
     if (!activeUnit || activeUnit.team !== "hero") return;
@@ -396,27 +447,30 @@ export class CombatScreen {
     }
   }
 
-  private handleTargetClick(hex: Hex, cs: CombatState, attacker: UnitInstance): void {
+  private async handleTargetClick(hex: Hex, cs: CombatState, attacker: UnitInstance): Promise<void> {
     const actionDef = ACTION_REGISTRY[cs.targetingActionId!];
     if (!actionDef) return;
     const targets = validTargets(actionDef, attacker, cs);
     const target = targets.find((t) => hexEquals(t.pos, hex));
     if (!target) return;
 
+    const before = snapshotCombat(cs);
     resolveAction(actionDef, attacker, target, cs, gameState.rng);
     cs.targetingActionId = null;
     checkVictoryDefeat(cs);
 
-    if (cs.status !== "active") {
-      this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat");
-    }
-
     removeDefeatedFromQueue(cs);
     this.drawCanvas();
     this.updatePanels();
+    const animation = this.playAnimationSteps(this.buildActionAnimationSteps(actionDef, attacker, target, before, cs));
+    if (animation) await animation;
+
+    if (cs.status !== "active" && gameState.combat === cs) {
+      this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat", cs);
+    }
   }
 
-  private handleMoveClick(hex: Hex, cs: CombatState, unit: UnitInstance): void {
+  private async handleMoveClick(hex: Hex, cs: CombatState, unit: UnitInstance): Promise<void> {
     const occ = new Set(
       cs.units.filter((u) => u.hp > 0 && u.instanceId !== unit.instanceId).map((u) => hexKey(u.pos)),
     );
@@ -425,6 +479,7 @@ export class CombatScreen {
     const cost = reachable.get(key);
     if (cost === undefined) return;
 
+    const from = { ...unit.pos };
     unit.pos = { q: hex.q, r: hex.r };
     unit.movePointsRemaining -= cost;
     cs.log.push({
@@ -434,10 +489,12 @@ export class CombatScreen {
     });
     this.drawCanvas();
     this.updatePanels();
+    const animation = this.playAnimationSteps({ kind: "move", unitId: unit.instanceId, from, to: { ...unit.pos } });
+    if (animation) await animation;
   }
 
   private onEndTurn(): void {
-    if (this.enemyProcessing) return;
+    if (this.enemyProcessing || this.animationBlocking) return;
     const cs = gameState.combat;
     if (!cs || cs.status !== "active") return;
 
@@ -498,14 +555,21 @@ export class CombatScreen {
       if (!refreshedActive) break;
       if (refreshedActive.instanceId !== active.instanceId) break;
 
+      const before = snapshotCombat(cs);
+      const pendingTelegraphHexes = cs.bossTelegraph?.targetHexes ? [...cs.bossTelegraph.targetHexes] : [];
       takeEnemyTurn(active, cs, gameState.rng);
       active.hasActed = true;
 
       checkVictoryDefeat(cs);
+      this.drawCanvas();
+      this.updatePanels();
+      const animation = this.playAnimationSteps(this.buildEnemyAnimationSteps(active, before, cs, pendingTelegraphHexes));
+      if (animation) await animation;
+
       if (cs.status !== "active") {
         this.drawCanvas();
         this.updatePanels();
-        this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat");
+        this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat", cs);
         this.setControlsEnabled(true);
         this.enemyProcessing = false;
         return;
@@ -527,11 +591,106 @@ export class CombatScreen {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
+  private playAnimationSteps(steps: CombatAnimationStep | CombatAnimationStep[]): Promise<void> | null {
+    const list = (Array.isArray(steps) ? steps : [steps]).filter((step) => {
+      if (step.kind === "wait") return step.durationMs > 0;
+      if ("unitIds" in step) return step.unitIds.length > 0;
+      if (step.kind === "attack") return step.targetIds.length > 0;
+      if (step.kind === "aoeFlash") return step.hexKeys.length > 0;
+      return true;
+    });
+    if (!this.combatRenderer || list.length === 0) return null;
+    return this.combatRenderer.enqueueAnimations(list);
+  }
+
+  private buildActionAnimationSteps(
+    action: ActionDef,
+    attacker: UnitInstance,
+    target: UnitInstance,
+    before: CombatSnapshot,
+    cs: CombatState,
+  ): CombatAnimationStep[] {
+    const steps: CombatAnimationStep[] = [];
+    const changed = changedUnitIds(before, cs);
+    const damaged = changed.filter((unitId) => hpDelta(before, cs, unitId) < 0);
+    const healed = changed.filter((unitId) => hpDelta(before, cs, unitId) > 0);
+    const conditioned = changed.filter((unitId) => conditionsChanged(before, cs, unitId));
+    const deaths = defeatedUnitIds(before, cs);
+    const targetIds = uniqueIds([target.instanceId, ...changed.filter((id) => id !== attacker.instanceId)]);
+    const frame = action.effect.type === "heal" || action.effect.type === "applyCondition" ? "cast" : "attack";
+    const aoeHexes = aoeHexKeysForAction(action, attacker, target, before, cs);
+
+    if (aoeHexes.length > 0) {
+      steps.push({ kind: "aoeFlash", hexKeys: aoeHexes });
+    }
+    steps.push({ kind: "attack", attackerId: attacker.instanceId, targetIds, frame });
+
+    if (action.effect.type === "heal") {
+      steps.push({ kind: "heal", unitIds: healed.length > 0 ? healed : [target.instanceId] });
+    } else if (action.effect.type === "applyCondition") {
+      steps.push({ kind: "heal", unitIds: conditioned.length > 0 ? conditioned : targetIds });
+    } else if (damaged.length > 0) {
+      steps.push({ kind: "hit", unitIds: damaged });
+    } else {
+      steps.push({ kind: "miss", unitIds: [target.instanceId] });
+    }
+
+    if (deaths.length > 0) {
+      steps.push({ kind: "death", unitIds: deaths });
+    }
+    return steps;
+  }
+
+  private buildEnemyAnimationSteps(
+    active: UnitInstance,
+    before: CombatSnapshot,
+    cs: CombatState,
+    pendingTelegraphHexes: string[],
+  ): CombatAnimationStep[] {
+    const steps: CombatAnimationStep[] = [];
+    const activeBefore = before.units.get(active.instanceId);
+    if (activeBefore && !hexEquals(activeBefore.pos, active.pos)) {
+      steps.push({ kind: "move", unitId: active.instanceId, from: activeBefore.pos, to: { ...active.pos } });
+    }
+
+    const changed = changedUnitIds(before, cs).filter((id) => id !== active.instanceId);
+    const damaged = changed.filter((unitId) => hpDelta(before, cs, unitId) < 0);
+    const healed = changed.filter((unitId) => hpDelta(before, cs, unitId) > 0);
+    const conditioned = changed.filter((unitId) => conditionsChanged(before, cs, unitId));
+    const deaths = defeatedUnitIds(before, cs);
+    const newLogs = cs.log.slice(before.logLength);
+    const actionLogged = newLogs.some((entry) => entry.kind === "action" && entry.text.includes(active.displayName));
+    const targetIds = uniqueIds(changed.length > 0 ? changed : nearestOpposingTargetIds(active, cs));
+
+    if (pendingTelegraphHexes.length > 0 && (damaged.length > 0 || conditioned.length > 0 || actionLogged)) {
+      steps.push({ kind: "aoeFlash", hexKeys: pendingTelegraphHexes });
+    }
+    if (targetIds.length > 0 && actionLogged) {
+      steps.push({ kind: "attack", attackerId: active.instanceId, targetIds, frame: healed.length > 0 || conditioned.length > 0 ? "cast" : "attack" });
+    }
+    if (healed.length > 0) {
+      steps.push({ kind: "heal", unitIds: healed });
+    }
+    if (conditioned.length > 0 && healed.length === 0) {
+      steps.push({ kind: "heal", unitIds: conditioned });
+    }
+    if (damaged.length > 0) {
+      steps.push({ kind: "hit", unitIds: damaged });
+    } else if (actionLogged && targetIds.length > 0 && newLogs.some((entry) => entry.text.toLowerCase().includes("miss"))) {
+      steps.push({ kind: "miss", unitIds: targetIds });
+    }
+    if (deaths.length > 0) {
+      steps.push({ kind: "death", unitIds: deaths });
+    }
+    return steps;
+  }
+
   private setControlsEnabled(enabled: boolean): void {
-    if (this.endTurnBtn) this.endTurnBtn.disabled = !enabled;
+    const controlsEnabled = enabled && !this.animationBlocking;
+    if (this.endTurnBtn) this.endTurnBtn.disabled = !controlsEnabled;
     const actionBtns = this.container.querySelectorAll(".action-btn");
     for (const btn of actionBtns) {
-      (btn as HTMLButtonElement).disabled = !enabled;
+      (btn as HTMLButtonElement).disabled = !controlsEnabled;
     }
   }
 
@@ -639,11 +798,13 @@ export class CombatScreen {
         btn.classList.add("targeting");
       }
 
-      if (activeUnit.hasActed) {
-        btn.classList.add("disabled");
-        btn.title = "Already acted this turn";
-      } else if (this.enemyProcessing) {
+      if (this.animationBlocking || this.enemyProcessing) {
         btn.disabled = true;
+        btn.title = "Animation playing";
+      } else if (activeUnit.hasActed) {
+        btn.classList.add("disabled");
+        btn.disabled = true;
+        btn.title = "Already acted this turn";
       } else {
         const targets = validTargets(actionDef, activeUnit, cs);
         if (targets.length === 0) {
@@ -684,13 +845,13 @@ export class CombatScreen {
       return;
     }
     const active = this.getActiveUnit();
-    btn.disabled = !active || active.team !== "hero" || this.enemyProcessing;
+    btn.disabled = !active || active.team !== "hero" || this.enemyProcessing || this.animationBlocking;
   }
 
-  private showBanner(text: string): void {
+  private showBanner(text: string, combatForSync: CombatState | null = gameState.combat): void {
     if (text === "Victory!") {
-      if (gameState.run) {
-        syncPartyFromCombat(gameState.combat!, gameState.run);
+      if (gameState.run && combatForSync) {
+        syncPartyFromCombat(combatForSync, gameState.run);
       }
       gameState.screen = "reward";
       this.app.render();
@@ -726,4 +887,99 @@ export class CombatScreen {
     overlay.appendChild(banner);
     this.container.appendChild(overlay);
   }
+}
+
+function snapshotCombat(cs: CombatState): CombatSnapshot {
+  return {
+    units: new Map(
+      cs.units.map((unit) => [
+        unit.instanceId,
+        {
+          hp: unit.hp,
+          pos: { ...unit.pos },
+          conditions: conditionSignature(unit),
+        },
+      ]),
+    ),
+    logLength: cs.log.length,
+  };
+}
+
+function changedUnitIds(before: CombatSnapshot, cs: CombatState): string[] {
+  return cs.units
+    .filter((unit) => {
+      const prev = before.units.get(unit.instanceId);
+      if (!prev) return false;
+      return prev.hp !== unit.hp || prev.conditions !== conditionSignature(unit);
+    })
+    .map((unit) => unit.instanceId);
+}
+
+function hpDelta(before: CombatSnapshot, cs: CombatState, unitId: string): number {
+  const prev = before.units.get(unitId);
+  const unit = cs.units.find((u) => u.instanceId === unitId);
+  if (!prev || !unit) return 0;
+  return unit.hp - prev.hp;
+}
+
+function conditionsChanged(before: CombatSnapshot, cs: CombatState, unitId: string): boolean {
+  const prev = before.units.get(unitId);
+  const unit = cs.units.find((u) => u.instanceId === unitId);
+  if (!prev || !unit) return false;
+  return prev.conditions !== conditionSignature(unit);
+}
+
+function defeatedUnitIds(before: CombatSnapshot, cs: CombatState): string[] {
+  return cs.units
+    .filter((unit) => {
+      const prev = before.units.get(unit.instanceId);
+      return prev !== undefined && prev.hp > 0 && unit.hp <= 0;
+    })
+    .map((unit) => unit.instanceId);
+}
+
+function conditionSignature(unit: UnitInstance): string {
+  return unit.conditions
+    .map((condition) => `${condition.id}:${condition.remainingTurns}`)
+    .sort()
+    .join("|");
+}
+
+function uniqueIds(ids: string[]): string[] {
+  return [...new Set(ids.filter(Boolean))];
+}
+
+function nearestOpposingTargetIds(active: UnitInstance, cs: CombatState): string[] {
+  const target = cs.units
+    .filter((unit) => unit.hp > 0 && unit.team !== active.team)
+    .sort((a, b) => {
+      const dist = distance(active.pos, a.pos) - distance(active.pos, b.pos);
+      return dist !== 0 ? dist : a.instanceId.localeCompare(b.instanceId);
+    })[0];
+  return target ? [target.instanceId] : [];
+}
+
+function aoeHexKeysForAction(
+  action: ActionDef,
+  attacker: UnitInstance,
+  target: UnitInstance,
+  before: CombatSnapshot,
+  cs: CombatState,
+): string[] {
+  if (action.effect.type === "damage" && action.effect.targetMode === "primary_plus_adjacent") {
+    const damaged = changedUnitIds(before, cs)
+      .filter((unitId) => hpDelta(before, cs, unitId) < 0)
+      .map((unitId) => cs.units.find((unit) => unit.instanceId === unitId))
+      .filter((unit): unit is UnitInstance => !!unit)
+      .map((unit) => hexKey(unit.pos));
+    return uniqueIds([hexKey(target.pos), ...damaged]);
+  }
+
+  if (action.effect.type === "applyCondition" && action.effect.targetMode === "aoe_around_caster") {
+    return cs.units
+      .filter((unit) => unit.team !== attacker.team && distance(attacker.pos, unit.pos) <= action.range)
+      .map((unit) => hexKey(unit.pos));
+  }
+
+  return [];
 }
