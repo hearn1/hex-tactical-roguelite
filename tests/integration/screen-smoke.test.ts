@@ -39,6 +39,15 @@ describe("screen-smoke", () => {
     expect(() => app.render()).not.toThrow();
   });
 
+  it("inventory renders without throwing with an active run", () => {
+    const { app } = mountApp();
+    setupDefaultRun();
+    gameState.run!.inventory.items.push("item.soldier_badge");
+    gameState.run!.inventory.potions.push("potion.healing");
+    gameState.screen = "inventory";
+    expect(() => app.render()).not.toThrow();
+  });
+
   it("combat renders without throwing", () => {
     const { app } = mountApp();
     gameState.screen = "combat";

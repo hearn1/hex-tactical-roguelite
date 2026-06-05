@@ -216,6 +216,16 @@ export class MapScreen {
     container.appendChild(mapEl);
     container.appendChild(infoBar);
 
+    const inventoryBtn = document.createElement("button");
+    inventoryBtn.textContent = "Inventory";
+    inventoryBtn.setAttribute("data-testid", "map-inventory-btn");
+    inventoryBtn.style.cssText = "padding:10px 28px;font-size:15px;margin-top:8px;";
+    inventoryBtn.addEventListener("click", () => {
+      gameState.screen = "inventory";
+      this.app.render();
+    });
+    container.appendChild(inventoryBtn);
+
     return container;
   }
 
