@@ -60,12 +60,12 @@ describe("level-up choice screen (F29 / #60)", () => {
     expect(gameState.pendingLevelUps).toHaveLength(1);
 
     // Second level-up (L3): resolves and returns to the map.
-    clickTestId("levelup-option-guardian.defenders_reach");
+    clickTestId("levelup-option-guardian.archetype.shieldbearer");
     clickTestId("levelup-confirm");
     expect(getScreen()).toBe("map");
-    expect(guardian.levelUpChoiceIds).toEqual(["guardian.pressing_strike", "guardian.defenders_reach"]);
+    expect(guardian.levelUpChoiceIds).toEqual(["guardian.pressing_strike", "guardian.archetype.shieldbearer"]);
     expect(guardian.actionUpgrades?.["action.slash"]?.damageBonus).toBe(1);
-    expect(guardian.bonusStats.might).toBe(1);
+    expect(guardian.archetypeId).toBe("archetype.guardian.shieldbearer");
   });
 
   it("a won run still routes through level-up before the run summary", () => {

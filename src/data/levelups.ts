@@ -12,7 +12,7 @@ import type { UnitStats } from "../state/types.ts";
 
 /** Levels that present an interactive choice. Outside this band, leveling stays automatic. */
 export const LEVELUP_CHOICE_MIN_LEVEL = 2;
-export const LEVELUP_CHOICE_MAX_LEVEL = 3;
+export const LEVELUP_CHOICE_MAX_LEVEL = 5;
 
 /** A single upgrade effect. Discriminated so each is applied + validated uniformly. */
 export type LevelUpUpgrade =
@@ -28,7 +28,11 @@ export type LevelUpUpgrade =
       conditionDurationBonus?: number;
     }
   /** A flagged passive read by the combat engine (e.g. "start_combat_guarded"). */
-  | { kind: "passive"; passiveId: string };
+  | { kind: "passive"; passiveId: string }
+  /** Archetype/subclass choice (F84). On pick: sets archetypeId and grants the archetype passive. */
+  | { kind: "archetype"; archetypeId: string }
+  /** Learn a new action from the class's action pool. Pushes the action id to spellsKnown. */
+  | { kind: "learnAction"; actionId: string };
 
 export interface LevelUpOption {
   id: string;
@@ -66,16 +70,50 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
     ],
     3: [
       {
-        id: "guardian.hold_the_line",
-        name: "Hold the Line",
-        description: "Begin each combat already Guarded.",
-        upgrade: { kind: "passive", passiveId: LEVELUP_PASSIVE_START_COMBAT_GUARDED },
+        id: "guardian.archetype.shieldbearer",
+        name: "Shieldbearer",
+        description: "Taunt enemies and gain Armor when adjacent to an ally.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.guardian.shieldbearer" },
       },
       {
-        id: "guardian.defenders_reach",
-        name: "Defender's Reach",
-        description: "Permanent +1 Might.",
-        upgrade: { kind: "stat", stats: { might: 1 } },
+        id: "guardian.archetype.vindicator",
+        name: "Vindicator",
+        description: "Strike back when hit and attack harder when wounded.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.guardian.vindicator" },
+      },
+    ],
+    4: [
+      {
+        id: "guardian.learn_cleave",
+        name: "Learn Cleave",
+        description: "Learn Cleave — AoE melee attack hitting all adjacent enemies.",
+        upgrade: { kind: "learnAction", actionId: "action.cleave" },
+      },
+      {
+        id: "guardian.learn_shield_wall",
+        name: "Learn Shield Wall",
+        description: "Learn Shield Wall — all adjacent allies gain Guarded.",
+        upgrade: { kind: "learnAction", actionId: "action.shield_wall" },
+      },
+      {
+        id: "guardian.learn_second_wind",
+        name: "Learn Second Wind",
+        description: "Learn Second Wind — self-heal 1d6 + level, once per encounter.",
+        upgrade: { kind: "learnAction", actionId: "action.second_wind" },
+      },
+    ],
+    5: [
+      {
+        id: "guardian.durable_fortress",
+        name: "Durable Fortress",
+        description: "Permanent +2 max HP and +1 Armor.",
+        upgrade: { kind: "stat", stats: { maxHp: 2, armor: 1 } },
+      },
+      {
+        id: "guardian.learn_bulwark",
+        name: "Learn Bulwark",
+        description: "Learn Bulwark — grant an adjacent ally the Guarded condition.",
+        upgrade: { kind: "learnAction", actionId: "action.bulwark" },
       },
     ],
   },
@@ -96,16 +134,50 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
     ],
     3: [
       {
-        id: "acolyte.quiet_resolve",
-        name: "Quiet Resolve",
-        description: "Permanent +1 Spirit and +1 max HP.",
-        upgrade: { kind: "stat", stats: { spirit: 1, maxHp: 1 } },
+        id: "acolyte.archetype.beacon",
+        name: "Beacon",
+        description: "Radiant healing burst and a save-fortifying aura.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.acolyte.beacon" },
       },
       {
-        id: "acolyte.field_prayer",
-        name: "Field Prayer",
-        description: "The first heal each combat restores +2 additional HP.",
-        upgrade: { kind: "passive", passiveId: LEVELUP_PASSIVE_FIRST_HEAL_BONUS },
+        id: "acolyte.archetype.cloistered",
+        name: "Cloistered",
+        description: "Protective Ward and enhanced healing magic.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.acolyte.cloistered" },
+      },
+    ],
+    4: [
+      {
+        id: "acolyte.learn_mass_heal",
+        name: "Learn Mass Heal",
+        description: "Learn Mass Heal — AoE heal all allies within radius 2.",
+        upgrade: { kind: "learnAction", actionId: "action.mass_heal" },
+      },
+      {
+        id: "acolyte.learn_cleanse",
+        name: "Learn Cleanse",
+        description: "Learn Cleanse — remove all conditions from a target ally.",
+        upgrade: { kind: "learnAction", actionId: "action.cleanse" },
+      },
+      {
+        id: "acolyte.learn_sanctuary",
+        name: "Learn Sanctuary",
+        description: "Learn Sanctuary — ward an ally to negate the next attack against them.",
+        upgrade: { kind: "learnAction", actionId: "action.sanctuary" },
+      },
+    ],
+    5: [
+      {
+        id: "acolyte.faithful_recovery",
+        name: "Faithful Recovery",
+        description: "Permanent +1 Spirit and +2 max HP.",
+        upgrade: { kind: "stat", stats: { spirit: 1, maxHp: 2 } },
+      },
+      {
+        id: "acolyte.learn_shield_of_faith",
+        name: "Learn Shield of Faith",
+        description: "Learn Shield of Faith — grant an ally +3 armor for 1 round.",
+        upgrade: { kind: "learnAction", actionId: "action.shield_of_faith" },
       },
     ],
   },
@@ -126,20 +198,50 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
     ],
     3: [
       {
-        id: "arcanist.warding_formula",
-        name: "Warding Formula",
-        description: "Permanent +1 Spirit.",
-        upgrade: { kind: "stat", stats: { spirit: 1 } },
+        id: "arcanist.archetype.evoker",
+        name: "Evoker",
+        description: "Empower spells and crit on 19-20.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.arcanist.evoker" },
       },
       {
-        id: "arcanist.far_spark",
-        name: "Far Spark",
-        description: "Fire Bolt, Frost Shard, and Arcane Ward gain +1 range.",
-        upgrade: {
-          kind: "action",
-          actionIds: ["action.fire_bolt", "action.frost_shard", "action.arcane_ward"],
-          rangeBonus: 1,
-        },
+        id: "arcanist.archetype.enchanter",
+        name: "Enchanter",
+        description: "Mesmerize foes and weaken enemy attacks on allies.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.arcanist.enchanter" },
+      },
+    ],
+    4: [
+      {
+        id: "arcanist.learn_fireball",
+        name: "Learn Fireball",
+        description: "Learn Fireball — AoE damage radius 2 from target hex.",
+        upgrade: { kind: "learnAction", actionId: "action.fireball" },
+      },
+      {
+        id: "arcanist.learn_lightning_bolt",
+        name: "Learn Lightning Bolt",
+        description: "Learn Lightning Bolt — line damage hitting all enemies up to range 4.",
+        upgrade: { kind: "learnAction", actionId: "action.lightning_bolt" },
+      },
+      {
+        id: "arcanist.learn_haste",
+        name: "Learn Haste",
+        description: "Learn Haste — grant an ally +2 movement for 1 round.",
+        upgrade: { kind: "learnAction", actionId: "action.haste" },
+      },
+    ],
+    5: [
+      {
+        id: "arcanist.arcane_reserves",
+        name: "Arcane Reserves",
+        description: "Permanent +1 Spirit and +1 max HP.",
+        upgrade: { kind: "stat", stats: { spirit: 1, maxHp: 1 } },
+      },
+      {
+        id: "arcanist.learn_slow",
+        name: "Learn Slow",
+        description: "Learn Slow — slows all enemies within radius 2 for 2 rounds.",
+        upgrade: { kind: "learnAction", actionId: "action.slow" },
       },
     ],
   },

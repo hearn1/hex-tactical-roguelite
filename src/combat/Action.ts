@@ -1,6 +1,6 @@
-import type { ActionDef } from "../data/actions.ts";
+import type { ActionDef, ConditionApply } from "../data/actions.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
-import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus } from "../state/types.ts";
+import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus, ActionResult, ActionElement } from "../state/types.ts";
 import { distance, hexKey } from "../core/hex.ts";
 import { roll } from "../core/dice.ts";
 import { applyCondition } from "./Condition.ts";
@@ -9,6 +9,7 @@ import { ENCOUNTER_REGISTRY } from "../data/encounters.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../data/levelups.ts";
 import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
+import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
@@ -17,9 +18,30 @@ export const RALLY_DURATION = 2;
 
 const EMPTY_BONUS: ActionUpgradeBonus = {};
 
+/** Map an action id to an element for VFX tinting. Defaults to physical when unknown. */
+function actionElement(id: string): ActionElement {
+  if (id.includes("fire")) return "fire";
+  if (id.includes("frost") || id.includes("ice")) return "frost";
+  if (id.includes("arcane") || id.includes("bless") || id.includes("ward")) return "arcane";
+  if (id.includes("heal") || id.includes("mend")) return "heal";
+  if (id.includes("dark") || id.includes("roar")) return "dark";
+  return "physical";
+}
+
 /** Per-action level-up bonus for this attacker (F29), or an empty bonus when none applies. */
 function actionBonus(attacker: UnitInstance, actionId: string): ActionUpgradeBonus {
   return attacker.actionUpgrades?.[actionId] ?? EMPTY_BONUS;
+}
+
+/**
+ * Roll a saving throw: d20 + stat modifier vs DC.
+ * Returns true if the save succeeds (the effect is negated or resisted).
+ */
+export function rollSave(unit: UnitInstance, stat: "might" | "agility" | "spirit", dc: number, rng: () => number, state?: CombatState): boolean {
+  const mod = unit.stats[stat];
+  const bonus = (state && getBeaconSaveBonus(unit, state)) ?? 0;
+  const d20 = Math.floor(rng() * 20) + 1;
+  return (d20 + mod + bonus) >= dc;
 }
 
 /** An action's effective range including any level-up range bonus (F29). */
@@ -56,7 +78,8 @@ function rewriteFormula(formula: string, attacker: UnitInstance): string {
   return formula
     .replace("+ might", `+ ${attacker.stats.might}`)
     .replace("+ agility", `+ ${attacker.stats.agility}`)
-    .replace("+ spirit", `+ ${attacker.stats.spirit}`);
+    .replace("+ spirit", `+ ${attacker.stats.spirit}`)
+    .replace("+ level", `+ ${attacker.level}`);
 }
 
 export function resolveAction(
@@ -67,24 +90,129 @@ export function resolveAction(
   rng: () => number,
   skipHasActed?: boolean,
   bonusDamage = 0,
-): void {
+): ActionResult {
+  const el = actionElement(action.id);
   const round = state.round;
 
+  // Consume per-encounter charge if the action has a charge limit.
+  if (action.charges !== undefined && action.charges > 0) {
+    const used = state.perEncounterUses[action.id] ?? 0;
+    if (used >= action.charges) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} tries to use ${action.displayName} but has no remaining charges this encounter.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
+    }
+    state.perEncounterUses[action.id] = used + 1;
+  }
+
+  // ── removeConditions (Cleanse) ──
+  if (action.effect.type === "removeConditions") {
+    target.conditions = [];
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — all conditions removed.`,
+      round,
+    });
+    attacker.hasActed = true;
+    return { amount: 0, isCrit: false, kind: "heal", actionElement: "heal" };
+  }
+
+  // ── lineDamage (Lightning Bolt) ──
+  if (action.effect.type === "lineDamage") {
+    const lineRange = action.effect.lineRange;
+    const affected = state.units.filter(
+      (u) => u.team !== attacker.team && u.hp > 0 && distance(attacker.pos, u.pos) <= lineRange,
+    );
+    const atkStat = action.accuracyStat ?? "spirit";
+    const atkMod = attacker.stats[atkStat];
+    const prof = 2 + Math.floor((attacker.level - 1) / 3);
+    const d20 = Math.floor(rng() * 20) + 1;
+    const isCrit = d20 >= getCritFloor(attacker);
+    const isAutoMiss = d20 === 1;
+    let totalDmg = 0;
+    let hitCount = 0;
+    for (const u of affected) {
+      const hit = !isAutoMiss && (isCrit || (d20 + atkMod + prof) >= u.stats.armor);
+      if (hit) {
+        const formula = rewriteFormula(action.effect.formula, attacker);
+        const result = roll(formula, rng);
+        let dmg = result.total;
+        if (isCrit) dmg *= 2;
+        if (attacker.team === "enemy") {
+          const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
+          dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+        }
+        const beforeHp = u.hp;
+        u.hp = Math.max(0, u.hp - dmg);
+        totalDmg += beforeHp - u.hp;
+        hitCount++;
+        if (u.hp <= 0) {
+          state.log.push({ kind: "defeat", text: `[T${round}] ${u.displayName} is defeated.`, round });
+        }
+      }
+    }
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — hits ${hitCount} enemies for ${totalDmg} total damage (d20=${d20}).`,
+      round,
+    });
+    attacker.hasActed = true;
+    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el };
+  }
+
   if (action.effect.type === "applyCondition") {
+    // Taunt action: also sets forcedTargetId on the enemy.
+    if (action.id === "action.archetype_taunt") {
+      const condDuration = action.effect.duration + (actionBonus(attacker, action.id).conditionDurationBonus ?? 0);
+      applyCondition(target, "taunted" as ConditionId, condDuration);
+      target.forcedTargetId = attacker.instanceId;
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — taunted! ${target.displayName} must target ${attacker.displayName}.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
+    }
     if (action.effect.targetMode === "aoe_around_caster") {
+      const isFriendly = action.targetType === "ally";
       const affected = state.units.filter(
-        (u) => u.team !== attacker.team && u.hp > 0 && distance(attacker.pos, u.pos) <= action.range,
+        (u) => u.hp > 0 && distance(attacker.pos, u.pos) <= action.range &&
+          (isFriendly ? u.team === attacker.team : u.team !== attacker.team),
+      );
+      for (const u of affected) {
+        applyCondition(u, action.effect.conditionId as ConditionId, action.effect.duration);
+      }
+      const condName = action.effect.conditionId;
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — ${condName} applied to ${affected.length} target(s).`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
+    }
+    if (action.effect.targetMode === "aoe_radius") {
+      const radius = action.effect.radius ?? action.range;
+      const isFriendly = action.targetType === "ally";
+      const affected = state.units.filter(
+        (u) => u.hp > 0 && distance(attacker.pos, u.pos) <= radius &&
+          (isFriendly ? u.team === attacker.team : u.team !== attacker.team),
       );
       for (const u of affected) {
         applyCondition(u, action.effect.conditionId as ConditionId, action.effect.duration);
       }
       state.log.push({
         kind: "action",
-        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — Weakened applied to ${affected.length} heroes.`,
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — ${action.effect.conditionId} applied to ${affected.length} target(s).`,
         round,
       });
       if (!skipHasActed) attacker.hasActed = true;
-      return;
+      return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
     const condDuration = action.effect.duration + (actionBonus(attacker, action.id).conditionDurationBonus ?? 0);
     applyCondition(target, action.effect.conditionId as ConditionId, condDuration);
@@ -94,10 +222,73 @@ export function resolveAction(
       round,
     });
     if (!skipHasActed) attacker.hasActed = true;
-    return;
+    return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
   }
 
   if (action.effect.type === "heal") {
+    if (action.effect.targetMode === "aoe_radius") {
+      const radius = action.effect.radius ?? action.range;
+      const affected = state.units.filter(
+        (u) => u.team === attacker.team && u.hp > 0 && u.hp < u.stats.maxHp && distance(attacker.pos, u.pos) <= radius,
+      );
+      if (affected.length === 0) {
+        state.log.push({
+          kind: "action",
+          text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — no injured allies in range.`,
+          round,
+        });
+        if (!skipHasActed) attacker.hasActed = true;
+        return { amount: 0, isCrit: false, kind: "heal", actionElement: "heal" };
+      }
+      const formula = rewriteFormula(action.effect.formula, attacker);
+      let totalHealed = 0;
+      for (const u of affected) {
+        const result = roll(formula, rng);
+        let healAmount = result.total;
+        const bIdx = attacker.conditions.findIndex((c) => c.id === "blessed");
+        if (bIdx >= 0) {
+          healAmount += 2;
+          attacker.conditions.splice(bIdx, 1);
+        }
+        const before = u.hp;
+        u.hp = Math.min(u.hp + healAmount, u.stats.maxHp);
+        totalHealed += u.hp - before;
+      }
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — heals ${affected.length} allies for ${totalHealed} total.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: totalHealed, isCrit: false, kind: "heal", actionElement: "heal" };
+    }
+    if (action.effect.targetMode === "aoe_around_caster") {
+      const affected = state.units.filter(
+        (u) => u.team === attacker.team && u.hp > 0 && distance(attacker.pos, u.pos) <= action.range,
+      );
+      const formula = rewriteFormula(action.effect.formula, attacker);
+      let totalHealed = 0;
+      for (const u of affected) {
+        const result = roll(formula, rng);
+        let healAmount = result.total + getCloisteredHealBonus(attacker);
+        const bIdx = attacker.conditions.findIndex((c) => c.id === "blessed");
+        if (bIdx >= 0) {
+          healAmount += 2;
+          attacker.conditions.splice(bIdx, 1);
+        }
+        const before = u.hp;
+        u.hp = Math.min(u.hp + healAmount, u.stats.maxHp);
+        totalHealed += u.hp - before;
+      }
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — heals ${affected.length} allies for ${totalHealed} total.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: totalHealed, isCrit: false, kind: "heal", actionElement: "heal" };
+    }
+
     const blessedIdx = attacker.conditions.findIndex((c) => c.id === "blessed");
     let blessedBonus = 0;
     if (blessedIdx >= 0) {
@@ -129,7 +320,10 @@ export function resolveAction(
     const healHookResult = resolveOncePerCombatBonus(attacker, "firstHealDone", state);
     const itemHealBonus = healHookResult.healBonus ?? 0;
 
-    const healed = result.total + blessedBonus + firstHealBonus + (actionBonus(attacker, action.id).healBonus ?? 0) + itemHealBonus;
+    // Cloistered passive: +2 to every heal action.
+    const cloisteredBonus = getCloisteredHealBonus(attacker);
+
+    const healed = result.total + blessedBonus + firstHealBonus + (actionBonus(attacker, action.id).healBonus ?? 0) + itemHealBonus + cloisteredBonus;
     const before = target.hp;
     target.hp = Math.min(target.hp + healed, target.stats.maxHp);
     const actual = target.hp - before;
@@ -139,12 +333,111 @@ export function resolveAction(
       round,
     });
     if (!skipHasActed) attacker.hasActed = true;
-    return;
+    return { amount: actual, isCrit: false, kind: "heal", actionElement: "heal" };
+  }
+
+  if (action.effect.type === "damage" && action.effect.targetMode === "aoe_around_caster") {
+    const affected = state.units.filter(
+      (u) => u.team !== attacker.team && u.hp > 0 && distance(attacker.pos, u.pos) <= action.range,
+    );
+    if (affected.length === 0) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — no enemies in range.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
+    }
+    const atkStat = action.accuracyStat ?? "might";
+    const atkMod = attacker.stats[atkStat];
+    const prof = 2 + Math.floor((attacker.level - 1) / 3);
+    const d20 = Math.floor(rng() * 20) + 1;
+    const isCrit = d20 >= getCritFloor(attacker);
+    const isAutoMiss = d20 === 1;
+    let totalDmg = 0;
+    let hitCount = 0;
+    for (const u of affected) {
+      const hit = !isAutoMiss && (isCrit || (d20 + atkMod + prof) >= u.stats.armor);
+      if (hit) {
+        const formula = rewriteFormula(action.effect.formula, attacker);
+        const result = roll(formula, rng);
+        let dmg = result.total;
+        if (isCrit) dmg *= 2;
+        if (attacker.team === "enemy") {
+          const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
+          dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+        }
+        const beforeHp = u.hp;
+        u.hp = Math.max(0, u.hp - dmg);
+        totalDmg += beforeHp - u.hp;
+        hitCount++;
+        if (u.hp <= 0) {
+          state.log.push({ kind: "defeat", text: `[T${round}] ${u.displayName} is defeated.`, round });
+        }
+      }
+    }
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — hits ${hitCount} enemies for ${totalDmg} total damage (d20=${d20}).`,
+      round,
+    });
+    if (!skipHasActed) attacker.hasActed = true;
+    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el };
+  }
+
+  if (action.effect.type === "damage" && action.effect.targetMode === "aoe_radius") {
+    const radius = action.effect.radius ?? action.range;
+    const isFriendly = action.targetType === "ally";
+    const affected = state.units.filter(
+      (u) => u.hp > 0 && distance(attacker.pos, u.pos) <= radius &&
+        (isFriendly ? u.team === attacker.team : u.team !== attacker.team),
+    );
+    if (affected.length === 0) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — no targets in radius.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
+    }
+    const atkStat = action.accuracyStat ?? "might";
+    const atkMod = attacker.stats[atkStat];
+    const prof = 2 + Math.floor((attacker.level - 1) / 3);
+    const d20 = Math.floor(rng() * 20) + 1;
+    const isCrit = d20 >= getCritFloor(attacker);
+    const isAutoMiss = d20 === 1;
+    let totalDmg = 0;
+    let hitCount = 0;
+    for (const u of affected) {
+      const hit = !isAutoMiss && (isCrit || (d20 + atkMod + prof) >= u.stats.armor);
+      if (hit) {
+        const formula = rewriteFormula(action.effect.formula, attacker);
+        const result = roll(formula, rng);
+        let dmg = result.total;
+        if (isCrit) dmg *= 2;
+        const beforeHp = u.hp;
+        u.hp = Math.max(0, u.hp - dmg);
+        totalDmg += beforeHp - u.hp;
+        hitCount++;
+        if (u.hp <= 0) {
+          state.log.push({ kind: "defeat", text: `[T${round}] ${u.displayName} is defeated.`, round });
+        }
+      }
+    }
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — hits ${hitCount} targets for ${totalDmg} total damage (d20=${d20}).`,
+      round,
+    });
+    if (!skipHasActed) attacker.hasActed = true;
+    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el };
   }
 
   if (action.effect.type === "damage" && action.effect.targetMode === "primary_plus_adjacent") {
     resolvePrimaryPlusAdjacent(action, attacker, target, state, rng, skipHasActed);
-    return;
+    return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
   }
 
   const attackStat = action.accuracyStat ?? "might";
@@ -170,11 +463,38 @@ export function resolveAction(
     });
   }
 
+  // Enchanter aura: enemies attacking allies (not self) suffer -1 attack.
+  const enchanterPenalty = getEnchanterAttackPenalty(attacker, state);
+
+  // Vindicator wounded bonus: +2 attack when below 50% HP.
+  const vindicatorBonus = getVindicatorAttackBonus(attacker);
+
+  // Reckless condition: the attacker gets +3 to hit when reckless.
+  const recklessAttackBonus = attacker.conditions.some((c) => c.id === "reckless") ? 3 : 0;
+
+  // Sanctuary condition: negate the first attack against the warded target.
+  const sanctuaryIdx = target.conditions.findIndex((c) => c.id === "sanctuary");
+  if (sanctuaryIdx >= 0) {
+    target.conditions.splice(sanctuaryIdx, 1);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${target.displayName}'s Sanctuary wards off ${attacker.displayName}'s attack!`,
+      round,
+    });
+    if (!skipHasActed) attacker.hasActed = true;
+    return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
+  }
+
   const d20 = Math.floor(rng() * 20) + 1;
-  const attackTotal = d20 + stat + proficiency - weakenedPenalty + blessedBonus + ralliedBonus;
-  const isCrit = d20 === 20;
+  const attackTotal = d20 + stat + proficiency - weakenedPenalty + blessedBonus + ralliedBonus - enchanterPenalty + vindicatorBonus + recklessAttackBonus;
+  const critFloor = getCritFloor(attacker);
+  const isCrit = d20 >= critFloor;
   const isAutoMiss = d20 === 1;
-  const hit = !isAutoMiss && (isCrit || attackTotal >= target.stats.armor);
+  const wardedBonus = target.conditions.some((c) => c.id === "warded") ? 3 : 0;
+  const armoredBonus = target.conditions.some((c) => c.id === "armored") ? 3 : 0;
+  const recklessDefensePenalty = target.conditions.some((c) => c.id === "reckless") ? 5 : 0;
+  const effectiveArmor = target.stats.armor + wardedBonus + armoredBonus + recklessDefensePenalty;
+  const hit = !isAutoMiss && (isCrit || attackTotal >= effectiveArmor);
 
   if (!hit) {
     if (isAutoMiss) {
@@ -184,14 +504,15 @@ export function resolveAction(
         round,
       });
     } else {
+      const armorDisplay = wardedBonus > 0 ? `${target.stats.armor}+${wardedBonus}` : `${target.stats.armor}`;
       state.log.push({
         kind: "action",
-        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${target.stats.armor} → miss.`,
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${armorDisplay}=${effectiveArmor} → miss.`,
         round,
       });
     }
     if (!skipHasActed) attacker.hasActed = true;
-    return;
+    return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
   }
 
   const formula = rewriteFormula(action.effect.formula, attacker);
@@ -220,6 +541,19 @@ export function resolveAction(
     if (onceResult.damageBonus) damage += onceResult.damageBonus;
   }
 
+  // Check for Empowered condition: consume it to add +1d6 damage.
+  const empoweredIdx = attacker.conditions.findIndex((c) => c.id === "empowered");
+  if (empoweredIdx >= 0) {
+    const empowermentRoll = roll("1d6", rng);
+    damage += empowermentRoll.total;
+    attacker.conditions.splice(empoweredIdx, 1);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] Empowered Spell consumed — +${empowermentRoll.total} bonus damage.`,
+      round,
+    });
+  }
+
   const guardedIdx = target.conditions.findIndex((c) => c.id === "guarded");
   if (guardedIdx >= 0) {
     const beforeDmg = damage;
@@ -245,26 +579,77 @@ export function resolveAction(
   if (isCrit) {
     state.log.push({
       kind: "action",
-      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=20 crit! ${dealt} dmg (${damage} before reduction). ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} crit! ${dealt} dmg (${damage} before reduction). ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
       round,
     });
   } else {
+    const armorDisplay = wardedBonus > 0 ? `${target.stats.armor}+${wardedBonus}` : `${target.stats.armor}`;
     state.log.push({
       kind: "action",
-      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${target.stats.armor} → hit, ${dealt} dmg. ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${armorDisplay}=${effectiveArmor} → hit, ${dealt} dmg. ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
       round,
     });
   }
 
+  // Apply condition with optional save negation.
   if (action.effect.type === "damage" && action.effect.applyCondition) {
-    const condDuration =
-      action.effect.applyCondition.duration + (actionBonus(attacker, action.id).conditionDurationBonus ?? 0);
-    applyCondition(target, action.effect.applyCondition.id as ConditionId, condDuration);
-    state.log.push({
-      kind: "action",
-      text: `[T${round}] ${action.displayName} hits — ${action.effect.applyCondition.id} applied.`,
-      round,
-    });
+    const condApply: ConditionApply = action.effect.applyCondition;
+    const saveResisted = condApply.save && rollSave(target, condApply.save.stat, condApply.save.dc, rng, state);
+    if (saveResisted) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${target.displayName} saves vs ${condApply.save!.stat} (DC ${condApply.save!.dc}) — condition negated.`,
+        round,
+      });
+    } else {
+      const condDuration = condApply.duration + (actionBonus(attacker, action.id).conditionDurationBonus ?? 0);
+      applyCondition(target, condApply.id as ConditionId, condDuration);
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${action.displayName} hits — ${condApply.id} applied.`,
+        round,
+      });
+    }
+  }
+
+  // Vindicator Retributive Strike reaction: when a Vindicator is hit by melee, strike back.
+  if (target.team === "hero" && !target.reactionUsedThisTurn && target.passives?.includes("archetype_passive.vindicator_below_50_attack")) {
+    const isMelee = distance(attacker.pos, target.pos) <= 1;
+    if (isMelee && attacker.hp > 0) {
+      target.reactionUsedThisTurn = true;
+      const retribAction = ACTION_REGISTRY["action.archetype_retributive_strike"];
+      if (retribAction) {
+        const retribFormula = rewriteFormula("1d6 + might", target);
+        const retribResult = roll(retribFormula, rng);
+        const retribD20 = Math.floor(rng() * 20) + 1;
+        const retribTotal = retribD20 + target.stats.might + (2 + Math.floor((target.level - 1) / 3));
+        const retribCrit = retribD20 >= getCritFloor(target);
+        const retribHit = retribD20 !== 1 && (retribCrit || retribTotal >= attacker.stats.armor);
+        if (retribHit) {
+          let retribDmg = retribResult.total;
+          if (retribCrit) retribDmg *= 2;
+          attacker.hp = Math.max(0, attacker.hp - retribDmg);
+          state.log.push({
+            kind: "action",
+            text: `[T${round}] ${target.displayName}'s Retributive Strike hits ${attacker.displayName} for ${retribDmg} damage!`,
+            round,
+          });
+          if (attacker.hp <= 0) {
+            state.log.push({
+              kind: "defeat",
+              text: `[T${round}] ${attacker.displayName} is defeated by Retributive Strike.`,
+              round,
+            });
+          }
+        } else {
+          state.log.push({
+            kind: "action",
+            text: `[T${round}] ${target.displayName}'s Retributive Strike misses ${attacker.displayName}.`,
+            round,
+          });
+        }
+      }
+    }
   }
 
   checkBossReinforcement(target, state);
@@ -279,6 +664,7 @@ export function resolveAction(
   }
 
   if (!skipHasActed) attacker.hasActed = true;
+  return { amount: dealt, isCrit, kind: "damage", actionElement: el };
 }
 
 function resolvePrimaryPlusAdjacent(

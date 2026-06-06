@@ -28,7 +28,7 @@ describe("Action", () => {
       const rng = createRng(1);
       const attacker = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, stats: { maxHp: 100, armor: 10, move: 3, might: 10, agility: 0, spirit: 0 } });
       const target = makeUnit({ instanceId: "t1", pos: { q: 1, r: 0 }, team: "enemy", hp: 2, stats: { maxHp: 2, armor: 10, move: 3, might: 0, agility: 0, spirit: 0 } });
-      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "t1"], units: [attacker, target], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null };
+      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "t1"], units: [attacker, target], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null, perEncounterUses: {} };
       resolveAction(ACTION_REGISTRY["action.slash"], attacker, target, state, rng);
       expect(target.hp).toBe(0);
     });
@@ -37,7 +37,7 @@ describe("Action", () => {
       const rng = createRng(999);
       const attacker = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, stats: { maxHp: 100, armor: 10, move: 3, might: 0, agility: 0, spirit: 0 } });
       const target = makeUnit({ instanceId: "t1", pos: { q: 1, r: 0 }, team: "enemy", hp: 100, stats: { maxHp: 100, armor: 30, move: 3, might: 0, agility: 0, spirit: 0 } });
-      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "t1"], units: [attacker, target], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null };
+      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "t1"], units: [attacker, target], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null, perEncounterUses: {} };
       const before = target.hp;
       resolveAction(ACTION_REGISTRY["action.slash"], attacker, target, state, rng);
       expect(before - target.hp).toBeGreaterThanOrEqual(2);
@@ -50,7 +50,7 @@ describe("Action", () => {
       const rng = createRng(42);
       const acolyte = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.acolyte", stats: { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 5 } });
       const ally = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, hp: 16, stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 } });
-      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "a2"], units: [acolyte, ally], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null };
+      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "a2"], units: [acolyte, ally], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null, perEncounterUses: {} };
       const before = ally.hp;
       resolveAction(ACTION_REGISTRY["action.mend_wounds"], acolyte, ally, state, rng);
       expect(ally.hp).toBeLessThanOrEqual(ally.stats.maxHp);
@@ -65,7 +65,7 @@ describe("Action", () => {
       const enemyFar = makeUnit({ instanceId: "e2", pos: { q: 0, r: 5 }, team: "enemy", stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 } });
       const deadEnemy = makeUnit({ instanceId: "e3", pos: { q: 1, r: 0 }, team: "enemy", hp: 0, stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 } });
       const ally = makeUnit({ instanceId: "h2", pos: { q: 2, r: 0 }, stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 } });
-      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["h1", "e1", "e2", "e3", "h2"], units: [arcanist, enemyNear, enemyFar, deadEnemy, ally], log: [], status: "active", gridKeys: [], targetingActionId: null };
+      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["h1", "e1", "e2", "e3", "h2"], units: [arcanist, enemyNear, enemyFar, deadEnemy, ally], log: [], status: "active", gridKeys: [], targetingActionId: null, perEncounterUses: {} };
       const targets = validTargets(ACTION_REGISTRY["action.fire_bolt"], arcanist, state);
       expect(targets.map((t) => t.instanceId)).toContain("e1");
       expect(targets.map((t) => t.instanceId)).not.toContain("e2");

@@ -16,6 +16,11 @@ export function processTurnStart(unit: UnitInstance): ConditionId[] {
     unit.movePointsRemaining = Math.max(0, unit.movePointsRemaining - 1);
   }
 
+  const hasted = unit.conditions.find((c) => c.id === "hasted");
+  if (hasted) {
+    unit.movePointsRemaining += 2;
+  }
+
   for (let i = unit.conditions.length - 1; i >= 0; i--) {
     const cond = unit.conditions[i];
     const condId = cond.id;
@@ -23,6 +28,10 @@ export function processTurnStart(unit: UnitInstance): ConditionId[] {
     if (cond.remainingTurns <= 0) {
       unit.conditions.splice(i, 1);
       expired.push(condId);
+      // Clear forced target when taunted expires.
+      if (condId === "taunted") {
+        unit.forcedTargetId = undefined;
+      }
     }
   }
 
