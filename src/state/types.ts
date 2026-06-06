@@ -20,7 +20,10 @@ export type ScreenId =
 
 export type Team = "hero" | "enemy";
 
-export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed" | "rallied";
+export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed" | "rallied" | "warded" | "empowered" | "taunted" | "mesmerized" | "reckless" | "armored" | "sanctuary" | "hasted" | "counterspelled";
+
+/** Element type for VFX tinting (fire, frost, arcane, heal, physical, dark). */
+export type ActionElement = "fire" | "frost" | "arcane" | "heal" | "physical" | "dark";
 
 export interface UnitStats {
   maxHp: number;
@@ -53,6 +56,18 @@ export interface Hex {
  * a unit's {@link UnitInstance.actionUpgrades}. Read by the combat resolver so an upgrade is
  * picked up with no new action defs — extensible toward deeper class-build options later.
  */
+/**
+ * Structured result returned by resolveAction so callers can read the real
+ * values instead of parsing the combat log. Shared seam used by VFX (#92)
+ * and consumable potions (#103).
+ */
+export interface ActionResult {
+  amount: number;
+  isCrit: boolean;
+  kind: "damage" | "heal" | "miss";
+  actionElement?: ActionElement;
+}
+
 export interface ActionUpgradeBonus {
   /** Flat bonus added to the action's rolled damage. */
   damageBonus?: number;
@@ -87,10 +102,20 @@ export interface UnitInstance {
   actionUpgrades?: Record<string, ActionUpgradeBonus>;
   /** Level-up passive ids in effect (F29), e.g. "start_combat_guarded", "first_heal_bonus". */
   passives?: string[];
+  /** Archetype chosen at level 3 (e.g. "archetype.guardian.shieldbearer"). */
+  archetypeId?: string;
+  /** Forced target override: this unit must target this instanceId with its next attack. */
+  forcedTargetId?: string;
+  /** Whether this unit has already fired its reaction this combat turn (prevents infinite loops). */
+  reactionUsedThisTurn?: boolean;
   /** Transient combat flag: the `first_heal_bonus` passive has already fired this combat. */
   firstHealDone?: boolean;
   /** Item hook IDs that have already triggered this combat, e.g. "item.runemark_blade". */
   usedItemHooks?: string[];
+  /** Action ids the hero has learned (from level-up learnAction choices). Copied from party member. */
+  spellsKnown?: string[];
+  /** Action ids the hero has prepared for this day. Copied from party member. */
+  preparedActionIds?: string[];
 }
 
 export interface CombatLogEntry {
@@ -144,6 +169,7 @@ export interface CombatState {
   status: "active" | "victory" | "defeat";
   gridKeys: string[];
   targetingActionId: string | null;
+  perEncounterUses: Record<string, number>;
   bossActionIndex?: number;
   bossReinforcementSpawned?: boolean;
   /** Pending telegraphed boss attack, or null/undefined when none is wound up (boss only). */

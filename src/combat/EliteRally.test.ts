@@ -35,6 +35,7 @@ function makeEliteState(units: UnitInstance[], encounterId = "encounter.broken_b
     status: "active",
     gridKeys: grid.map(hexKey),
     targetingActionId: null,
+    perEncounterUses: {},
     encounterId,
     eliteRallyTriggered: false,
   };

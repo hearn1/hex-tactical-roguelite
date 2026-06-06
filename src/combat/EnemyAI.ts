@@ -16,6 +16,11 @@ const AMBUSH_BURST_BONUS = 3;
 const AMBUSH_HOLD_RANGE = 2;
 
 function pickTarget(unit: UnitInstance, state: CombatState): UnitInstance | null {
+  // Honor forced target (taunt) - must target the unit that taunted this enemy.
+  if (unit.forcedTargetId) {
+    const forced = state.units.find((u) => u.instanceId === unit.forcedTargetId && u.hp > 0);
+    if (forced) return forced;
+  }
   const heroes = state.units.filter((u) => u.team === "hero" && u.hp > 0);
   if (heroes.length === 0) return null;
   heroes.sort((a, b) => {

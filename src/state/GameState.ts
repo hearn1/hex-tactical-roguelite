@@ -75,6 +75,8 @@ function createHeroInstance(instanceId: string, classId: ClassId, name: string, 
     hasActed: false,
     equippedItemIds: { weapon: null, armor: null, trinket: null },
     bonusStats: {},
+    spellsKnown: [],
+    preparedActionIds: [],
   };
   equipStartingItems(unit);
   unit.stats = computeStats(unit);
@@ -100,6 +102,8 @@ function createEnemyInstance(instanceId: string, enemyId: EnemyId, name: string,
     hasActed: false,
     equippedItemIds: { weapon: null, armor: null, trinket: null },
     bonusStats: {},
+    spellsKnown: [],
+    preparedActionIds: [],
   };
 }
 
@@ -187,6 +191,7 @@ export function initCombatState(rng: () => number): CombatState {
     status: "active",
     gridKeys,
     targetingActionId: null,
+    perEncounterUses: {},
     bossActionIndex: 0,
     bossReinforcementSpawned: false,
     theme: nodeTypeToEnvironmentTheme("combat"),
@@ -212,9 +217,12 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     bonusStats: { ...pm.bonusStats },
     abilityScores: pm.abilityScores ? { ...pm.abilityScores } : undefined,
     backgroundId: pm.backgroundId,
+    archetypeId: pm.archetypeId,
     actionUpgrades: pm.actionUpgrades ? { ...pm.actionUpgrades } : undefined,
     passives: pm.passives ? [...pm.passives] : undefined,
     firstHealDone: false,
+    spellsKnown: pm.spellsKnown ? [...pm.spellsKnown] : [],
+    preparedActionIds: pm.preparedActionIds ? [...pm.preparedActionIds] : [],
   };
   unit.stats = computeStats(unit);
   if (pm.hp >= pm.maxHp) {
@@ -326,6 +334,7 @@ export function createCombatFromRun(
     status: "active",
     gridKeys,
     targetingActionId: null,
+    perEncounterUses: {},
     bossActionIndex: isBoss ? 0 : undefined,
     bossReinforcementSpawned: isBoss ? false : undefined,
     bossTelegraph: isBoss ? null : undefined,

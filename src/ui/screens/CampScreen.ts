@@ -22,12 +22,14 @@ const TRAIN_XP = 5;
 let phase: "menu" | "confirm" = "menu";
 let confirmAction: CampAction | null = null;
 let pickingHero: boolean = false;
+let pickingPreps: boolean = false;
 let lastRenderedNodeId: string | null = null;
 
 function resetTransientState(): void {
   phase = "menu";
   confirmAction = null;
   pickingHero = false;
+  pickingPreps = false;
   lastRenderedNodeId = null;
 }
 
@@ -82,6 +84,11 @@ export class CampScreen {
     desc.textContent = "A sheltered spot to rest and recover. Take your time, then move on.";
     desc.style.cssText = "color:#aaa;font-size:14px;text-align:center;";
     container.appendChild(desc);
+
+    if (pickingPreps) {
+      container.appendChild(this.renderPrepPicker());
+      return container;
+    }
 
     if (pickingHero) {
       container.appendChild(this.renderHeroPicker());
@@ -148,8 +155,11 @@ export class CampScreen {
     buttons.appendChild(
       this.actionButton("brew", `Brew Potion (Spend ${CAMP_BREW_POTION_COST} gold → +1 Healing Potion)`, this.disabledReason("brew")),
     );
-    // Prepare for Combat (not recovery)
-    buttons.appendChild(this.actionButton("prepare", "Prepare for Combat (Bless the party next battle)", this.disabledReason("prepare")));
+    // Battle Prayer (not recovery)
+    buttons.appendChild(this.actionButton("prepare", "Battle Prayer (Bless + Prepare Spells)", this.disabledReason("prepare")));
+    if (import.meta.env?.MODE === "development" || (window as any).__DEBUG__) {
+      buttons.appendChild(this.actionButton("prep", "[Debug] Select Prepared Spells", null));
+    }
 
     wrap.appendChild(buttons);
 

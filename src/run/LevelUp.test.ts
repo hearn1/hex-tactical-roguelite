@@ -49,17 +49,21 @@ const PASSIVE_OPTION: LevelUpOption = {
 };
 
 describe("isChoiceLevel / getLevelUpOptions", () => {
-  it("levels 2 and 3 are choice levels; 1, 4, 5 are not", () => {
+  it("levels 2,3,4,5 are choice levels; 1 and 6 are not", () => {
     expect(isChoiceLevel(1)).toBe(false);
     expect(isChoiceLevel(2)).toBe(true);
     expect(isChoiceLevel(3)).toBe(true);
-    expect(isChoiceLevel(4)).toBe(false);
+    expect(isChoiceLevel(4)).toBe(true);
+    expect(isChoiceLevel(5)).toBe(true);
+    expect(isChoiceLevel(6)).toBe(false);
   });
 
-  it("each class offers 2 options at levels 2 and 3", () => {
+  it("each class offers 2 options at levels 2 and 3, falls to shared at 4-5", () => {
     for (const classId of ["class.guardian", "class.acolyte", "class.arcanist"]) {
       expect(getLevelUpOptions(classId, 2)).toHaveLength(2);
       expect(getLevelUpOptions(classId, 3)).toHaveLength(2);
+      expect(getLevelUpOptions(classId, 4)).toHaveLength(2);
+      expect(getLevelUpOptions(classId, 5)).toHaveLength(2);
     }
   });
 
@@ -70,8 +74,8 @@ describe("isChoiceLevel / getLevelUpOptions", () => {
   });
 
   it("levels outside the band offer no choice", () => {
-    expect(getLevelUpOptions("class.guardian", 4)).toHaveLength(0);
     expect(getLevelUpOptions("class.guardian", 1)).toHaveLength(0);
+    expect(getLevelUpOptions("class.guardian", 6)).toHaveLength(0);
   });
 
   it("findLevelUpOption resolves a known option id", () => {
@@ -126,9 +130,9 @@ describe("applyLevelUpChoice — each reward type", () => {
 describe("enqueuePendingLevelUps", () => {
   it("only enqueues levels inside the choice band", () => {
     const queue: PendingLevelUp[] = [];
-    // 1 → 5 crosses levels [2,3,4,5]; only 2 and 3 enqueue.
+    // 1 → 5 crosses levels [2,3,4,5]; all in range now.
     enqueuePendingLevelUps(queue, "hero_001", "class.guardian", [2, 3, 4, 5]);
-    expect(queue.map((q) => q.newLevel)).toEqual([2, 3]);
+    expect(queue.map((q) => q.newLevel)).toEqual([2, 3, 4, 5]);
     expect(queue[0]).toMatchObject({ instanceId: "hero_001", classId: "class.guardian", newLevel: 2 });
   });
 
@@ -143,25 +147,30 @@ describe("applyDefaultLevelUpChoices (pre-run/meta)", () => {
   it("auto-applies the first option for each in-range level, no UI", () => {
     const pm = makePm({ classId: "class.guardian" });
     applyDefaultLevelUpChoices(pm, "class.guardian", [2, 3]);
-    // Guardian L2 default = Iron Stance (+2 maxHp, +1 armor); L3 default = Hold the Line (passive).
-    expect(pm.levelUpChoiceIds).toEqual(["guardian.iron_stance", "guardian.hold_the_line"]);
+    // Guardian L2 default = Iron Stance (+2 maxHp, +1 armor); L3 default = Shieldbearer (archetype).
+    expect(pm.levelUpChoiceIds).toEqual(["guardian.iron_stance", "guardian.archetype.shieldbearer"]);
     expect(pm.bonusStats.maxHp).toBe(2);
-    expect(pm.passives).toContain(LEVELUP_PASSIVE_START_COMBAT_GUARDED);
+    expect(pm.passives).toContain("archetype_passive.shieldbearer_adjacency_armor");
   });
 
   it("ignores levels outside the band", () => {
     const pm = makePm();
-    applyDefaultLevelUpChoices(pm, "class.guardian", [4, 5]);
+    applyDefaultLevelUpChoices(pm, "class.guardian", [6, 7]);
     expect(pm.levelUpChoiceIds ?? []).toEqual([]);
   });
 });
 
-describe("Field Prayer passive id is referenced", () => {
-  it("acolyte field prayer maps to the first-heal passive", () => {
-    const opt = findLevelUpOption("class.acolyte", 3, "acolyte.field_prayer");
-    expect(opt?.upgrade.kind).toBe("passive");
-    if (opt?.upgrade.kind === "passive") {
-      expect(opt.upgrade.passiveId).toBe(LEVELUP_PASSIVE_FIRST_HEAL_BONUS);
+describe("Archetype choices exist for L3", () => {
+  it("acolyte L3 offers Beacon and Cloistered archetypes", () => {
+    const opt1 = findLevelUpOption("class.acolyte", 3, "acolyte.archetype.beacon");
+    expect(opt1?.upgrade.kind).toBe("archetype");
+    if (opt1?.upgrade.kind === "archetype") {
+      expect(opt1.upgrade.archetypeId).toBe("archetype.acolyte.beacon");
+    }
+    const opt2 = findLevelUpOption("class.acolyte", 3, "acolyte.archetype.cloistered");
+    expect(opt2?.upgrade.kind).toBe("archetype");
+    if (opt2?.upgrade.kind === "archetype") {
+      expect(opt2.upgrade.archetypeId).toBe("archetype.acolyte.cloistered");
     }
   });
 });

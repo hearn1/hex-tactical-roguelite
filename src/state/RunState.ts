@@ -25,6 +25,8 @@ export interface PartyMember {
     armor: string | null;
     trinket: string | null;
   };
+  /** Archetype chosen at level 3 (e.g. "archetype.guardian.shieldbearer"). */
+  archetypeId?: string;
   /** Optional background/trait chosen at run setup (one per hero). See `data/backgrounds.ts`. */
   backgroundId?: string;
   /** Per-action bonuses from chosen level-up upgrades (F29 / #60). Persist for the run. */
@@ -33,6 +35,10 @@ export interface PartyMember {
   passives?: string[];
   /** Ids of level-up options this hero has chosen, in order. Drives the hero-panel display. */
   levelUpChoiceIds?: string[];
+  /** Action ids the hero has learned through level-up learnAction choices. */
+  spellsKnown?: string[];
+  /** Action ids the hero has prepared for the current day (long rest cycle). */
+  preparedActionIds?: string[];
 }
 
 /**

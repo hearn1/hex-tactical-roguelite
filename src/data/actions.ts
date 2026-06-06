@@ -1,3 +1,9 @@
+export interface ConditionApply {
+  id: string;
+  duration: number;
+  save?: { stat: "might" | "agility" | "spirit"; dc: number };
+}
+
 export interface ActionDef {
   id: string;
   displayName: string;
@@ -6,10 +12,14 @@ export interface ActionDef {
   targetType: "enemy" | "ally" | "self" | "ally_or_self";
   range: number;
   accuracyStat?: "might" | "agility" | "spirit";
+  isCantrip?: boolean;
+  charges?: number;
   effect:
-    | { type: "damage"; formula: string; applyCondition?: { id: string; duration: number }; targetMode?: "single" | "primary_plus_adjacent" }
-    | { type: "heal"; formula: string }
-    | { type: "applyCondition"; conditionId: string; duration: number; targetMode?: "single" | "aoe_around_caster" };
+    | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number }
+    | { type: "heal"; formula: string; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
+    | { type: "applyCondition"; conditionId: string; duration: number; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
+    | { type: "removeConditions" }
+    | { type: "lineDamage"; formula: string; lineRange: number };
 }
 
 export const ACTION_REGISTRY: Record<string, ActionDef> = {
@@ -21,6 +31,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     targetType: "enemy",
     range: 1,
     accuracyStat: "might",
+    isCantrip: true,
     effect: { type: "damage", formula: "1d6 + might" },
   },
   "action.mend_wounds": {
@@ -31,6 +42,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     targetType: "ally",
     range: 3,
     accuracyStat: "spirit",
+    isCantrip: true,
     effect: { type: "heal", formula: "1d6 + spirit" },
   },
   "action.fire_bolt": {
@@ -41,6 +53,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     targetType: "enemy",
     range: 4,
     accuracyStat: "spirit",
+    isCantrip: true,
     effect: { type: "damage", formula: "1d8 + spirit" },
   },
   "action.rusty_stab": {
@@ -111,6 +124,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     targetType: "enemy",
     range: 1,
     accuracyStat: "might",
+    isCantrip: true,
     effect: { type: "damage", formula: "1d4 + might", applyCondition: { id: "weakened", duration: 1 } },
   },
   "action.guard": {
@@ -120,6 +134,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "self",
     range: 0,
+    isCantrip: true,
     effect: { type: "applyCondition", conditionId: "guarded", duration: 1 },
   },
   "action.mace_strike": {
@@ -130,6 +145,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     targetType: "enemy",
     range: 1,
     accuracyStat: "might",
+    isCantrip: true,
     effect: { type: "damage", formula: "1d6 + might" },
   },
   "action.bless": {
@@ -139,6 +155,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "ally",
     range: 3,
+    isCantrip: true,
     effect: { type: "applyCondition", conditionId: "blessed", duration: 2 },
   },
   "action.frost_shard": {
@@ -149,6 +166,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     targetType: "enemy",
     range: 4,
     accuracyStat: "spirit",
+    isCantrip: true,
     effect: { type: "damage", formula: "1d6 + spirit", applyCondition: { id: "slowed", duration: 1 } },
   },
   "action.arcane_ward": {
@@ -158,6 +176,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "ally_or_self",
     range: 3,
+    isCantrip: true,
     effect: { type: "applyCondition", conditionId: "guarded", duration: 1 },
   },
   "action.arrow_shot": {
@@ -208,5 +227,230 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     range: 1,
     accuracyStat: "agility",
     effect: { type: "damage", formula: "2d4 + agility" },
+  },
+  // --- Archetype actions (F84) ---
+  "action.archetype_protective_ward": {
+    id: "action.archetype_protective_ward",
+    displayName: "Protective Ward",
+    description: "Shroud an ally in protective energy, granting +3 Armor for 1 round.",
+    source: "class",
+    targetType: "ally_or_self",
+    range: 3,
+    effect: { type: "applyCondition", conditionId: "warded", duration: 1 },
+  },
+  "action.archetype_empowered_spell": {
+    id: "action.archetype_empowered_spell",
+    displayName: "Empowered Spell",
+    description: "Empower an ally's next damaging spell, granting +1d6 bonus damage within 2 rounds.",
+    source: "class",
+    targetType: "ally_or_self",
+    range: 3,
+    effect: { type: "applyCondition", conditionId: "empowered", duration: 2 },
+  },
+  "action.archetype_healing_burst": {
+    id: "action.archetype_healing_burst",
+    displayName: "Healing Burst",
+    description: "A burst of healing energy, restoring 1d4 + Spirit HP to all nearby allies.",
+    source: "class",
+    targetType: "ally",
+    range: 2,
+    accuracyStat: "spirit",
+    effect: { type: "heal", formula: "1d4 + spirit", targetMode: "aoe_around_caster" },
+  },
+  "action.archetype_taunt": {
+    id: "action.archetype_taunt",
+    displayName: "Taunt",
+    description: "Force an adjacent enemy to target you with its next attack. (1/combat)",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    effect: { type: "applyCondition", conditionId: "taunted", duration: 1 },
+  },
+  "action.archetype_retributive_strike": {
+    id: "action.archetype_retributive_strike",
+    displayName: "Retributive Strike",
+    description: "When you are hit by a melee attack, strike back for 1d6 + Might damage.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "might",
+    effect: { type: "damage", formula: "1d6 + might" },
+  },
+  "action.archetype_mesmerize": {
+    id: "action.archetype_mesmerize",
+    displayName: "Mesmerize",
+    description: "Cloud an enemy's mind — on failed save they can't act next turn.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "spirit",
+    effect: { type: "damage", formula: "1d4 + spirit", applyCondition: { id: "mesmerized", duration: 1, save: { stat: "spirit", dc: 12 } } },
+  },
+  // ── Guardian pool actions ──────────────────────────────────────────────
+  "action.cleave": {
+    id: "action.cleave",
+    displayName: "Cleave",
+    description: "A sweeping strike that hits all adjacent enemies.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "might",
+    charges: 1,
+    effect: { type: "damage", formula: "1d8 + might", targetMode: "aoe_around_caster" },
+  },
+  "action.war_cry": {
+    id: "action.war_cry",
+    displayName: "War Cry",
+    description: "Bolster allies with a fierce battle cry, granting +1 to attack rolls for 2 rounds.",
+    source: "class",
+    targetType: "ally",
+    range: 2,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "blessed", duration: 2, targetMode: "aoe_around_caster" },
+  },
+  "action.shield_wall": {
+    id: "action.shield_wall",
+    displayName: "Shield Wall",
+    description: "All adjacent allies gain Guarded.",
+    source: "class",
+    targetType: "ally",
+    range: 1,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "guarded", duration: 1, targetMode: "aoe_around_caster" },
+  },
+  "action.second_wind": {
+    id: "action.second_wind",
+    displayName: "Second Wind",
+    description: "Heal yourself for 1d6 + level HP. Once per encounter.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    charges: 1,
+    effect: { type: "heal", formula: "1d6 + level" },
+  },
+  "action.reckless_assault": {
+    id: "action.reckless_assault",
+    displayName: "Reckless Assault",
+    description: "Gain advantage on attacks, but enemies have advantage attacking you. Lasts 2 rounds.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "reckless", duration: 2 },
+  },
+  "action.bulwark": {
+    id: "action.bulwark",
+    displayName: "Bulwark",
+    description: "Grant an adjacent ally the Guarded condition.",
+    source: "class",
+    targetType: "ally",
+    range: 1,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "guarded", duration: 1 },
+  },
+  // ── Acolyte pool actions ───────────────────────────────────────────────
+  "action.mass_heal": {
+    id: "action.mass_heal",
+    displayName: "Mass Heal",
+    description: "Heal all allies within radius 2 for 1d6 + spirit.",
+    source: "class",
+    targetType: "ally",
+    range: 2,
+    accuracyStat: "spirit",
+    charges: 1,
+    effect: { type: "heal", formula: "1d6 + spirit", targetMode: "aoe_radius", radius: 2 },
+  },
+  "action.cleanse": {
+    id: "action.cleanse",
+    displayName: "Cleanse",
+    description: "Remove all conditions from a target ally.",
+    source: "class",
+    targetType: "ally",
+    range: 3,
+    charges: 1,
+    effect: { type: "removeConditions" },
+  },
+  "action.shield_of_faith": {
+    id: "action.shield_of_faith",
+    displayName: "Shield of Faith",
+    description: "Grant an ally +3 armor for 1 round.",
+    source: "class",
+    targetType: "ally",
+    range: 3,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "armored", duration: 1 },
+  },
+  "action.sanctuary": {
+    id: "action.sanctuary",
+    displayName: "Sanctuary",
+    description: "Ward an ally — the next attack against them is negated.",
+    source: "class",
+    targetType: "ally",
+    range: 3,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "sanctuary", duration: 2 },
+  },
+  "action.divine_favor": {
+    id: "action.divine_favor",
+    displayName: "Divine Favor",
+    description: "Bless an ally, granting +1 to attack rolls for 2 rounds.",
+    source: "class",
+    targetType: "ally",
+    range: 3,
+    isCantrip: true,
+    effect: { type: "applyCondition", conditionId: "blessed", duration: 2 },
+  },
+  // ── Arcanist pool actions ──────────────────────────────────────────────
+  "action.fireball": {
+    id: "action.fireball",
+    displayName: "Fireball",
+    description: "An explosive ball of flame deals 2d6 + spirit damage to all enemies in radius 2.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "spirit",
+    charges: 1,
+    effect: { type: "damage", formula: "2d6 + spirit", targetMode: "aoe_radius", radius: 2 },
+  },
+  "action.lightning_bolt": {
+    id: "action.lightning_bolt",
+    displayName: "Lightning Bolt",
+    description: "A bolt of lightning strikes all enemies in a line from the caster up to range 4.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "spirit",
+    charges: 1,
+    effect: { type: "lineDamage", formula: "2d6 + spirit", lineRange: 4 },
+  },
+  "action.haste": {
+    id: "action.haste",
+    displayName: "Haste",
+    description: "Grant an ally +2 movement for 1 round.",
+    source: "class",
+    targetType: "ally",
+    range: 3,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "hasted", duration: 1 },
+  },
+  "action.slow": {
+    id: "action.slow",
+    displayName: "Slow",
+    description: "Slows all enemies within radius 2 of the caster for 2 rounds.",
+    source: "class",
+    targetType: "enemy",
+    range: 2,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "slowed", duration: 2, targetMode: "aoe_radius", radius: 2 },
+  },
+  "action.counterspell": {
+    id: "action.counterspell",
+    displayName: "Counterspell",
+    description: "Cancel an enemy's telegraphed or queued action.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "counterspelled", duration: 1 },
   },
 };

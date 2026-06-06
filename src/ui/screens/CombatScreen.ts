@@ -1,7 +1,8 @@
+import * as THREE from "three";
 import type { App } from "../App.ts";
 import { gameState, initCombatState } from "../../state/GameState.ts";
 import { syncPartyFromCombat } from "../../state/GameState.ts";
-import type { BossTelegraph, CombatState, UnitInstance, Hex } from "../../state/types.ts";
+import type { BossTelegraph, CombatState, UnitInstance, Hex, ActionElement } from "../../state/types.ts";
 import { distance, hexKey, parseHexKey, pixelToHex, hexEquals } from "../../core/hex.ts";
 import { renderHexOutline, fillHex } from "../HexRenderer.ts";
 import { reachableHexes } from "../../combat/Movement.ts";
@@ -16,9 +17,11 @@ import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
+import { ARCHETYPE_REGISTRY } from "../../data/archetypes.ts";
 import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/environmentThemes.ts";
 import { CombatThreeRenderer, type Combat3DHighlights } from "../../render/combat3d/CombatThreeRenderer.ts";
 import type { CombatAnimationStep } from "../../render/combat3d/animationQueue.ts";
+import { axialToWorld } from "../../render/combat3d/hexWorld.ts";
 
 const HERO_COLOR = "#4488ff";
 const ENEMY_COLOR = "#ff4444";
@@ -254,13 +257,15 @@ export class CombatScreen {
       const tDesc = tItem?.flavorText ? `<br/><span style="font-size:10px;color:#999;">${tItem.flavorText}</span>` : "";
       const bg = h.backgroundId ? BACKGROUND_REGISTRY[h.backgroundId] : undefined;
       const bgHtml = bg ? `<br/>Background: ${bg.displayName} (${describeBackgroundEffect(bg)})` : "";
+      const arch = h.archetypeId ? ARCHETYPE_REGISTRY[h.archetypeId] : undefined;
+      const archHtml = arch ? `<br/>Archetype: ${arch.displayName}` : "";
       // Chosen level-up upgrades (F29) read from the persistent party member, shown per hero.
       const pm = gameState.run?.party.find((p) => p.instanceId === h.instanceId);
       const upgradeNames = (pm?.levelUpChoiceIds ?? [])
         .map((id) => LEVELUP_OPTION_BY_ID[id]?.name)
         .filter((n): n is string => !!n);
       const upgradesHtml = upgradeNames.length > 0 ? `<br/>Upgrades: ${upgradeNames.join(", ")}` : "";
-      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b>${bgHtml}${upgradesHtml}<br/>Weapon: ${w}${wDesc}<br/>Armor: ${a}${aDesc}<br/>Trinket: ${t}${tDesc}</div>`;
+      return `<div style="margin-bottom:6px;"><b>${h.displayName}</b>${bgHtml}${archHtml}${upgradesHtml}<br/>Weapon: ${w}${wDesc}<br/>Armor: ${a}${aDesc}<br/>Trinket: ${t}${tDesc}</div>`;
     }).join("");
     const bagHtml = `<div><b>Bag</b><br/>Items: ${inv.items.join(", ") || "(empty)"}<br/>Potions: ${inv.potions.join(", ") || "(empty)"}<br/>Gold: ${inv.gold}</div>`;
     panel.innerHTML = `<h3 style="margin:0 0 6px;font-size:14px;">Inventory</h3>${itemsHtml}<hr style="border-color:#444;">${bagHtml}`;
@@ -480,9 +485,23 @@ export class CombatScreen {
     if (!target) return;
 
     const before = snapshotCombat(cs);
-    resolveAction(actionDef, attacker, target, cs, gameState.rng);
+    const result = resolveAction(actionDef, attacker, target, cs, gameState.rng);
     cs.targetingActionId = null;
     checkVictoryDefeat(cs);
+
+    this.spawnActionVfx(actionDef, attacker, target, result);
+
+    const deaths = defeatedUnitIds(before, cs);
+    if (deaths.length > 0) {
+      for (const deadId of deaths) {
+        const dead = cs.units.find((u) => u.instanceId === deadId);
+        if (dead) {
+          const world = axialToWorld(dead.pos);
+          const vfxPos = new THREE.Vector3(world.x, 0, world.z);
+          this.combatRenderer?.vfxManager.spawnDeathBurst(vfxPos);
+        }
+      }
+    }
 
     removeDefeatedFromQueue(cs);
     this.drawCanvas();
@@ -539,6 +558,7 @@ export class CombatScreen {
     if (active) {
       active.movePointsRemaining = active.stats.move;
       active.hasActed = false;
+      active.reactionUsedThisTurn = false;
       // Item hook: first-turn bonus on round 1 (e.g. Quickstep Buckle).
       if (cs.round === 1 && active.team === "hero") {
         const turnResult = resolveOncePerCombatBonus(active, "firstTurn", cs);
@@ -584,6 +604,8 @@ export class CombatScreen {
       const pendingTelegraphHexes = cs.bossTelegraph?.targetHexes ? [...cs.bossTelegraph.targetHexes] : [];
       takeEnemyTurn(active, cs, gameState.rng);
       active.hasActed = true;
+
+      this.spawnEnemyTurnVfx(active, before, cs);
 
       checkVictoryDefeat(cs);
       this.drawCanvas();
@@ -710,6 +732,98 @@ export class CombatScreen {
     return steps;
   }
 
+  private spawnActionVfx(
+    action: ActionDef,
+    attacker: UnitInstance,
+    target: UnitInstance,
+    result: { amount: number; isCrit: boolean; kind: "damage" | "heal" | "miss"; actionElement?: ActionElement },
+  ): void {
+    const renderer = this.combatRenderer;
+    if (!renderer) return;
+
+    const attackerWorld = axialToWorld(attacker.pos);
+    const targetWorld = axialToWorld(target.pos);
+    const atkPos = new THREE.Vector3(attackerWorld.x, 0, attackerWorld.z);
+    const tgtPos = new THREE.Vector3(targetWorld.x, 0, targetWorld.z);
+
+    const el = result.actionElement ?? actionElementForId(action.id);
+
+    if (result.kind === "miss") {
+      renderer.vfxManager.spawnFloatingNumber(tgtPos, 0, "miss", false);
+      return;
+    }
+
+    if (result.kind === "heal") {
+      renderer.vfxManager.spawnSparkle(tgtPos, 4);
+      renderer.vfxManager.spawnFloatingNumber(tgtPos, result.amount, "heal", false);
+      return;
+    }
+
+    const isMelee = action.range <= 1;
+    if (!isMelee) {
+      renderer.vfxManager.spawnProjectile(atkPos, tgtPos, el);
+    }
+    renderer.vfxManager.spawnBurst(tgtPos, el);
+    renderer.vfxManager.spawnFloatingNumber(tgtPos, result.amount, "damage", result.isCrit);
+
+    if (result.isCrit) {
+      renderer.vfxManager.startCameraShake();
+    }
+
+    if (action.effect.type === "applyCondition" || (action.effect.type === "damage" && action.effect.applyCondition)) {
+      renderer.vfxManager.spawnShieldFlash(tgtPos);
+    }
+  }
+
+  private spawnEnemyTurnVfx(
+    active: UnitInstance,
+    before: CombatSnapshot,
+    cs: CombatState,
+  ): void {
+    const renderer = this.combatRenderer;
+    if (!renderer) return;
+
+    const changed = changedUnitIds(before, cs).filter((id) => id !== active.instanceId);
+    const damaged = changed.filter((unitId) => hpDelta(before, cs, unitId) < 0);
+    const healed = changed.filter((unitId) => hpDelta(before, cs, unitId) > 0);
+    const deaths = defeatedUnitIds(before, cs);
+    const newLogs = cs.log.slice(before.logLength);
+    const actionLogged = newLogs.some((entry) => entry.kind === "action" && entry.text.includes(active.displayName));
+    const el = actionElementForId(actionLogged ? guessActionIdFromLogs(newLogs) : "");
+
+    for (const unitId of damaged) {
+      const unit = cs.units.find((u) => u.instanceId === unitId);
+      if (!unit) continue;
+      const world = axialToWorld(unit.pos);
+      const pos = new THREE.Vector3(world.x, 0, world.z);
+      const activeWorld = axialToWorld(active.pos);
+      const atkPos = new THREE.Vector3(activeWorld.x, 0, activeWorld.z);
+      renderer.vfxManager.spawnProjectile(atkPos, pos, el);
+      renderer.vfxManager.spawnBurst(pos, el);
+      const delta = Math.abs(hpDelta(before, cs, unitId));
+      renderer.vfxManager.spawnFloatingNumber(pos, delta, "damage", false);
+    }
+
+    for (const unitId of healed) {
+      const unit = cs.units.find((u) => u.instanceId === unitId);
+      if (!unit) continue;
+      const world = axialToWorld(unit.pos);
+      const pos = new THREE.Vector3(world.x, 0, world.z);
+      renderer.vfxManager.spawnSparkle(pos, 3);
+      const delta = hpDelta(before, cs, unitId);
+      renderer.vfxManager.spawnFloatingNumber(pos, delta, "heal", false);
+    }
+
+    for (const deadId of deaths) {
+      const dead = cs.units.find((u) => u.instanceId === deadId);
+      if (dead) {
+        const world = axialToWorld(dead.pos);
+        const pos = new THREE.Vector3(world.x, 0, world.z);
+        renderer.vfxManager.spawnDeathBurst(pos);
+      }
+    }
+  }
+
   private setControlsEnabled(enabled: boolean): void {
     const controlsEnabled = enabled && !this.animationBlocking;
     if (this.endTurnBtn) this.endTurnBtn.disabled = !controlsEnabled;
@@ -770,17 +884,33 @@ export class CombatScreen {
         entry.classList.add("active");
       }
       const hpText = unit.hp > 0 ? `${unit.hp}/${unit.stats.maxHp}` : "DEFEATED";
-      entry.textContent = `${unit.displayName} (${hpText})`;
+      let label = `${unit.displayName} (${hpText})`;
+      if (unit.archetypeId) {
+        const archDef = ARCHETYPE_REGISTRY[unit.archetypeId];
+        if (archDef) label = `${unit.displayName} [${archDef.displayName}] (${hpText})`;
+      }
+      entry.textContent = label;
       entry.style.textDecoration = unit.hp <= 0 ? "line-through" : "none";
       panel.appendChild(entry);
     }
   }
 
   private getActionIds(unit: UnitInstance): string[] {
-    const enemyDef = unit.team === "enemy" ? null : null;
+    if (unit.team !== "hero") {
+      const enemyDef = ENEMY_REGISTRY[unit.defId];
+      return enemyDef ? [...enemyDef.actionIds] : [];
+    }
     const classDef = CLASS_REGISTRY[unit.defId];
-    const classActions = classDef ? classDef.actionIds : [];
+    const cantrips = classDef ? classDef.actionIds.filter((aid) => ACTION_REGISTRY[aid]?.isCantrip) : [];
+    const prepared = unit.preparedActionIds ?? [];
     const grantedActions: string[] = [];
+    // Archetype action.
+    if (unit.archetypeId) {
+      const archDef = ARCHETYPE_REGISTRY[unit.archetypeId];
+      if (archDef?.grantedActionId && !grantedActions.includes(archDef.grantedActionId)) {
+        grantedActions.push(archDef.grantedActionId);
+      }
+    }
     for (const slot of ["weapon", "armor", "trinket"] as const) {
       const itemId = unit.equippedItemIds[slot];
       if (!itemId) continue;
@@ -793,7 +923,15 @@ export class CombatScreen {
         }
       }
     }
-    return [...classActions, ...grantedActions];
+    const seen = new Set<string>();
+    const result: string[] = [];
+    for (const aid of [...cantrips, ...prepared, ...grantedActions]) {
+      if (!seen.has(aid)) {
+        seen.add(aid);
+        result.push(aid);
+      }
+    }
+    return result;
   }
 
   private updateActionBar(): void {
@@ -823,6 +961,9 @@ export class CombatScreen {
         btn.classList.add("targeting");
       }
 
+      const chargesLeft = cs.perEncounterUses[activeUnit.instanceId]?.[actionId] ?? -1;
+      const noCharges = actionDef.charges !== undefined && chargesLeft <= 0;
+
       if (this.animationBlocking || this.enemyProcessing) {
         btn.disabled = true;
         btn.title = "Animation playing";
@@ -830,6 +971,10 @@ export class CombatScreen {
         btn.classList.add("disabled");
         btn.disabled = true;
         btn.title = "Already acted this turn";
+      } else if (noCharges) {
+        btn.classList.add("disabled");
+        btn.disabled = true;
+        btn.title = "No charges remaining this encounter";
       } else {
         const targets = validTargets(actionDef, activeUnit, cs);
         if (targets.length === 0) {
@@ -984,6 +1129,23 @@ function nearestOpposingTargetIds(active: UnitInstance, cs: CombatState): string
   return target ? [target.instanceId] : [];
 }
 
+function guessActionIdFromLogs(logs: { text: string }[]): string {
+  for (const entry of logs) {
+    const match = entry.text.match(/(action\.\w+)/);
+    if (match) return match[1];
+  }
+  return "";
+}
+
+function actionElementForId(actionId: string): ActionElement {
+  if (actionId.includes("fire")) return "fire";
+  if (actionId.includes("frost") || actionId.includes("ice")) return "frost";
+  if (actionId.includes("arcane") || actionId.includes("bless") || actionId.includes("ward")) return "arcane";
+  if (actionId.includes("heal") || actionId.includes("mend")) return "heal";
+  if (actionId.includes("dark") || actionId.includes("roar")) return "dark";
+  return "physical";
+}
+
 function aoeHexKeysForAction(
   action: ActionDef,
   attacker: UnitInstance,
@@ -1003,6 +1165,12 @@ function aoeHexKeysForAction(
   if (action.effect.type === "applyCondition" && action.effect.targetMode === "aoe_around_caster") {
     return cs.units
       .filter((unit) => unit.team !== attacker.team && distance(attacker.pos, unit.pos) <= action.range)
+      .map((unit) => hexKey(unit.pos));
+  }
+
+  if (action.effect.type === "heal" && action.effect.targetMode === "aoe_around_caster") {
+    return cs.units
+      .filter((unit) => unit.team === attacker.team && distance(attacker.pos, unit.pos) <= action.range)
       .map((unit) => hexKey(unit.pos));
   }
 
