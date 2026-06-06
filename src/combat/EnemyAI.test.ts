@@ -30,6 +30,7 @@ function makeState(units: UnitInstance[]): CombatState {
     turnQueue: units.map((u) => u.instanceId),
     units,
     log: [],
+    perEncounterUses: {},
     status: "active",
     gridKeys: grid.map(hexKey),
     targetingActionId: null,
