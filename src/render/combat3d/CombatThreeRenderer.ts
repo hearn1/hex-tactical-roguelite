@@ -6,6 +6,7 @@ import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/enviro
 import { axialToWorld, HEX_WORLD_RADIUS } from "./hexWorld.ts";
 import { hexFromPickData } from "./picking.ts";
 import { CombatAnimationQueue, easeInOut, type CombatAnimationStep } from "./animationQueue.ts";
+import { VfxManager } from "./VfxManager.ts";
 
 export interface Combat3DHighlights {
   hoveredHex: Hex | null;
@@ -66,6 +67,7 @@ export class CombatThreeRenderer {
   private readonly hpFillGeometry = new THREE.PlaneGeometry(0.7, 0.07);
   private readonly activeRingGeometry = new THREE.RingGeometry(0.45, 0.54, 40);
   private readonly animationQueue = new CombatAnimationQueue();
+  readonly vfxManager: VfxManager;
   private readonly visualUnits = new Map<string, VisualUnitState>();
   private readonly activeStepStartWorlds = new Map<string, { x: number; z: number }>();
   private readonly environmentGround: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshStandardMaterial>;
@@ -115,6 +117,7 @@ export class CombatThreeRenderer {
     this.container.appendChild(this.renderer.domElement);
 
     this.addLights();
+    this.vfxManager = new VfxManager(this.scene, this.camera);
     this.bindPointerEvents();
     this.startLoop();
   }
@@ -150,6 +153,7 @@ export class CombatThreeRenderer {
       this.finishAnimationStep(step);
     }
     this.activeStepStartWorlds.clear();
+    this.vfxManager.skipAll();
     this.restoreTileHighlights();
     this.reportAnimationState();
     this.renderFrame();
@@ -172,6 +176,7 @@ export class CombatThreeRenderer {
       cancelAnimationFrame(this.animationId);
       this.animationId = null;
     }
+    this.vfxManager.dispose();
     this.tileGeometry.dispose();
     this.groundGeometry.dispose();
     this.skyGeometry.dispose();
@@ -242,6 +247,8 @@ export class CombatThreeRenderer {
     if (active) {
       this.applyAnimationStep(active, this.animationQueue.getProgress());
     }
+
+    this.vfxManager.update(dtMs);
 
     for (const step of result.finished) {
       this.finishAnimationStep(step);

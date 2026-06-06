@@ -40,6 +40,7 @@ function twoUnitState(a: UnitInstance, t: UnitInstance): CombatState {
     status: "active",
     gridKeys: ["0,0", "1,0", "0,1"],
     targetingActionId: null,
+    perEncounterUses: {},
   };
 }
 
