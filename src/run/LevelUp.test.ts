@@ -58,11 +58,11 @@ describe("isChoiceLevel / getLevelUpOptions", () => {
     expect(isChoiceLevel(6)).toBe(false);
   });
 
-  it("each class offers 2 options at levels 2 and 3, falls to shared at 4-5", () => {
+  it("each class offers 2 options at levels 2 and 3, 3 at 4, 2 at 5", () => {
     for (const classId of ["class.guardian", "class.acolyte", "class.arcanist"]) {
       expect(getLevelUpOptions(classId, 2)).toHaveLength(2);
       expect(getLevelUpOptions(classId, 3)).toHaveLength(2);
-      expect(getLevelUpOptions(classId, 4)).toHaveLength(2);
+      expect(getLevelUpOptions(classId, 4)).toHaveLength(3);
       expect(getLevelUpOptions(classId, 5)).toHaveLength(2);
     }
   });

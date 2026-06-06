@@ -157,7 +157,7 @@ export class CampScreen {
     );
     // Battle Prayer (not recovery)
     buttons.appendChild(this.actionButton("prepare", "Battle Prayer (Bless + Prepare Spells)", this.disabledReason("prepare")));
-    if (import.meta.env?.MODE === "development" || (window as any).__DEBUG__) {
+    if ((import.meta as any).env?.MODE === "development" || (window as any).__DEBUG__) {
       buttons.appendChild(this.actionButton("prep", "[Debug] Select Prepared Spells", null));
     }
 
@@ -204,6 +204,8 @@ export class CampScreen {
     btn.addEventListener("click", () => {
       if (action === "train") {
         pickingHero = true;
+      } else if (action === "prep") {
+        pickingPreps = true;
       } else {
         confirmAction = action;
         phase = "confirm";
@@ -231,7 +233,7 @@ export class CampScreen {
     } else if (action === "brew") {
       preview.innerHTML = `<b>Brew Potion</b><br/>Spend ${CAMP_BREW_POTION_COST} gold (you have ${run.gold}) to add 1 Healing Potion to your bag.`;
     } else if (action === "prepare") {
-      preview.innerHTML = `<b>Prepare for Combat</b><br/>The party is Blessed (+2 to each hero's first attack or heal) at the start of the next battle. The blessing is saved until your next fight.`;
+      preview.innerHTML = `<b>Battle Prayer</b><br/>The party is Blessed (+2 to each hero's first attack or heal) at the start of the next battle. The blessing is saved until your next fight.`;
     }
     wrap.appendChild(preview);
 
@@ -280,6 +282,60 @@ export class CampScreen {
 
   private markUsed(campState: CampNodeState, action: CampAction): void {
     if (!campState.used.includes(action)) campState.used.push(action);
+  }
+
+  private renderPrepPicker(): HTMLElement {
+    const run = gameState.run!;
+    const wrap = document.createElement("div");
+    wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px;";
+
+    const label = document.createElement("div");
+    label.textContent = "Select Prepared Spells:";
+    label.style.cssText = "font-size:16px;margin-bottom:8px;";
+    wrap.appendChild(label);
+
+    for (const pm of run.party) {
+      const known = [...(pm.spellsKnown ?? [])];
+      if (known.length === 0) continue;
+
+      const heroDiv = document.createElement("div");
+      heroDiv.style.cssText = "border:1px solid #444;border-radius:6px;padding:8px;margin:4px 0;width:360px;";
+      const name = document.createElement("div");
+      name.textContent = pm.displayName;
+      name.style.cssText = "font-weight:bold;margin-bottom:4px;";
+      heroDiv.appendChild(name);
+
+      pm.preparedActionIds = pm.preparedActionIds ?? [];
+      for (const actionId of known) {
+        const row = document.createElement("label");
+        row.style.cssText = "display:block;font-size:13px;margin:2px 0;";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = pm.preparedActionIds.includes(actionId);
+        cb.addEventListener("change", () => {
+          if (cb.checked) {
+            if (!pm.preparedActionIds!.includes(actionId)) pm.preparedActionIds!.push(actionId);
+          } else {
+            pm.preparedActionIds = pm.preparedActionIds!.filter((id) => id !== actionId);
+          }
+        });
+        row.appendChild(cb);
+        row.appendChild(document.createTextNode(" " + actionId));
+        heroDiv.appendChild(row);
+      }
+      wrap.appendChild(heroDiv);
+    }
+
+    const confirmBtn = document.createElement("button");
+    confirmBtn.textContent = "Confirm Preparation";
+    confirmBtn.style.cssText = "padding:10px 28px;font-size:14px;width:200px;margin-top:8px;";
+    confirmBtn.addEventListener("click", () => {
+      pickingPreps = false;
+      this.app.render();
+    });
+    wrap.appendChild(confirmBtn);
+
+    return wrap;
   }
 
   private renderHeroPicker(): HTMLElement {

@@ -53,7 +53,7 @@ export interface PendingLevelUp {
 }
 
 export type Difficulty = "normal" | "hard";
-export type CampAction = "rest" | "train" | "brew" | "prepare";
+export type CampAction = "rest" | "train" | "brew" | "prepare" | "prep";
 
 export interface CampNodeState {
   used: CampAction[];

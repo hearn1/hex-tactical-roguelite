@@ -961,7 +961,7 @@ export class CombatScreen {
         btn.classList.add("targeting");
       }
 
-      const chargesLeft = cs.perEncounterUses[activeUnit.instanceId]?.[actionId] ?? -1;
+      const chargesLeft = (cs.perEncounterUses as Record<string, number>)[actionId] ?? -1;
       const noCharges = actionDef.charges !== undefined && chargesLeft <= 0;
 
       if (this.animationBlocking || this.enemyProcessing) {
