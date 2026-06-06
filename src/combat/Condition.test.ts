@@ -37,6 +37,7 @@ function makeCombatState(units: UnitInstance[]): CombatState {
     status: "active",
     gridKeys: ["0,0"],
     targetingActionId: null,
+    perEncounterUses: {},
   };
 }
 

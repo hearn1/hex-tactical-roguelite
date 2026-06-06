@@ -111,12 +111,12 @@ describe("CampScreen state", () => {
     gameState.screen = "camp";
     app.render();
 
-    clickButton("Prepare for Combat (Bless the party next battle)");
+    clickButton("Battle Prayer (Bless + Prepare Spells)");
     clickButton("Confirm");
     app.render();
 
     expect(getCampState(run).used).toEqual(["prepare"]);
-    const prepareButton = findButton(root, "Prepare for Combat");
+    const prepareButton = findButton(root, "Battle Prayer");
     expect(prepareButton.disabled).toBe(true);
     expect(prepareButton.textContent).toContain("Already done at this camp");
   });
@@ -255,13 +255,13 @@ describe("CampScreen state", () => {
     expect(brewBtn.textContent).toContain("Already recovered");
   });
 
-  it("Prepare for Combat queues a buff consumed by the next combat", () => {
+  it("Battle Prayer queues a buff consumed by the next combat", () => {
     const { root, app, clickButton } = mountApp();
     setupCampRun();
     gameState.screen = "camp";
     app.render();
 
-    clickButton("Prepare for Combat (Bless the party next battle)");
+    clickButton("Battle Prayer (Bless + Prepare Spells)");
     expect(root.textContent).toContain("Blessed");
     clickButton("Confirm");
 

@@ -7,6 +7,7 @@ import {
   LEVELUP_CHOICE_MAX_LEVEL,
   SHARED_FALLBACK_CHOICES,
 } from "../data/levelups.ts";
+import { ARCHETYPE_REGISTRY } from "../data/archetypes.ts";
 
 const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "might", "agility", "spirit"];
 
@@ -94,6 +95,24 @@ export function applyLevelUpChoice(pm: PartyMember, option: LevelUpOption): stri
       pm.passives = pm.passives ?? [];
       if (!pm.passives.includes(upgrade.passiveId)) {
         pm.passives.push(upgrade.passiveId);
+      }
+      break;
+    }
+    case "archetype": {
+      const archetypeDef = ARCHETYPE_REGISTRY[upgrade.archetypeId];
+      pm.archetypeId = upgrade.archetypeId;
+      if (archetypeDef?.passiveId) {
+        pm.passives = pm.passives ?? [];
+        if (!pm.passives.includes(archetypeDef.passiveId)) {
+          pm.passives.push(archetypeDef.passiveId);
+        }
+      }
+      break;
+    }
+    case "learnAction": {
+      pm.spellsKnown = pm.spellsKnown ?? [];
+      if (!pm.spellsKnown.includes(upgrade.actionId)) {
+        pm.spellsKnown.push(upgrade.actionId);
       }
       break;
     }
