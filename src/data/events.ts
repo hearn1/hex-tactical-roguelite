@@ -1,11 +1,12 @@
 import type { CheckStat, RunModifier } from "../state/types.ts";
+import type { AbilityKey } from "./abilities.ts";
 
 /**
  * Canonical ability-check declaration (F23). Defined here so this module is the single
  * source of truth shared with the F24 event resolver — do not redefine elsewhere.
  */
 export interface CheckDef {
-  stat: CheckStat;
+  stat: AbilityKey;
   dc: number;
   /** Optional partial-success band: a miss within N of the DC reads as "partial". */
   partialWithin?: number;
@@ -92,6 +93,22 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
         ],
       },
       {
+        id: "event.rogue_trader.haggle",
+        label: "Haggle",
+        description: "Charisma check (DC 12). Success: buy the Lucky Charm for 10 gold. Failure: the trader won't budge.",
+        effects: [
+          {
+            type: "check",
+            check: { stat: "cha", dc: 12 },
+            onSuccess: [
+              { type: "gold_cost", amount: 10 },
+              { type: "item", itemId: "item.lucky_charm" },
+            ],
+            onFailure: [{ type: "noop" }],
+          },
+        ],
+      },
+      {
         id: "event.rogue_trader.decline",
         label: "Decline",
         description: "Politely refuse the offer.",
@@ -151,11 +168,11 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.crumbling_bridge.cross",
         label: "Leap across",
-        description: "Agility check (DC 12). Success: 25 gold. Partial: 10 gold. Failure: a hero takes 6 damage.",
+        description: "Dexterity check (DC 12). Success: 25 gold. Partial: 10 gold. Failure: a hero takes 6 damage.",
         effects: [
           {
             type: "check",
-            check: { stat: "agility", dc: 12, partialWithin: 3 },
+            check: { stat: "dex", dc: 12, partialWithin: 3 },
             onSuccess: [{ type: "gold", amount: 25 }],
             onPartial: [{ type: "gold", amount: 10 }],
             onFailure: [{ type: "hp_damage", amount: 6, target: "random_hero" }],
@@ -184,11 +201,11 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.sunken_toll_chest.force",
         label: "Force the Lid",
-        description: "Might check (DC 12). Success: gold and an item. Partial: a little coin. Failure: a hero is hurt but grabs some coin.",
+        description: "Strength check (DC 12). Success: gold and an item. Partial: a little coin. Failure: a hero is hurt but grabs some coin.",
         effects: [
           {
             type: "check",
-            check: { stat: "might", dc: 12, partialWithin: 3 },
+            check: { stat: "str", dc: 12, partialWithin: 3 },
             onSuccess: [
               { type: "gold", amount: 30 },
               { type: "item", itemId: "item.owl_feather" },
@@ -219,11 +236,11 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.lanterns_in_the_fog.follow",
         label: "Follow the Lights",
-        description: "Spirit check (DC 12). Success: an uncommon find. Partial: some gold. Failure: a hero takes damage.",
+        description: "Wisdom check (DC 12). Success: an uncommon find. Partial: some gold. Failure: a hero takes damage.",
         effects: [
           {
             type: "check",
-            check: { stat: "spirit", dc: 12, partialWithin: 3 },
+            check: { stat: "wis", dc: 12, partialWithin: 3 },
             onSuccess: [{ type: "item", itemId: "item.runed_robe" }],
             onPartial: [{ type: "gold", amount: 14 }],
             onFailure: [{ type: "hp_damage", amount: 6, target: "random_hero" }],
@@ -254,11 +271,11 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.rain_washed_cairn.read",
         label: "Read the Old Marks",
-        description: "Spirit check (DC 11). Success: the reader gains insight (XP). Failure: nothing comes of it.",
+        description: "Intelligence check (DC 11). Success: the reader gains insight (XP). Failure: nothing comes of it.",
         effects: [
           {
             type: "check",
-            check: { stat: "spirit", dc: 11 },
+            check: { stat: "int", dc: 11 },
             onSuccess: [{ type: "xp", amount: 15, target: "picked_hero" }],
             onFailure: [{ type: "noop" }],
           },
@@ -276,11 +293,11 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.glassroot_thicket.harvest",
         label: "Harvest Carefully",
-        description: "Agility check (DC 12). Success: 2 potions. Partial: 1 potion. Failure: a hero takes minor damage.",
+        description: "Dexterity check (DC 12). Success: 2 potions. Partial: 1 potion. Failure: a hero takes minor damage.",
         effects: [
           {
             type: "check",
-            check: { stat: "agility", dc: 12, partialWithin: 3 },
+            check: { stat: "dex", dc: 12, partialWithin: 3 },
             onSuccess: [
               { type: "potion", potionId: "potion.healing" },
               { type: "potion", potionId: "potion.healing" },
@@ -356,11 +373,11 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.whispering_milestone.listen",
         label: "Let One Hero Listen",
-        description: "Spirit check (DC 13). Success: that hero gains +1 Spirit for the run. Failure: nothing.",
+        description: "Wisdom check (DC 13). Success: that hero gains +1 Spirit for the run. Failure: nothing.",
         effects: [
           {
             type: "check",
-            check: { stat: "spirit", dc: 13 },
+            check: { stat: "wis", dc: 13 },
             onSuccess: [{ type: "stat_boost", stat: "spirit", amount: 1 }],
             onFailure: [{ type: "noop" }],
           },
@@ -414,11 +431,11 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.ashen_star_shrine.seize",
         label: "Seize the Ember",
-        description: "High-risk Spirit check (DC 14). Success: a relic and gold. Partial: some gold. Failure: a hero is badly burned.",
+        description: "High-risk Wisdom check (DC 14). Success: a relic and gold. Partial: some gold. Failure: a hero is badly burned.",
         effects: [
           {
             type: "check",
-            check: { stat: "spirit", dc: 14, partialWithin: 2 },
+            check: { stat: "wis", dc: 14, partialWithin: 2 },
             onSuccess: [
               { type: "item", itemId: "item.bloodstone" },
               { type: "gold", amount: 25 },

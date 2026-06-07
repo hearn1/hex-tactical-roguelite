@@ -27,7 +27,7 @@ describe("event content pack — end-to-end through the F24 screen (no per-event
     cleanup();
   });
 
-  it("Glassroot Thicket: a successful Agility check yields 2 potions and logs the roll", () => {
+  it("Glassroot Thicket: a successful Dexterity check yields 2 potions and logs the roll", () => {
     const { app, root, clickTestId } = mountApp();
     forceEvent("event.glassroot_thicket");
     app.render();
@@ -36,11 +36,11 @@ describe("event content pack — end-to-end through the F24 screen (no per-event
     forceRoll(20); // auto-success against DC 12
     clickTestId("check-hero-hero_001");
 
-    expect(root.textContent).toContain("Agility check");
+    expect(root.textContent).toContain("Dexterity check");
     expect(gameState.run!.inventory.potions.filter((p) => p === "potion.healing")).toHaveLength(2);
   });
 
-  it("Glassroot Thicket: a failed Agility check damages a hero", () => {
+  it("Glassroot Thicket: a failed Dexterity check damages a hero", () => {
     const { app, root, clickTestId } = mountApp();
     forceEvent("event.glassroot_thicket");
     app.render();
@@ -62,7 +62,7 @@ describe("event content pack — end-to-end through the F24 screen (no per-event
 
     clickTestId("event-choice-let-one-hero-listen");
     forceRoll(20);
-    // Acolyte (hero_002) attempts the Spirit check.
+    // Acolyte (hero_002) attempts the Wisdom check.
     clickTestId("check-hero-hero_002");
 
     expect(gameState.run!.party[1].bonusStats.spirit).toBe(1);

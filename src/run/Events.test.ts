@@ -205,27 +205,27 @@ describe("resolveCheckEffect", () => {
 
   const bridgeCheck: CheckEffect = {
     type: "check",
-    check: { stat: "agility", dc: 12, partialWithin: 3 },
+    check: { stat: "dex", dc: 12, partialWithin: 3 },
     onSuccess: [{ type: "gold", amount: 25 }],
     onPartial: [{ type: "gold", amount: 10 }],
     onFailure: [{ type: "hp_damage", amount: 6, target: "random_hero" }],
   };
 
   it("runs the onSuccess branch and logs the roll", () => {
-    const party = makeParty(); // Mara (guardian) agility mod 1
+    const party = makeParty(); // no abilityScores -> dex mod 0
     const run = makeRun(party);
-    // roll 14 + 1 = 15 >= 12 -> success
+    // roll 14 + 0 = 14 >= 12 -> success
     const { result, messages } = resolveCheckEffect(bridgeCheck, party[0], run, faceRng(14));
     expect(result.outcome).toBe("success");
     expect(run.gold).toBe(25);
-    expect(messages[0]).toContain("Agility check");
+    expect(messages[0]).toContain("Dexterity check");
     expect(messages[0]).toContain("Success");
   });
 
   it("runs the onPartial branch on a near-miss", () => {
     const party = makeParty();
     const run = makeRun(party);
-    // roll 10 + 1 = 11, dc 12, margin -1, band 3 -> partial
+    // roll 10 + 0 = 10, dc 12, margin -2, band 3 -> partial
     const { result } = resolveCheckEffect(bridgeCheck, party[0], run, faceRng(10));
     expect(result.outcome).toBe("partial");
     expect(run.gold).toBe(10);
@@ -235,7 +235,7 @@ describe("resolveCheckEffect", () => {
     const party = makeParty();
     const run = makeRun(party);
     const before = party.reduce((s, p) => s + p.hp, 0);
-    // roll 3 + 1 = 4, dc 12, margin -8 -> failure -> 6 damage
+    // roll 3 + 0 = 3, dc 12, margin -9 -> failure -> 6 damage
     const { result } = resolveCheckEffect(bridgeCheck, party[0], run, faceRng(3));
     expect(result.outcome).toBe("failure");
     const after = party.reduce((s, p) => s + p.hp, 0);
@@ -441,7 +441,7 @@ describe("resolveEventChoiceWithHero", () => {
       id: "c", label: "c", description: "",
       effects: [{
         type: "check",
-        check: { stat: "agility", dc: 12 },
+        check: { stat: "dex", dc: 12 },
         onSuccess: [{ type: "gold", amount: 25 }],
         onFailure: [{ type: "noop" }],
       }],
@@ -449,7 +449,7 @@ describe("resolveEventChoiceWithHero", () => {
     // face 20 -> guaranteed success
     const { messages } = resolveEventChoiceWithHero(choice, party[0], run, () => 19 / 20);
     expect(run.gold).toBe(25);
-    expect(messages[0]).toContain("Agility check");
+    expect(messages[0]).toContain("Dexterity check");
   });
 });
 
@@ -532,14 +532,72 @@ describe("selectEventForNode", () => {
   });
 });
 
+describe("ability score integration", () => {
+  const faceRng = (face: number) => () => (face - 1) / 20;
+
+  it("STR event succeeds when hero has high Strength ability score (not class stat)", () => {
+    const party = makeParty();
+    party[0].abilityScores = { str: 18, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }; // +4 str
+    const run = makeRun(party);
+    const choice = EVENT_REGISTRY["event.sunken_toll_chest"].choices[0]; // str DC 12
+    // roll 8 + 4 = 12 >= 12 -> success; without abilityScores (mod 0) this would be a failure
+    resolveEventChoiceWithHero(choice, party[0], run, faceRng(8));
+    expect(run.gold).toBeGreaterThan(0);
+  });
+
+  it("same roll fails when hero has low Strength — same class, different ability scores", () => {
+    const party = makeParty();
+    party[0].abilityScores = { str: 8, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }; // -1 str
+    const run = makeRun(party);
+    const choice = EVENT_REGISTRY["event.sunken_toll_chest"].choices[0]; // str DC 12, partialWithin 3
+    // roll 8 + (-1) = 7, dc 12, margin -5, band 3 -> failure
+    const before = party.reduce((s, p) => s + p.hp, 0);
+    resolveEventChoiceWithHero(choice, party[0], run, faceRng(8));
+    // onFailure branch: takes 6 damage but also gains 8 gold
+    const after = party.reduce((s, p) => s + p.hp, 0);
+    expect(after).toBeLessThan(before);
+  });
+
+  it("INT and WIS checks produce different outcomes when ability scores differ", () => {
+    const wiseHero = makeParty()[0];
+    wiseHero.abilityScores = { str: 10, dex: 10, con: 10, int: 8, wis: 18, cha: 10 }; // int -1, wis +4
+    const runA = makeRun([wiseHero]);
+    const runB = makeRun([{ ...wiseHero, abilityScores: { str: 10, dex: 10, con: 10, int: 18, wis: 8, cha: 10 } }]); // int +4, wis -1
+
+    const cairnCheck: CheckEffect = {
+      type: "check",
+      check: { stat: "int", dc: 12 },
+      onSuccess: [{ type: "gold", amount: 20 }],
+      onFailure: [{ type: "noop" }],
+    };
+    // roll 10 + int mod: wiseHero (int 8, mod -1) -> 9 < 12 fail; intHero (int 18, mod +4) -> 14 >= 12 success
+    resolveCheckEffect(cairnCheck, runA.party[0], runA, faceRng(10));
+    resolveCheckEffect(cairnCheck, runB.party[0], runB, faceRng(10));
+    expect(runA.gold).toBe(0);
+    expect(runB.gold).toBe(20);
+  });
+
+  it("stat_boost changes bonusStats (combat stat) and does not mutate abilityScores", () => {
+    const party = makeParty();
+    party[0].abilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
+    const run = makeRun(party);
+    applyStatBoost(party[0], "spirit", 1);
+    expect(party[0].bonusStats.spirit).toBe(1);
+    expect(party[0].abilityScores?.str).toBe(10);
+    expect(party[0].abilityScores?.wis).toBe(10);
+  });
+});
+
 describe("event content pack — check branches reward the attempting hero", () => {
   const faceRng = (face: number) => () => (face - 1) / 20;
 
   it("Whispering Milestone success grants +1 Spirit to the hero who attempted", () => {
     const party = makeParty();
+    // Give Sable a high Wisdom so the check (now WIS DC 13) succeeds.
+    party[1].abilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 16, cha: 10 }; // +3 wis
     const run = makeRun(party);
     const choice = EVENT_REGISTRY["event.whispering_milestone"].choices[0];
-    // Acolyte (Sable) spirit mod +3; roll 12 -> 15 vs DC 13 -> success.
+    // roll 12 + 3 = 15 >= DC 13 -> success; stat_boost still targets combat stat "spirit"
     resolveEventChoiceWithHero(choice, party[1], run, faceRng(12));
     expect(party[1].bonusStats.spirit).toBe(1);
     expect(party[0].bonusStats.spirit ?? 0).toBe(0);

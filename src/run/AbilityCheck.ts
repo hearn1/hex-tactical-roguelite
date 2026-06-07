@@ -1,13 +1,13 @@
-import type { CheckStat } from "../state/types.ts";
+import type { AbilityKey } from "../data/abilities.ts";
+import { ABILITY_FULL_LABELS, DEFAULT_ABILITY_SCORES, abilityMod } from "../data/abilities.ts";
 import type { PartyMember } from "../state/RunState.ts";
-import { CLASS_REGISTRY } from "../data/classes.ts";
 
 export type CheckOutcome = "success" | "failure" | "partial";
 
 export interface CheckResult {
   /** Raw d20 face (1..20). */
   roll: number;
-  stat: CheckStat;
+  stat: AbilityKey;
   /** Effective stat modifier used for the roll. */
   modifier: number;
   /** roll + modifier. */
@@ -32,7 +32,7 @@ const OUTCOME_LABEL: Record<CheckOutcome, string> = {
  * (`-partialWithin <= margin < 0`) reports as `"partial"` instead of `"failure"`.
  */
 export function resolveCheck(
-  stat: CheckStat,
+  stat: AbilityKey,
   modifier: number,
   dc: number,
   rng: () => number,
@@ -55,14 +55,13 @@ export function resolveCheck(
 }
 
 /**
- * Effective check modifier for a party member out of combat:
- * `classDef.baseStats[stat] + (pm.bonusStats[stat] ?? 0)`.
- * Leaves a seam for future flat bonus sources (e.g. F22 backgrounds) without wiring them here.
+ * Effective check modifier for a party member out of combat: derived from
+ * `pm.abilityScores[stat]` using the standard 5E formula (floor((score-10)/2)).
+ * Falls back to all-10 defaults for any party member without stored ability scores.
  */
-export function checkModifierFor(pm: PartyMember, stat: CheckStat): number {
-  const classDef = CLASS_REGISTRY[pm.classId];
-  const base = classDef ? classDef.baseStats[stat] : 0;
-  return base + (pm.bonusStats[stat] ?? 0);
+export function checkModifierFor(pm: PartyMember, stat: AbilityKey): number {
+  const score = pm.abilityScores?.[stat] ?? DEFAULT_ABILITY_SCORES[stat];
+  return abilityMod(score);
 }
 
 /** The d20 face a hero must roll to succeed (`dc - modifier`). May be <=1 (auto) or >20 (impossible). */
@@ -71,7 +70,7 @@ export function rollNeeded(modifier: number, dc: number): number {
 }
 
 /** Living hero with the highest modifier for `stat`, or null if all are down. */
-export function pickBestHero(party: PartyMember[], stat: CheckStat): PartyMember | null {
+export function pickBestHero(party: PartyMember[], stat: AbilityKey): PartyMember | null {
   const living = party.filter((p) => p.hp > 0);
   if (living.length === 0) return null;
   return living.reduce((best, pm) =>
@@ -82,6 +81,6 @@ export function pickBestHero(party: PartyMember[], stat: CheckStat): PartyMember
 /** One readable log line reporting roll, modifier, total, DC, and outcome. */
 export function formatCheckLog(heroName: string, r: CheckResult): string {
   const mod = r.modifier >= 0 ? `+${r.modifier}` : `${r.modifier}`;
-  const statName = r.stat.charAt(0).toUpperCase() + r.stat.slice(1);
+  const statName = ABILITY_FULL_LABELS[r.stat];
   return `${heroName}'s ${statName} check: d20 ${r.roll} ${mod} = ${r.total} vs DC ${r.dc} — ${OUTCOME_LABEL[r.outcome]}.`;
 }

@@ -19,6 +19,15 @@ export const ABILITY_LABELS: Record<AbilityKey, string> = {
   cha: "CHA",
 };
 
+export const ABILITY_FULL_LABELS: Record<AbilityKey, string> = {
+  str: "Strength",
+  dex: "Dexterity",
+  con: "Constitution",
+  int: "Intelligence",
+  wis: "Wisdom",
+  cha: "Charisma",
+};
+
 export const DEFAULT_ABILITY_SCORES: AbilityScores = {
   str: 10,
   dex: 10,
