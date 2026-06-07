@@ -1,4 +1,5 @@
 import type { Hex } from "../state/types.ts";
+import type { EncounterTraitDef } from "./traits.ts";
 
 export interface EncounterDef {
   id: string;
@@ -20,9 +21,13 @@ export interface EncounterDef {
    */
   tags?: string[];
   /**
-   * Optional shared elite mechanic (F28 / #59). `"rally"`: when the first enemy in this
-   * encounter falls, the survivors gain a temporary to-hit bonus (a readable "they close
-   * ranks" beat). Marks a fight as an elite encounter without a boss-sized system.
+   * Data-driven encounter traits (boss/elite special mechanics). Replaces the deprecated
+   * `eliteTrait` field.
+   */
+  traits?: EncounterTraitDef[];
+  /**
+   * @deprecated Use `traits` instead. Kept as a transitional type only.
+   * Built-in data has been migrated off this field.
    */
   eliteTrait?: "rally";
 }
@@ -78,7 +83,15 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
       { enemyId: "enemy.goblin_skirmisher", count: 2 },
     ],
     rewardPoolId: "reward.uncommon",
-    eliteTrait: "rally",
+    traits: [
+      {
+        id: "elite_rally_on_first_death",
+        conditionId: "rallied",
+        duration: 2,
+        attackBonus: 2,
+        logText: "the survivors Rally!",
+      },
+    ],
   },
   "encounter.boss_ogre_hexbreaker": {
     id: "encounter.boss_ogre_hexbreaker",
@@ -115,7 +128,15 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
       { enemyId: "enemy.goblin_skirmisher", count: 1 },
     ],
     rewardPoolId: "reward.uncommon",
-    eliteTrait: "rally",
+    traits: [
+      {
+        id: "elite_rally_on_first_death",
+        conditionId: "rallied",
+        duration: 2,
+        attackBonus: 2,
+        logText: "the survivors Rally!",
+      },
+    ],
   },
   "encounter.long_toll_of_bones": {
     id: "encounter.long_toll_of_bones",

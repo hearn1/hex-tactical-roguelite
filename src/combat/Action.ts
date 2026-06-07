@@ -4,13 +4,12 @@ import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus, Action
 import { distance, hexKey } from "../core/hex.ts";
 import { roll } from "../core/dice.ts";
 import { applyCondition } from "./Condition.ts";
-import { ENEMY_REGISTRY } from "../data/enemies.ts";
-import { ENCOUNTER_REGISTRY } from "../data/encounters.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../data/levelups.ts";
 import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
 import { heroLifeState, handleUnitDroppedToZero, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
+import { checkEnemyThresholdTraits, checkEncounterDeathTraits } from "./Traits.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
@@ -703,11 +702,11 @@ export function resolveAction(
     }
   }
 
-  checkBossReinforcement(target, state);
+  checkEnemyThresholdTraits(target, state);
 
   if (target.hp <= 0) {
     handleUnitDroppedToZero(target, state);
-    checkEliteRally(target, state);
+    checkEncounterDeathTraits(target, state);
   }
 
   if (!skipHasActed) attacker.hasActed = true;
@@ -802,90 +801,10 @@ function resolvePrimaryPlusAdjacent(
     }
   }
 
-  checkBossReinforcement(target, state);
+  checkEnemyThresholdTraits(target, state);
   if (!skipHasActed) attacker.hasActed = true;
 }
 
-function checkBossReinforcement(target: UnitInstance, state: CombatState): void {
-  if (state.bossReinforcementSpawned) return;
-  const enemyDef = ENEMY_REGISTRY[target.defId];
-  if (!enemyDef || enemyDef.aiTag !== "boss") return;
-  if (target.hp > Math.floor(target.stats.maxHp / 2)) return;
-
-  state.bossReinforcementSpawned = true;
-  const occupied = new Set(state.units.filter((u) => u.hp > 0).map((u) => hexKey(u.pos)));
-  const candidates: { q: number; r: number }[] = [
-    { q: 3, r: -2 }, { q: 3, r: -1 }, { q: 3, r: 0 },
-    { q: 4, r: -2 }, { q: 4, r: -1 }, { q: 4, r: 0 },
-  ];
-  let spawnPos: { q: number; r: number } | null = null;
-  for (const pos of candidates) {
-    const key = hexKey(pos);
-    if (!occupied.has(key) && state.gridKeys.includes(key)) {
-      spawnPos = pos;
-      break;
-    }
-  }
-  if (!spawnPos) return;
-
-  const archerStats = { maxHp: 9, armor: 12, move: 3, might: 1, agility: 2, spirit: 0 };
-  const archer: UnitInstance = {
-    instanceId: "enemy_reinforcement",
-    defId: "enemy.skeleton_archer",
-    displayName: "Skeleton Archer",
-    team: "enemy",
-    level: 1,
-    xp: 0,
-    stats: { ...archerStats },
-    hp: 9,
-    pos: spawnPos,
-    conditions: [],
-    movePointsRemaining: 0,
-    hasActed: false,
-    equippedItemIds: { weapon: null, armor: null, trinket: null },
-    bonusStats: {},
-  };
-  state.units.push(archer);
-  const activeId = state.turnQueue[state.activeIndex];
-  const bossIdx = state.turnQueue.indexOf(target.instanceId);
-  const insertAt = bossIdx >= 0 ? bossIdx + 1 : state.turnQueue.length;
-  state.turnQueue.splice(insertAt, 0, archer.instanceId);
-  const newActiveIndex = state.turnQueue.indexOf(activeId);
-  if (newActiveIndex >= 0) {
-    state.activeIndex = newActiveIndex;
-  }
-
-  state.log.push({
-    kind: "action",
-    text: `[T${state.round}] The Hexbreaker calls reinforcement — a Skeleton Archer joins!`,
-    round: state.round,
-  });
-}
-
-/**
- * Elite "Rally" trait (F28 / #59). The first time any enemy falls in an encounter flagged
- * `eliteTrait: "rally"`, every surviving enemy gains the `rallied` to-hit bonus for a few
- * turns — a readable "the survivors close ranks" beat. Fires at most once per combat.
- */
-function checkEliteRally(fallen: UnitInstance, state: CombatState): void {
-  if (state.eliteRallyTriggered) return;
-  if (fallen.team !== "enemy") return;
-  const encounter = state.encounterId ? ENCOUNTER_REGISTRY[state.encounterId] : undefined;
-  if (!encounter || encounter.eliteTrait !== "rally") return;
-
-  const survivors = state.units.filter((u) => u.team === "enemy" && u.hp > 0);
-  if (survivors.length === 0) return;
-
-  state.eliteRallyTriggered = true;
-  for (const enemy of survivors) {
-    applyCondition(enemy, "rallied", RALLY_DURATION);
-  }
-  state.log.push({
-    kind: "action",
-    text: `[T${state.round}] ${fallen.displayName} falls — the survivors Rally! (+${RALLY_TO_HIT_BONUS} to hit for ${RALLY_DURATION} turns)`,
-    round: state.round,
-  });
-}
 
 /**
  * Resolves a wound-up boss telegraph (F28 / #59). Every living hero standing on one of the

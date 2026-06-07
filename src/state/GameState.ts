@@ -194,8 +194,7 @@ export function initCombatState(rng: () => number): CombatState {
     gridKeys,
     targetingActionId: null,
     perEncounterUses: {},
-    bossActionIndex: 0,
-    bossReinforcementSpawned: false,
+    traitState: { actionRotationIndex: {}, triggered: {} },
     theme: nodeTypeToEnvironmentTheme("combat"),
   };
 }
@@ -265,7 +264,7 @@ export function createCombatFromRun(
   const totalEnemies = encounterDef.enemyGroups.reduce((sum, g) => sum + g.count, 0);
   const customPositions = encounterDef.positions;
   const fallbackPositions = scatterEnemyPositions(totalEnemies);
-  const isEliteEncounter = encounterDef.eliteTrait !== undefined;
+  const isEliteEncounter = encounterDef.eliteTrait !== undefined || (encounterDef.traits?.some((t) => t.id === "elite_rally_on_first_death") ?? false);
   let enemyIndex = 0;
   for (const group of encounterDef.enemyGroups) {
     const enemyDef = ENEMY_REGISTRY[group.enemyId];
@@ -311,8 +310,6 @@ export function createCombatFromRun(
   const firstUnit = units.find((u) => u.instanceId === turnQueue[0])!;
   firstUnit.movePointsRemaining = firstUnit.stats.move;
 
-  const isBoss = encounterId === "encounter.boss_ogre_hexbreaker";
-  const hasEliteTrait = encounterDef.eliteTrait !== undefined;
   const theme = nodeTypeToEnvironmentTheme(sourceNodeType, encounterId);
 
   const log: CombatState["log"] = [
@@ -341,10 +338,8 @@ export function createCombatFromRun(
     gridKeys,
     targetingActionId: null,
     perEncounterUses: {},
-    bossActionIndex: isBoss ? 0 : undefined,
-    bossReinforcementSpawned: isBoss ? false : undefined,
-    bossTelegraph: isBoss ? null : undefined,
-    eliteRallyTriggered: hasEliteTrait ? false : undefined,
+    traitState: { actionRotationIndex: {}, triggered: {} },
+    bossTelegraph: null,
     encounterId,
     sourceNodeType,
     theme,

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveAction, RALLY_TO_HIT_BONUS, RALLY_DURATION } from "./Action.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
+import { getTraitTriggered } from "./Traits.ts";
 import { processTurnStart } from "./Condition.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 import { hexesWithinRange, hexKey } from "../core/hex.ts";
@@ -37,7 +38,7 @@ function makeEliteState(units: UnitInstance[], encounterId = "encounter.broken_b
     targetingActionId: null,
     perEncounterUses: {},
     encounterId,
-    eliteRallyTriggered: false,
+    traitState: { actionRotationIndex: {}, triggered: {} },
   };
 }
 
@@ -75,7 +76,7 @@ describe("Elite Rally trait (F28 / #59)", () => {
     resolveAction(ACTION_REGISTRY["action.slash"], hero, e1, state, rng);
 
     expect(e1.hp).toBe(0);
-    expect(state.eliteRallyTriggered).toBe(true);
+    expect(getTraitTriggered(state, "encounter:elite_rally_on_first_death")).toBe(true);
     expect(e2.conditions.some((c) => c.id === "rallied" && c.remainingTurns === RALLY_DURATION)).toBe(true);
     expect(e3.conditions.some((c) => c.id === "rallied")).toBe(true);
     expect(state.log.some((l) => l.text.includes("Rally"))).toBe(true);
@@ -89,7 +90,7 @@ describe("Elite Rally trait (F28 / #59)", () => {
     const rng = () => 0.99;
 
     resolveAction(ACTION_REGISTRY["action.slash"], hero, e1, state, rng);
-    expect(state.eliteRallyTriggered).toBe(true);
+    expect(getTraitTriggered(state, "encounter:elite_rally_on_first_death")).toBe(true);
     // Clear logs and kill the second enemy — no second Rally line should appear.
     const logLenBefore = state.log.length;
     resolveAction(ACTION_REGISTRY["action.slash"], hero, e2, state, rng);
@@ -104,8 +105,6 @@ describe("Elite Rally trait (F28 / #59)", () => {
     const e1 = makeEnemy("e1", 1, { q: 2, r: 0 });
     const e2 = makeEnemy("e2", 20, { q: 2, r: 1 });
     const state = makeEliteState([hero, e1, e2], "encounter.road_ambush");
-    // Non-elite encounters never set the flag at init.
-    state.eliteRallyTriggered = undefined;
     const rng = () => 0.99;
 
     resolveAction(ACTION_REGISTRY["action.slash"], hero, e1, state, rng);

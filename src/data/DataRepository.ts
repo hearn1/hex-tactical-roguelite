@@ -231,6 +231,8 @@ export class DataRepository {
     const statKeys = new Set(["maxHp", "armor", "move", "might", "agility", "spirit"]);
     const eventTags = new Set(["risk", "social", "treasure", "heal", "train", "moral"]);
     const environmentThemeIds = new Set(Object.keys(ENVIRONMENT_THEMES));
+    // Combat grid is a radius-3 hex disc; referenced by both enemy trait and encounter validation.
+    const gridCells = new Set(hexesWithinRange({ q: 0, r: 0 }, 3).map(hexKey));
 
     if (environmentThemeIds.size < 2) {
       errors.push("Environment themes: must define at least 2 themes");
@@ -286,11 +288,59 @@ export class DataRepository {
       if (stats.might < 0 || stats.might > 10) errors.push(`Enemy "${id}": might out of range 0-10`);
       if (stats.agility < 0 || stats.agility > 10) errors.push(`Enemy "${id}": agility out of range 0-10`);
       if (stats.spirit < 0 || stats.spirit > 10) errors.push(`Enemy "${id}": spirit out of range 0-10`);
+
+      for (const trait of def.traits ?? []) {
+        if (trait.id === "boss_action_rotation") {
+          if (trait.actionIds.length === 0) {
+            errors.push(`Enemy "${id}" trait boss_action_rotation: actionIds must be non-empty`);
+          }
+          for (const aid of trait.actionIds) {
+            if (!allActionIds.has(aid)) {
+              errors.push(`Enemy "${id}" trait boss_action_rotation: action "${aid}" not found`);
+            }
+          }
+          if (def.aiTag !== "boss") {
+            warnings.push(`Enemy "${id}" trait boss_action_rotation: used on non-boss enemy`);
+          }
+        } else if (trait.id === "boss_ground_slam_telegraph") {
+          if (!allActionIds.has(trait.actionId)) {
+            errors.push(`Enemy "${id}" trait boss_ground_slam_telegraph: action "${trait.actionId}" not found`);
+          }
+          if (trait.thresholdHpPct <= 0 || trait.thresholdHpPct > 1) {
+            errors.push(`Enemy "${id}" trait boss_ground_slam_telegraph: thresholdHpPct must be > 0 and <= 1`);
+          }
+          if (def.aiTag !== "boss") {
+            warnings.push(`Enemy "${id}" trait boss_ground_slam_telegraph: used on non-boss enemy`);
+          }
+        } else if (trait.id === "boss_reinforcement_at_hp_threshold") {
+          if (!allEnemyIds.has(trait.enemyId)) {
+            errors.push(`Enemy "${id}" trait boss_reinforcement_at_hp_threshold: enemyId "${trait.enemyId}" not found`);
+          }
+          if (trait.count <= 0) {
+            errors.push(`Enemy "${id}" trait boss_reinforcement_at_hp_threshold: count must be > 0`);
+          }
+          if (trait.thresholdHpPct <= 0 || trait.thresholdHpPct > 1) {
+            errors.push(`Enemy "${id}" trait boss_reinforcement_at_hp_threshold: thresholdHpPct must be > 0 and <= 1`);
+          }
+          if (trait.spawnCandidates.length === 0) {
+            warnings.push(`Enemy "${id}" trait boss_reinforcement_at_hp_threshold: no spawn candidates — reinforcement can never fire`);
+          }
+          const seenCandidates = new Set<string>();
+          for (const pos of trait.spawnCandidates) {
+            const key = hexKey(pos);
+            if (seenCandidates.has(key)) {
+              errors.push(`Enemy "${id}" trait boss_reinforcement_at_hp_threshold: duplicate spawn candidate (${pos.q}, ${pos.r})`);
+            }
+            seenCandidates.add(key);
+            if (!gridCells.has(key)) {
+              warnings.push(`Enemy "${id}" trait boss_reinforcement_at_hp_threshold: spawn candidate (${pos.q}, ${pos.r}) is outside the radius-3 grid`);
+            }
+          }
+        }
+      }
     }
 
-    // Combat grid is a radius-3 hex disc; enemies must spawn on it without overlapping.
     const MAX_ENEMIES_PER_ENCOUNTER = 5;
-    const gridCells = new Set(hexesWithinRange({ q: 0, r: 0 }, 3).map(hexKey));
 
     for (const [id, def] of this.encounters) {
       let totalEnemies = 0;
@@ -311,6 +361,27 @@ export class DataRepository {
       if (def.rewardPoolId && !allRewardIds.has(def.rewardPoolId)) {
         errors.push(`Encounter "${id}": reward pool "${def.rewardPoolId}" not found`);
       }
+
+      if (def.eliteTrait !== undefined) {
+        warnings.push(`Encounter "${id}": deprecated eliteTrait field is set; migrate to traits array`);
+      }
+      for (const trait of def.traits ?? []) {
+        if (trait.id === "elite_rally_on_first_death") {
+          if (trait.conditionId !== "rallied") {
+            errors.push(`Encounter "${id}" trait elite_rally_on_first_death: conditionId must be "rallied"`);
+          }
+          if (trait.duration <= 0) {
+            errors.push(`Encounter "${id}" trait elite_rally_on_first_death: duration must be > 0`);
+          }
+          if (trait.attackBonus !== undefined && trait.attackBonus <= 0) {
+            errors.push(`Encounter "${id}" trait elite_rally_on_first_death: attackBonus must be positive`);
+          }
+        }
+      }
+      if (def.eliteTrait !== undefined && (def.traits?.some((t) => t.id === "elite_rally_on_first_death") ?? false)) {
+        errors.push(`Encounter "${id}": has both deprecated eliteTrait and elite_rally_on_first_death trait — would double-trigger Rally`);
+      }
+
       if (def.positions) {
         if (def.positions.length !== totalEnemies) {
           errors.push(

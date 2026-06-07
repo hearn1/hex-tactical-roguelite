@@ -1,4 +1,5 @@
 import type { UnitStats } from "../state/types.ts";
+import type { EnemyTraitDef } from "./traits.ts";
 
 export interface EnemyDef {
   id: string;
@@ -6,6 +7,7 @@ export interface EnemyDef {
   aiTag: "brute" | "skirmisher" | "support" | "caster" | "boss" | "ambusher";
   baseStats: UnitStats;
   actionIds: string[];
+  traits?: EnemyTraitDef[];
 }
 
 export const ENEMY_REGISTRY: Record<string, EnemyDef> = {
@@ -57,5 +59,34 @@ export const ENEMY_REGISTRY: Record<string, EnemyDef> = {
     aiTag: "boss",
     baseStats: { maxHp: 42, armor: 13, move: 3, might: 4, agility: 0, spirit: 1 },
     actionIds: ["action.massive_swing", "action.ground_slam", "action.roar"],
+    traits: [
+      {
+        id: "boss_action_rotation",
+        actionIds: ["action.roar", "action.massive_swing", "action.ground_slam"],
+      },
+      {
+        id: "boss_ground_slam_telegraph",
+        actionId: "action.ground_slam",
+        thresholdHpPct: 0.5,
+        targetPattern: "adjacent",
+        warningText:
+          "winds up Ground Slam — every adjacent hex will be struck next turn! Move clear!",
+      },
+      {
+        id: "boss_reinforcement_at_hp_threshold",
+        thresholdHpPct: 0.5,
+        enemyId: "enemy.skeleton_archer",
+        count: 1,
+        spawnCandidates: [
+          { q: 3, r: -2 },
+          { q: 3, r: -1 },
+          { q: 3, r: 0 },
+          { q: 4, r: -2 },
+          { q: 4, r: -1 },
+          { q: 4, r: 0 },
+        ],
+        logText: "The Hexbreaker calls reinforcement — a Skeleton Archer joins!",
+      },
+    ],
   },
 };
