@@ -4,6 +4,7 @@ import type { PartyMember } from "../../state/RunState.ts";
 import { generateRecruitCandidates, addRecruitToParty, createPackMuleModifier } from "../../run/Recruit.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
+import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 
 const PARTY_CAP = 4;
 
@@ -169,6 +170,14 @@ export class RecruitScreen {
     const run = gameState.run!;
     if (run.party.length < PARTY_CAP) {
       addRecruitToParty(run.party, cand, run.inventory.items);
+      const nodeId = run.mapState.currentNodeId;
+      appendAdventureLogOnce(run, `recruit_joined:${nodeId}:${cand.instanceId}`, {
+        kind: "recruit_joined",
+        text: `${cand.displayName} joined the party.`,
+        nodeId,
+        heroInstanceId: cand.instanceId,
+        heroName: cand.displayName,
+      });
       resultText = `${cand.displayName} joins the party!`;
       phase = "result";
       this.app.render();
@@ -185,6 +194,12 @@ export class RecruitScreen {
     if (!hasPackMule) {
       run.runModifiers.push(createPackMuleModifier());
     }
+    const nodeId = run.mapState.currentNodeId;
+    appendAdventureLogOnce(run, `pet_joined:${nodeId}:pack_mule`, {
+      kind: "pet_joined",
+      text: "Pack Mule joined the party.",
+      nodeId,
+    });
     resultText = "Pack Mule follows your party! Gold rewards increased by 20%.";
     phase = "result";
     this.app.render();
@@ -208,6 +223,14 @@ export class RecruitScreen {
       btn.style.cssText = "padding:8px 16px;font-size:13px;width:300px;";
       btn.addEventListener("click", () => {
         addRecruitToParty(run.party, recruit, run.inventory.items, i);
+        const nodeId = run.mapState.currentNodeId;
+        appendAdventureLogOnce(run, `recruit_joined:${nodeId}:${recruit.instanceId}`, {
+          kind: "recruit_joined",
+          text: `${recruit.displayName} joined the party; ${pm.displayName} was dismissed.`,
+          nodeId,
+          heroInstanceId: recruit.instanceId,
+          heroName: recruit.displayName,
+        });
         resultText = `${recruit.displayName} joins! ${pm.displayName} dismissed (items stashed).`;
         phase = "result";
         pendingRecruit = null;

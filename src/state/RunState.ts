@@ -2,6 +2,7 @@ import type { MapState } from "../run/MapGraph.ts";
 import type { UnitStats, ShopInventory, RunModifier, ActionUpgradeBonus } from "./types.ts";
 import type { InventoryState } from "../run/Inventory.ts";
 import type { AbilityScores } from "../data/abilities.ts";
+import type { AdventureLogEntry } from "../run/AdventureLog.ts";
 
 export interface PartyMember {
   instanceId: string;
@@ -88,4 +89,5 @@ export interface RunState {
   summaryApplied?: boolean;
   revealedForecasts?: Record<string, true>;
   adventureModifierId?: string;
+  adventureLog?: AdventureLogEntry[];
 }

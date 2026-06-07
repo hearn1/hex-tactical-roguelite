@@ -30,6 +30,7 @@ import type { AmbiguousClassUpgrade } from "../../meta/Upgrades.ts";
 import { applyBackgrounds } from "../../run/Backgrounds.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { generateModifierOffers, applyAdventureModifier, ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
+import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 
 // Module-level state persists across SetupScreen instances created by App.render().
 let specs: PartySpec[] = [];
@@ -613,6 +614,15 @@ export class SetupScreen {
     applyBackgrounds(run);
     applyMetaUpgradesToFreshRun(run, gameState.meta, targetAssignments);
     reseedRngFromRun(run.seed);
+
+    const heroList = party.map((p) => `${p.displayName} (${CLASS_REGISTRY[p.classId]?.displayName ?? p.classId})`).join(", ");
+    const modDef = chosenModifierId ? ADVENTURE_MODIFIER_REGISTRY[chosenModifierId] : null;
+    const modPart = modDef ? ` with modifier: ${modDef.displayName}` : "";
+    appendAdventureLogOnce(run, "run_start", {
+      kind: "run_start",
+      text: `Run begins on ${difficulty} difficulty with ${heroList}${modPart}.`,
+    });
+
     gameState.run = run;
     gameState.combat = null;
     gameState.screen = "map";

@@ -3,6 +3,7 @@ import { gameState } from "../../state/GameState.ts";
 import { computeRenown } from "../../meta/Renown.ts";
 import { saveMetaProgression } from "../../meta/SaveLoad.ts";
 import { ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
+import { buildRunEpilogue } from "../../run/AdventureLog.ts";
 
 export class RunSummary {
   private app: App;
@@ -64,6 +65,22 @@ export class RunSummary {
       el.style.cssText = "font-size:15px;color:#ccc;";
       el.textContent = line;
       container.appendChild(el);
+    }
+
+    if (run) {
+      const epilogue = buildRunEpilogue(run);
+      if (epilogue.length > 0) {
+        const epHeading = document.createElement("div");
+        epHeading.style.cssText = "font-size:16px;font-weight:bold;color:#ccf;margin-top:16px;";
+        epHeading.textContent = "Epilogue";
+        container.appendChild(epHeading);
+        for (const line of epilogue) {
+          const el = document.createElement("div");
+          el.style.cssText = "font-size:13px;color:#aaa;";
+          el.textContent = line;
+          container.appendChild(el);
+        }
+      }
     }
 
     const btn = document.createElement("button");

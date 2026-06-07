@@ -2,6 +2,7 @@ import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import type { RunState } from "../../state/RunState.ts";
 import { rollShopInventory, getShopItemPrice, getShopPotionPrice, buyShopItem, buyShopPotion, equipShopItem, stashShopItem, applyShopService } from "../../run/Shop.ts";
+import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { canEquipWithAttunement } from "../../run/Attunement.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
@@ -138,6 +139,12 @@ export class ShopScreen {
           if (buyShopItem(shop, i)) {
             run.gold -= price;
             run.inventory.gold = run.gold;
+            appendAdventureLogOnce(run, `loot_gained:shop:${entry.itemId}:${run.mapState.currentNodeId}`, {
+              kind: "loot_gained",
+              text: `Bought ${def?.displayName ?? entry.itemId}.`,
+              itemId: entry.itemId,
+              nodeId: run.mapState.currentNodeId,
+            });
             const livingParty = run.party.filter((pm) => pm.hp > 0);
             if (livingParty.length === 0) {
               stashShopItem(run.inventory, entry.itemId);

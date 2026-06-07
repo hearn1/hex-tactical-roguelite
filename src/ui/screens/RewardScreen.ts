@@ -12,6 +12,7 @@ import type { UnitInstance } from "../../state/types.ts";
 import { visitNode } from "../../run/MapGraph.ts";
 import { NODE_REGISTRY } from "../../data/nodes.ts";
 import { ensureRunRestState, syncHitDiceForPartyMember } from "../../run/Rest.ts";
+import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 
 let rewardCache: CombatReward | null = null;
 let chosenCardIndex: number | null = null;
@@ -191,18 +192,28 @@ export class RewardScreen {
 
   private onCardClick(card: RewardCard, index: number): void {
     chosenCardIndex = index;
-    const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
+    const run = gameState.run;
+    const inv = run ? run.inventory : gameState.inventory;
 
     if (card.kind === "item") {
       equipPhase = true;
       this.renderEquipPhase(card.itemId);
     } else if (card.kind === "potion") {
       inv.potions.push(card.potionId);
+      if (run) {
+        const def = POTION_REGISTRY[card.potionId];
+        appendAdventureLogOnce(run, `loot_gained:reward:${card.potionId}:${index}`, {
+          kind: "loot_gained",
+          text: `Gained ${def?.displayName ?? card.potionId}.`,
+          itemId: card.potionId,
+          nodeId: run.mapState.currentNodeId,
+        });
+      }
       equipPhase = false;
       this.renderContinue();
     } else {
       inv.gold += card.amount;
-      if (gameState.run) gameState.run.gold += card.amount;
+      if (run) run.gold += card.amount;
       equipPhase = false;
       this.renderContinue();
     }
@@ -250,8 +261,18 @@ export class RewardScreen {
     stashBtn.textContent = "Stash";
     stashBtn.setAttribute("data-testid", "stash-btn");
     stashBtn.addEventListener("click", () => {
-      const inv = gameState.run ? gameState.run.inventory : gameState.inventory;
+      const run = gameState.run;
+      const inv = run ? run.inventory : gameState.inventory;
       inv.items.push(itemId);
+      if (run) {
+        const def = ITEM_REGISTRY[itemId];
+        appendAdventureLogOnce(run, `loot_gained:reward:${itemId}`, {
+          kind: "loot_gained",
+          text: `Gained ${def?.displayName ?? itemId}.`,
+          itemId,
+          nodeId: run.mapState.currentNodeId,
+        });
+      }
       equipPhase = false;
       this.renderContinue();
       this.app.render();
@@ -290,6 +311,17 @@ export class RewardScreen {
       }
     }
 
+    const run = gameState.run;
+    if (run) {
+      const def = ITEM_REGISTRY[newItemId];
+      appendAdventureLogOnce(run, `loot_gained:reward:${newItemId}`, {
+        kind: "loot_gained",
+        text: `Gained ${def?.displayName ?? newItemId}.`,
+        itemId: newItemId,
+        nodeId: run.mapState.currentNodeId,
+      });
+    }
+
     equipPhase = false;
     this.renderContinue();
     this.app.render();
@@ -320,12 +352,29 @@ export class RewardScreen {
           }
         }
         const nd = NODE_REGISTRY[run.mapState.currentNodeId];
+        const nodeId = run.mapState.currentNodeId;
+        const encounterName = cs.units.find((u) => u.team === "enemy")?.displayName ?? nd?.title ?? "Combat";
         if (nd?.type === "boss") {
           run.mapState.bossDefeated = true;
           run.runStatus = "won";
+          appendAdventureLogOnce(run, `boss_defeated:${nodeId}`, {
+            kind: "boss_defeated",
+            text: `Defeated the boss: ${encounterName}.`,
+            nodeId,
+          });
+          appendAdventureLogOnce(run, "run_end:won", {
+            kind: "run_end",
+            text: "Run won after defeating the boss.",
+            runStatus: "won",
+          });
         }
         if (nd?.type === "elite") {
           run.mapState.elitesDefeated++;
+          appendAdventureLogOnce(run, `elite_defeated:${nodeId}`, {
+            kind: "elite_defeated",
+            text: `Defeated elite encounter: ${encounterName}.`,
+            nodeId,
+          });
         }
         run.mapState.nodesCleared++;
       }

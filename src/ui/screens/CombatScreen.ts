@@ -18,6 +18,7 @@ import { resolveOncePerCombatBonus } from "../../combat/ItemHooks.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
+import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
 import { ARCHETYPE_REGISTRY } from "../../data/archetypes.ts";
 import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/environmentThemes.ts";
@@ -552,6 +553,7 @@ export class CombatScreen {
     const result = resolveAction(actionDef, attacker, target, cs, gameState.rng);
     cs.targetingActionId = null;
     checkVictoryDefeat(cs);
+    this.appendHeroDownedLogs(before, cs);
 
     this.spawnActionVfx(actionDef, attacker, target, result);
 
@@ -747,6 +749,7 @@ export class CombatScreen {
       this.spawnEnemyTurnVfx(active, before, cs);
 
       checkVictoryDefeat(cs);
+      this.appendHeroDownedLogs(before, cs);
       this.drawCanvas();
       this.updatePanels();
       const animation = this.playAnimationSteps(this.buildEnemyAnimationSteps(active, before, cs, pendingTelegraphHexes));
@@ -1189,10 +1192,37 @@ export class CombatScreen {
     btn.disabled = !active || active.team !== "hero" || this.enemyProcessing || this.animationBlocking;
   }
 
+  private appendHeroDownedLogs(before: CombatSnapshot, cs: CombatState): void {
+    const run = gameState.run;
+    if (!run) return;
+    const nodeId = run.mapState.currentNodeId;
+    for (const unit of cs.units) {
+      if (unit.team !== "hero") continue;
+      const beforeHp = before.units.get(unit.instanceId)?.hp ?? unit.hp;
+      if (beforeHp > 0 && unit.hp <= 0) {
+        appendAdventureLogOnce(run, `hero_downed:${nodeId}:${unit.instanceId}`, {
+          kind: "hero_downed",
+          text: `${unit.displayName} was downed in battle.`,
+          nodeId,
+          heroInstanceId: unit.instanceId,
+          heroName: unit.displayName,
+        });
+      }
+    }
+  }
+
   private showBanner(text: string, combatForSync: CombatState | null = gameState.combat): void {
     if (text === "Victory!") {
       if (gameState.run && combatForSync) {
         syncPartyFromCombat(combatForSync, gameState.run);
+        const run = gameState.run;
+        const nodeId = run.mapState.currentNodeId;
+        const displayName = combatForSync.units.find((u) => u.team === "enemy")?.displayName ?? "Combat";
+        appendAdventureLogOnce(run, `combat_victory:${nodeId}`, {
+          kind: "combat_victory",
+          text: `Won battle: ${displayName}.`,
+          nodeId,
+        });
       }
       gameState.screen = "reward";
       this.app.render();
@@ -1200,7 +1230,13 @@ export class CombatScreen {
     }
 
     if (text === "Defeat" && gameState.run) {
-      gameState.run.runStatus = "lost";
+      const run = gameState.run;
+      appendAdventureLogOnce(run, "run_end:lost", {
+        kind: "run_end",
+        text: "Run ended in defeat.",
+        runStatus: "lost",
+      });
+      run.runStatus = "lost";
       gameState.screen = "run_summary";
       this.app.render();
       return;

@@ -11,6 +11,7 @@ import {
   ensureRunRestState,
   shortRestsRemaining,
 } from "../../run/Rest.ts";
+import { appendAdventureLogOnce, ensureAdventureLog } from "../../run/AdventureLog.ts";
 
 const LAYER_COLORS: Record<string, string> = {
   start: "#4a8",
@@ -25,6 +26,7 @@ const LAYER_COLORS: Record<string, string> = {
 
 const NODE_RADIUS = 28;
 let shortRestMessage = "";
+let showAdventureLog = false;
 
 function buildLayers(nodes: NodeDef[]): NodeDef[][] {
   const layers: NodeDef[][] = [];
@@ -263,7 +265,58 @@ export class MapScreen {
     });
     container.appendChild(inventoryBtn);
 
+    const logBtn = document.createElement("button");
+    logBtn.textContent = showAdventureLog ? "Hide Adventure Log" : "Adventure Log";
+    logBtn.setAttribute("data-testid", "map-adventure-log-btn");
+    logBtn.style.cssText = "padding:10px 28px;font-size:15px;margin-top:8px;";
+    logBtn.addEventListener("click", () => {
+      showAdventureLog = !showAdventureLog;
+      this.app.render();
+    });
+    container.appendChild(logBtn);
+
+    if (showAdventureLog) {
+      container.appendChild(this.renderAdventureLogPanel(run));
+    }
+
     return container;
+  }
+
+  private renderAdventureLogPanel(run: NonNullable<typeof gameState.run>): HTMLElement {
+    const panel = document.createElement("div");
+    panel.setAttribute("data-testid", "adventure-log-panel");
+    panel.style.cssText =
+      "border:1px solid #555;border-radius:8px;padding:12px;background:#1a1a2a;width:100%;max-width:700px;margin-top:8px;max-height:300px;overflow-y:auto;";
+
+    const heading = document.createElement("div");
+    heading.style.cssText = "font-weight:bold;font-size:14px;margin-bottom:8px;color:#ccf;";
+    heading.textContent = "Adventure Log";
+    panel.appendChild(heading);
+
+    const log = ensureAdventureLog(run);
+    if (log.length === 0) {
+      const empty = document.createElement("div");
+      empty.style.cssText = "color:#666;font-size:13px;";
+      empty.textContent = "No adventure log entries yet.";
+      panel.appendChild(empty);
+      return panel;
+    }
+
+    for (const entry of log) {
+      const row = document.createElement("div");
+      row.style.cssText = "display:flex;gap:8px;font-size:12px;padding:4px 0;border-bottom:1px solid #333;";
+      const kindEl = document.createElement("span");
+      kindEl.style.cssText = "color:#888;min-width:100px;flex-shrink:0;";
+      kindEl.textContent = entry.kind.replace(/_/g, " ");
+      const textEl = document.createElement("span");
+      textEl.style.cssText = "color:#ccc;";
+      textEl.textContent = entry.text;
+      row.appendChild(kindEl);
+      row.appendChild(textEl);
+      panel.appendChild(row);
+    }
+
+    return panel;
   }
 
   private shortRestDisabledReason(run: NonNullable<typeof gameState.run>): string | null {
@@ -283,6 +336,12 @@ export class MapScreen {
     if (!nodeDef) return;
 
     visitNode(mapState, nodeId);
+
+    appendAdventureLogOnce(run, `node_visit:${nodeId}`, {
+      kind: "node_visit",
+      text: `Visited ${nodeDef.title} (${nodeDef.type}).`,
+      nodeId,
+    });
 
     if (nodeDef.type === "combat" || nodeDef.type === "boss" || nodeDef.type === "elite") {
       const encounterId = resolveNodeEncounterId(nodeDef, gameState.rng);

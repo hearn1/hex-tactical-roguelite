@@ -154,5 +154,6 @@ export function createRunState(
     runModifiers: [],
     difficulty,
     eventSelections: {},
+    adventureLog: [],
   };
 }
