@@ -13,6 +13,7 @@ import {
 import { checkModifierFor, rollNeeded, pickBestHero } from "../../run/AbilityCheck.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { ABILITY_FULL_LABELS } from "../../data/abilities.ts";
+import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 
 // Screen state lives at module scope because App rebuilds the EventScreen instance on every
 // render; per-instance fields would reset the picker/result phase between clicks. `activeNodeId`
@@ -126,6 +127,22 @@ export class EventScreen {
     return container;
   }
 
+  private logEventChoice(run: typeof gameState.run & object, nodeId: string, eventId: string, choice: EventChoice, messages: string[]): void {
+    const first = messages[0] ?? "";
+    let outcome: "success" | "partial" | "failure" | "none" = "none";
+    if (/success/i.test(first) && !/partial/i.test(first)) outcome = "success";
+    else if (/partial/i.test(first)) outcome = "partial";
+    else if (/failure/i.test(first)) outcome = "failure";
+    appendAdventureLogOnce(run, `event_choice:${nodeId}:${choice.id}`, {
+      kind: "event_choice",
+      text: `Event: ${eventId} — chose ${choice.label}. Outcome: ${outcome}.`,
+      nodeId,
+      eventId,
+      choiceId: choice.id,
+      outcome,
+    });
+  }
+
   private onChoiceClick(choice: EventChoice): void {
     const run = gameState.run!;
     // Defense in depth: disabled choices can't be clicked, but never resolve an unmet one.
@@ -149,6 +166,10 @@ export class EventScreen {
       return;
     }
 
+    const nodeId = run.mapState.currentNodeId;
+    const eventId = activeNodeId ?? nodeId;
+    this.logEventChoice(run, nodeId, eventId, choice, messages);
+
     resultMessages = messages;
     phase = "result";
     this.app.render();
@@ -157,6 +178,11 @@ export class EventScreen {
   private resolveWithHero(choice: EventChoice, pm: PartyMember): void {
     const run = gameState.run!;
     const { messages } = resolveEventChoiceWithHero(choice, pm, run, gameState.rng, gameState.pendingLevelUps);
+
+    const nodeId = run.mapState.currentNodeId;
+    const eventId = activeNodeId ?? nodeId;
+    this.logEventChoice(run, nodeId, eventId, choice, messages);
+
     resultMessages = messages;
     phase = "result";
     pickedChoice = null;

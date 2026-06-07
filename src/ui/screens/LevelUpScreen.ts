@@ -2,6 +2,7 @@ import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { getLevelUpOptions, applyLevelUpChoice, findLevelUpOption } from "../../run/LevelUp.ts";
+import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 
 // Module-level so App.render() rebuilding the screen between clicks doesn't reset the picked
 // option. Scoped by the head-of-queue entry: a fresh level-up always starts unselected.
@@ -120,6 +121,12 @@ export class LevelUpScreen {
     const option = findLevelUpOption(pending.classId, pending.newLevel, selectedOptionId);
     if (pm && option) {
       applyLevelUpChoice(pm, option);
+      appendAdventureLogOnce(run, `level_up:${pm.instanceId}:${pending.newLevel}`, {
+        kind: "level_up",
+        text: `${pm.displayName} reached level ${pending.newLevel} and chose ${option.name}.`,
+        heroInstanceId: pm.instanceId,
+        heroName: pm.displayName,
+      });
     }
 
     queue.shift();
