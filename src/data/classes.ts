@@ -50,10 +50,21 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellSlotsMax: 2,
     defaultBackgroundId: "background.hedge_scholar",
   },
+  "class.scout": {
+    id: "class.scout",
+    displayName: "Scout",
+    // Agility-based skirmisher (#119): squishier than the Guardian but the most mobile hero.
+    baseStats: { maxHp: 13, armor: 13, move: 4, might: 1, agility: 3, spirit: 0 },
+    hitDieSize: 8,
+    actionIds: ["action.precise_stab", "action.shortbow_shot", "action.cunning_step"],
+    startingItems: ["item.fine_dagger"],
+    defaultBackgroundId: "background.cutpurse",
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.guardian": "Mara",
   "class.acolyte": "Sable",
   "class.arcanist": "Eldra",
+  "class.scout": "Nyx",
 };
