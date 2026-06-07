@@ -96,6 +96,73 @@ button:disabled {
   color: #f66;
 }
 
+.inspect-panel {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 232px;
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  padding: 8px 10px;
+  background: rgba(13, 13, 26, 0.92);
+  border: 1px solid #6a5a3a;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.inspect-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f0d890;
+  border-bottom: 1px solid #6a5a3a;
+  padding-bottom: 4px;
+  margin-bottom: 6px;
+}
+
+.inspect-tag {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #f66;
+  border: 1px solid #a44;
+  border-radius: 3px;
+  padding: 0 4px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+
+.inspect-row {
+  margin-bottom: 3px;
+}
+
+.inspect-section {
+  margin-top: 6px;
+}
+
+.inspect-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #aaa;
+  margin-bottom: 2px;
+}
+
+.inspect-action {
+  margin-bottom: 4px;
+}
+
+.inspect-sub {
+  font-size: 11px;
+  color: #bbb;
+}
+
+.inspect-intent {
+  color: #fa0;
+}
+
 .action-bar {
   display: flex;
   gap: 4px;

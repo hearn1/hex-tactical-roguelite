@@ -19,6 +19,7 @@ import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
 import { ARCHETYPE_REGISTRY } from "../../data/archetypes.ts";
 import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/environmentThemes.ts";
+import { buildInspectPanelHtml } from "../CombatInspectPanel.ts";
 import { CombatThreeRenderer, type Combat3DHighlights } from "../../render/combat3d/CombatThreeRenderer.ts";
 import type { CombatAnimationStep } from "../../render/combat3d/animationQueue.ts";
 import { axialToWorld } from "../../render/combat3d/hexWorld.ts";
@@ -62,6 +63,7 @@ export class CombatScreen {
   private inventoryPanelEl!: HTMLElement;
   private invToggleBtn!: HTMLButtonElement;
   private telegraphBannerEl!: HTMLElement;
+  private inspectPanelEl!: HTMLElement;
 
   constructor(app: App) {
     this.app = app;
@@ -97,8 +99,11 @@ export class CombatScreen {
     this.telegraphBannerEl.style.cssText =
       "display:none;background:rgba(255,140,0,0.9);color:#1a1a1a;font-weight:bold;text-align:center;padding:6px;border-radius:4px;margin:4px 0;";
 
+    this.inspectPanelEl = this.buildInspectPanel();
+
     this.container.appendChild(this.telegraphBannerEl);
     this.container.appendChild(topRow);
+    this.container.appendChild(this.inspectPanelEl);
     this.container.appendChild(this.actionBarEl);
     this.container.appendChild(this.logPanelEl);
     this.container.appendChild(endTurnBar);
@@ -126,6 +131,7 @@ export class CombatScreen {
         onHoverHex: (hex) => {
           this.hoveredHex = hex;
           this.drawCanvas();
+          this.updateInspectPanel();
         },
         onAnimationStateChange: (animating) => {
           this.animationBlocking = animating;
@@ -156,6 +162,7 @@ export class CombatScreen {
     this.canvas.addEventListener("mouseleave", () => {
       this.hoveredHex = null;
       this.drawCanvas();
+      this.updateInspectPanel();
     });
   }
 
@@ -230,6 +237,38 @@ export class CombatScreen {
     if (this.inventoryPanelEl) {
       this.inventoryPanelEl.style.display = this.inventoryPanelEl.style.display === "none" ? "block" : "none";
     }
+  }
+
+  private buildInspectPanel(): HTMLElement {
+    const panel = document.createElement("div");
+    panel.id = "inspect-panel";
+    panel.className = "inspect-panel";
+    panel.style.display = "none";
+    return panel;
+  }
+
+  private updateInspectPanel(): void {
+    const panel = this.inspectPanelEl;
+    if (!panel) return;
+    const cs = gameState.combat;
+    const hex = this.hoveredHex;
+    const unit = hex && cs ? cs.units.find((u) => u.hp > 0 && hexEquals(u.pos, hex)) : null;
+    if (!cs || !unit || unit.team !== "enemy") {
+      panel.style.display = "none";
+      return;
+    }
+    panel.innerHTML = buildInspectPanelHtml(unit, this.getInspectIntent(cs, unit));
+    panel.style.display = "block";
+  }
+
+  private getInspectIntent(cs: CombatState, unit: UnitInstance): string | null {
+    const telegraph = this.getLiveBossTelegraph(cs);
+    if (telegraph && telegraph.sourceId === unit.instanceId) {
+      const actionDef = ACTION_REGISTRY[telegraph.actionId];
+      const name = actionDef?.displayName ?? "a heavy attack";
+      return `Winding up ${name} — will strike the highlighted hexes next turn.`;
+    }
+    return null;
   }
 
   private buildInventoryPanel(): HTMLElement {
@@ -455,6 +494,7 @@ export class CombatScreen {
       this.hoveredHex = null;
     }
     this.drawCanvas();
+    this.updateInspectPanel();
   }
 
   private onCanvasClick(): void {
@@ -465,6 +505,11 @@ export class CombatScreen {
   private onHexClick(hex: Hex): void {
     const cs = gameState.combat;
     if (!cs || cs.status !== "active") return;
+
+    // Inspect works on any click — including during enemy turns or animations.
+    this.hoveredHex = hex;
+    this.updateInspectPanel();
+
     if (this.animationBlocking || this.enemyProcessing) return;
 
     const activeUnit = this.getActiveUnit();
