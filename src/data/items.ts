@@ -59,6 +59,13 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     rarity: "common",
     statBonuses: { spirit: 1 },
   },
+  "item.fine_dagger": {
+    id: "item.fine_dagger",
+    displayName: "Fine Dagger",
+    slot: "weapon",
+    rarity: "common",
+    statBonuses: { agility: 1 },
+  },
   "item.hunter_bow": {
     id: "item.hunter_bow",
     displayName: "Hunter Bow",
