@@ -201,7 +201,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     expect(state.units.length).toBe(unitsAfterReinforce);
   });
 
-  it("victory/defeat resolves after the telegraph lands a lethal blow", () => {
+  it("lethal telegraph blow downs a hero; defeat requires all heroes dead", () => {
     const rng = createRng(1);
     const boss = makeBoss(20);
     const fragile = makeUnit({
@@ -214,9 +214,17 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     const state = makeBossState([boss, fragile]);
 
     takeEnemyTurn(boss, state, rng); // wind up
-    takeEnemyTurn(boss, state, rng); // resolve, should defeat the hero
+    takeEnemyTurn(boss, state, rng); // resolve, downs the hero
 
     expect(fragile.hp).toBe(0);
+    expect(fragile.heroLifeState).toBe("downed");
+
+    // Status stays active — a downed hero can still be saved.
+    checkVictoryDefeat(state);
+    expect(state.status).toBe("active");
+
+    // Once all heroes are confirmed dead, defeat triggers.
+    fragile.heroLifeState = "dead";
     checkVictoryDefeat(state);
     expect(state.status).toBe("defeat");
   });
@@ -292,6 +300,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
       hp: 0,
+      heroLifeState: "dead",
     });
     const defeatBoss = makeBoss(20);
     const defeatState = makeBossState([defeatBoss, fallenHero]);

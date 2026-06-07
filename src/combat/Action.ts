@@ -10,6 +10,7 @@ import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../data/levelups.ts";
 import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
+import { heroLifeState, handleUnitDroppedToZero, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
@@ -54,23 +55,46 @@ export function validTargets(
   attacker: UnitInstance,
   state: CombatState,
 ): UnitInstance[] {
-  const living = state.units.filter((u) => u.hp > 0);
   const range = effectiveRange(action, attacker);
+  const isHeal = action.effect.type === "heal";
+
+  function heroHealable(u: UnitInstance): boolean {
+    const ls = heroLifeState(u);
+    if (ls === "dead") return false;
+    if (ls === "downed" || ls === "stable") return true;
+    return u.hp > 0;
+  }
+
   switch (action.targetType) {
     case "self":
-      return living.filter((u) => u.instanceId === attacker.instanceId);
+      return state.units.filter((u) => u.instanceId === attacker.instanceId && u.hp > 0);
+
     case "ally":
-      return living.filter(
-        (u) => u.team === attacker.team && u.instanceId !== attacker.instanceId && distance(attacker.pos, u.pos) <= range,
-      );
+      return state.units.filter((u) => {
+        if (u.team !== attacker.team || u.instanceId === attacker.instanceId) return false;
+        if (distance(attacker.pos, u.pos) > range) return false;
+        if (isHeal && u.team === "hero") return heroHealable(u);
+        if (isHeal) return u.hp > 0 && u.hp < u.stats.maxHp;
+        return u.hp > 0 && heroLifeState(u) === "standing";
+      });
+
     case "ally_or_self":
-      return living.filter(
-        (u) => u.team === attacker.team && distance(attacker.pos, u.pos) <= range,
-      );
+      return state.units.filter((u) => {
+        if (u.team !== attacker.team) return false;
+        if (distance(attacker.pos, u.pos) > range) return false;
+        if (isHeal && u.team === "hero") return heroHealable(u);
+        if (isHeal) return u.hp > 0;
+        return u.hp > 0 && heroLifeState(u) === "standing";
+      });
+
     case "enemy":
-      return living.filter(
-        (u) => u.team !== attacker.team && distance(attacker.pos, u.pos) <= range,
-      );
+      return state.units.filter((u) => {
+        if (u.team === attacker.team) return false;
+        if (distance(attacker.pos, u.pos) > range) return false;
+        // Enemies targeting heroes: only standing heroes are valid targets.
+        if (u.team === "hero") return isTargetableByEnemies(u);
+        return u.hp > 0;
+      });
   }
 }
 
@@ -167,7 +191,7 @@ export function resolveAction(
         totalDmg += beforeHp - u.hp;
         hitCount++;
         if (u.hp <= 0) {
-          state.log.push({ kind: "defeat", text: `[T${round}] ${u.displayName} is defeated.`, round });
+          handleUnitDroppedToZero(u, state);
         }
       }
     }
@@ -244,9 +268,14 @@ export function resolveAction(
   if (action.effect.type === "heal") {
     if (action.effect.targetMode === "aoe_radius") {
       const radius = action.effect.radius ?? action.range;
-      const affected = state.units.filter(
-        (u) => u.team === attacker.team && u.hp > 0 && u.hp < u.stats.maxHp && distance(attacker.pos, u.pos) <= radius,
-      );
+      const affected = state.units.filter((u) => {
+        if (u.team !== attacker.team || distance(attacker.pos, u.pos) > radius) return false;
+        if (u.team === "hero") {
+          const ls = heroLifeState(u);
+          return ls !== "dead" && (ls === "downed" || ls === "stable" || (u.hp > 0 && u.hp < u.stats.maxHp));
+        }
+        return u.hp > 0 && u.hp < u.stats.maxHp;
+      });
       if (affected.length === 0) {
         state.log.push({
           kind: "action",
@@ -267,8 +296,10 @@ export function resolveAction(
           attacker.conditions.splice(bIdx, 1);
         }
         const before = u.hp;
-        u.hp = Math.min(u.hp + healAmount, u.stats.maxHp);
-        totalHealed += u.hp - before;
+        u.hp = Math.min(Math.max(u.hp, 0) + healAmount, u.stats.maxHp);
+        const actual = u.hp - before;
+        totalHealed += actual;
+        if (actual > 0) clearDeathSavesOnHealing(u, state);
       }
       state.log.push({
         kind: "action",
@@ -279,9 +310,14 @@ export function resolveAction(
       return { amount: totalHealed, isCrit: false, kind: "heal", actionElement: "heal" };
     }
     if (action.effect.targetMode === "aoe_around_caster") {
-      const affected = state.units.filter(
-        (u) => u.team === attacker.team && u.hp > 0 && distance(attacker.pos, u.pos) <= action.range,
-      );
+      const affected = state.units.filter((u) => {
+        if (u.team !== attacker.team || distance(attacker.pos, u.pos) > action.range) return false;
+        if (u.team === "hero") {
+          const ls = heroLifeState(u);
+          return ls !== "dead" && (ls === "downed" || ls === "stable" || u.hp > 0);
+        }
+        return u.hp > 0;
+      });
       const formula = rewriteFormula(action.effect.formula, attacker);
       let totalHealed = 0;
       for (const u of affected) {
@@ -293,8 +329,10 @@ export function resolveAction(
           attacker.conditions.splice(bIdx, 1);
         }
         const before = u.hp;
-        u.hp = Math.min(u.hp + healAmount, u.stats.maxHp);
-        totalHealed += u.hp - before;
+        u.hp = Math.min(Math.max(u.hp, 0) + healAmount, u.stats.maxHp);
+        const actual = u.hp - before;
+        totalHealed += actual;
+        if (actual > 0) clearDeathSavesOnHealing(u, state);
       }
       state.log.push({
         kind: "action",
@@ -341,13 +379,14 @@ export function resolveAction(
 
     const healed = result.total + blessedBonus + firstHealBonus + (actionBonus(attacker, action.id).healBonus ?? 0) + itemHealBonus + cloisteredBonus;
     const before = target.hp;
-    target.hp = Math.min(target.hp + healed, target.stats.maxHp);
+    target.hp = Math.min(Math.max(target.hp, 0) + healed, target.stats.maxHp);
     const actual = target.hp - before;
     state.log.push({
       kind: "action",
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — heal ${actual}. ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
       round,
     });
+    if (actual > 0) clearDeathSavesOnHealing(target, state);
     if (!skipHasActed) attacker.hasActed = true;
     return { amount: actual, isCrit: false, kind: "heal", actionElement: "heal" };
   }
@@ -389,7 +428,7 @@ export function resolveAction(
         totalDmg += beforeHp - u.hp;
         hitCount++;
         if (u.hp <= 0) {
-          state.log.push({ kind: "defeat", text: `[T${round}] ${u.displayName} is defeated.`, round });
+          handleUnitDroppedToZero(u, state);
         }
       }
     }
@@ -438,7 +477,7 @@ export function resolveAction(
         totalDmg += beforeHp - u.hp;
         hitCount++;
         if (u.hp <= 0) {
-          state.log.push({ kind: "defeat", text: `[T${round}] ${u.displayName} is defeated.`, round });
+          handleUnitDroppedToZero(u, state);
         }
       }
     }
@@ -651,11 +690,7 @@ export function resolveAction(
             round,
           });
           if (attacker.hp <= 0) {
-            state.log.push({
-              kind: "defeat",
-              text: `[T${round}] ${attacker.displayName} is defeated by Retributive Strike.`,
-              round,
-            });
+            handleUnitDroppedToZero(attacker, state);
           }
         } else {
           state.log.push({
@@ -671,11 +706,7 @@ export function resolveAction(
   checkBossReinforcement(target, state);
 
   if (target.hp <= 0) {
-    state.log.push({
-      kind: "defeat",
-      text: `[T${round}] ${target.displayName} is defeated.`,
-      round,
-    });
+    handleUnitDroppedToZero(target, state);
     checkEliteRally(target, state);
   }
 
@@ -721,11 +752,7 @@ function resolvePrimaryPlusAdjacent(
       round,
     });
     if (target.hp <= 0) {
-      state.log.push({
-        kind: "defeat",
-        text: `[T${round}] ${target.displayName} is defeated.`,
-        round,
-      });
+      handleUnitDroppedToZero(target, state);
     }
   } else {
     state.log.push({
@@ -762,11 +789,9 @@ function resolvePrimaryPlusAdjacent(
         round,
       });
       if (hero.hp <= 0) {
-        state.log.push({
-          kind: "defeat",
-          text: `[T${round}] ${hero.displayName} is defeated.`,
-          round,
-        });
+        if (hero.hp <= 0) {
+          handleUnitDroppedToZero(hero, state);
+        }
       }
     } else {
       state.log.push({
@@ -938,11 +963,7 @@ export function resolveBossTelegraph(
         round,
       });
     } else {
-      state.log.push({
-        kind: "defeat",
-        text: `[T${round}] ${hero.displayName} is defeated.`,
-        round,
-      });
+      handleUnitDroppedToZero(hero, state);
     }
   }
 
@@ -950,14 +971,21 @@ export function resolveBossTelegraph(
 }
 
 export function checkVictoryDefeat(state: CombatState): void {
-  const heroesAlive = state.units.filter((u) => u.team === "hero" && u.hp > 0);
   const enemiesAlive = state.units.filter((u) => u.team === "enemy" && u.hp > 0);
 
   if (enemiesAlive.length === 0) {
     state.status = "victory";
     state.bossTelegraph = null;
     state.log.push({ kind: "victory", text: `[T${state.round}] Victory.`, round: state.round });
-  } else if (heroesAlive.length === 0) {
+    return;
+  }
+
+  // Defeat when the party has no standing heroes and no downed heroes still rolling saves.
+  const standingHeroes = state.units.filter((u) => u.team === "hero" && heroLifeState(u) === "standing");
+  const downedHeroes = state.units.filter((u) => u.team === "hero" && heroLifeState(u) === "downed");
+  const canStillRecover = standingHeroes.length > 0 || downedHeroes.length > 0;
+
+  if (!canStillRecover) {
     state.status = "defeat";
     state.bossTelegraph = null;
     state.log.push({ kind: "defeat_squad", text: `[T${state.round}] Defeat.`, round: state.round });
@@ -965,18 +993,23 @@ export function checkVictoryDefeat(state: CombatState): void {
 }
 
 export function removeDefeatedFromQueue(state: CombatState): void {
-  const deadIds = new Set(
-    state.units.filter((u) => u.hp <= 0).map((u) => u.instanceId),
+  const toRemove = new Set(
+    state.units
+      .filter((u) => {
+        if (u.team === "enemy") return u.hp <= 0;
+        return heroLifeState(u) === "dead";
+      })
+      .map((u) => u.instanceId),
   );
-  if (deadIds.size === 0) return;
-  if (state.bossTelegraph && deadIds.has(state.bossTelegraph.sourceId)) {
+  if (toRemove.size === 0) return;
+  if (state.bossTelegraph && toRemove.has(state.bossTelegraph.sourceId)) {
     state.bossTelegraph = null;
   }
   const before = state.activeIndex;
   const activeId = state.turnQueue[state.activeIndex];
-  const activeDead = deadIds.has(activeId);
-  state.turnQueue = state.turnQueue.filter((id) => !deadIds.has(id));
-  if (activeDead) {
+  const activeRemoved = toRemove.has(activeId);
+  state.turnQueue = state.turnQueue.filter((id) => !toRemove.has(id));
+  if (activeRemoved) {
     state.activeIndex = Math.min(before, state.turnQueue.length - 1);
   } else {
     state.activeIndex = state.turnQueue.indexOf(activeId);
