@@ -1,11 +1,12 @@
-import type { UnitInstance, CombatState } from "../state/types.ts";
+import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
-import { distance, hexKey } from "../core/hex.ts";
-import { reachableHexes } from "./Movement.ts";
+import { distance, hexKey, parseHexKey } from "../core/hex.ts";
+import { reachableHexes, findPath } from "./Movement.ts";
 import { resolveAction, validTargets, resolveBossTelegraph } from "./Action.ts";
 import { isTargetableByEnemies, isStandingHero } from "./DeathSaves.ts";
 import { getBossRotationActionId, handleEnemyStartTurnTraits } from "./Traits.ts";
+import { movementCostForHex, applyHazardsForMovementPath } from "./Terrain.ts";
 
 /** Flat bonus damage the ambusher adds when it strikes an exposed or wounded hero. */
 const AMBUSH_BURST_BONUS = 3;
@@ -52,17 +53,19 @@ function buildOccupied(unit: UnitInstance, state: CombatState): Set<string> {
 
 function moveToward(
   unit: UnitInstance,
-  target: { q: number; r: number },
+  target: Hex,
   state: CombatState,
 ): void {
-  const reachable = reachableHexes(unit.pos, unit.movePointsRemaining, buildOccupied(unit, state), new Set(state.gridKeys));
+  const occ = buildOccupied(unit, state);
+  const gridKeys = new Set(state.gridKeys);
+  const costFn = (h: Hex) => movementCostForHex(state, h);
+  const reachable = reachableHexes(unit.pos, unit.movePointsRemaining, occ, gridKeys, costFn);
 
   let bestKey: string | null = null;
   let bestDist = distance(unit.pos, target);
 
   for (const [key] of reachable) {
-    const parts = key.split(",").map(Number);
-    const hex = { q: parts[0], r: parts[1] };
+    const hex = parseHexKey(key);
     const dist = distance(hex, target);
     if (dist < bestDist) {
       bestKey = key;
@@ -72,34 +75,41 @@ function moveToward(
 
   if (bestKey !== null) {
     const cost = reachable.get(bestKey) ?? 0;
-    const parts = bestKey.split(",").map(Number);
-    unit.pos = { q: parts[0], r: parts[1] };
+    const dest = parseHexKey(bestKey);
+    const from = { ...unit.pos };
+    unit.pos = dest;
     unit.movePointsRemaining -= cost;
     state.log.push({
       kind: "move",
       text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
       round: state.round,
     });
+    const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
+    if (path && path.length > 0) {
+      applyHazardsForMovementPath(unit, state, path);
+    }
   }
 }
 
 function moveToPreferredRange(
   unit: UnitInstance,
-  target: { q: number; r: number },
+  target: Hex,
   preferredRange: number,
   state: CombatState,
 ): void {
   const curDist = distance(unit.pos, target);
   if (curDist === preferredRange) return;
 
-  const reachable = reachableHexes(unit.pos, unit.movePointsRemaining, buildOccupied(unit, state), new Set(state.gridKeys));
+  const occ = buildOccupied(unit, state);
+  const gridKeys = new Set(state.gridKeys);
+  const costFn = (h: Hex) => movementCostForHex(state, h);
+  const reachable = reachableHexes(unit.pos, unit.movePointsRemaining, occ, gridKeys, costFn);
 
   let bestKey: string | null = null;
   let bestDiff = Math.abs(curDist - preferredRange);
 
   for (const [key] of reachable) {
-    const parts = key.split(",").map(Number);
-    const hex = { q: parts[0], r: parts[1] };
+    const hex = parseHexKey(key);
     const diff = Math.abs(distance(hex, target) - preferredRange);
     if (diff < bestDiff) {
       bestKey = key;
@@ -109,14 +119,19 @@ function moveToPreferredRange(
 
   if (bestKey !== null) {
     const cost = reachable.get(bestKey) ?? 0;
-    const parts = bestKey.split(",").map(Number);
-    unit.pos = { q: parts[0], r: parts[1] };
+    const dest = parseHexKey(bestKey);
+    const from = { ...unit.pos };
+    unit.pos = dest;
     unit.movePointsRemaining -= cost;
     state.log.push({
       kind: "move",
       text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
       round: state.round,
     });
+    const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
+    if (path && path.length > 0) {
+      applyHazardsForMovementPath(unit, state, path);
+    }
   }
 }
 

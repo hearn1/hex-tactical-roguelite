@@ -15,6 +15,7 @@ import { axialToWorld, HEX_WORLD_RADIUS } from "./hexWorld.ts";
 import { hexFromPickData } from "./picking.ts";
 import { CombatAnimationQueue, easeInOut, type CombatAnimationStep } from "./animationQueue.ts";
 import { VfxManager } from "./VfxManager.ts";
+import { getTerrainType } from "../../combat/Terrain.ts";
 
 export interface Combat3DHighlights {
   hoveredHex: Hex | null;
@@ -55,6 +56,9 @@ const TARGET_COLOR = new THREE.Color("#9d3434");
 const TELEGRAPH_COLOR = new THREE.Color("#c87922");
 const HOVER_COLOR = new THREE.Color("#9b8d38");
 const ACTIVE_COLOR = new THREE.Color("#ffd166");
+const TERRAIN_DIFFICULT_COLOR = new THREE.Color("#5a3a12");
+const TERRAIN_COVER_COLOR = new THREE.Color("#1e3d6e");
+const TERRAIN_HAZARD_COLOR = new THREE.Color("#8c2a0a");
 const UNIT_WIDTH = 0.78;
 const UNIT_HEIGHT = 0.9;
 
@@ -448,6 +452,20 @@ export class CombatThreeRenderer {
       const material = mesh.material;
       material.color.set(theme.ground.tileColor);
       material.emissive.set(theme.ground.tileEmissive);
+
+      // Terrain base colors (applied before highlights so highlights remain on top).
+      const tileHex = parseHexKey(key);
+      const ttype = getTerrainType(combat, tileHex);
+      if (ttype === "difficult") {
+        material.color.copy(TERRAIN_DIFFICULT_COLOR);
+        material.emissive.set("#2a1a06");
+      } else if (ttype === "cover") {
+        material.color.copy(TERRAIN_COVER_COLOR);
+        material.emissive.set("#091a30");
+      } else if (ttype === "hazard") {
+        material.color.copy(TERRAIN_HAZARD_COLOR);
+        material.emissive.set("#3d1204");
+      }
 
       if (highlights.reachableKeys.has(key)) {
         material.color.copy(REACHABLE_COLOR);

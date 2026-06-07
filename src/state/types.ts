@@ -58,6 +58,14 @@ export interface Hex {
   r: number;
 }
 
+export type TerrainType = "normal" | "difficult" | "cover" | "hazard";
+
+export interface TerrainHex {
+  q: number;
+  r: number;
+  type: TerrainType;
+}
+
 /**
  * Per-action numeric bonuses granted by level-up choices (F29 / #60). Keyed by action id on
  * a unit's {@link UnitInstance.actionUpgrades}. Read by the combat resolver so an upgrade is
@@ -215,4 +223,6 @@ export interface CombatState {
   difficulty?: "normal" | "hard";
   /** Cumulative enemy damage bonus from adventure modifiers, stacks with difficulty. */
   modifierDamageBonus?: number;
+  /** Per-hex terrain overlay keyed by hexKey (e.g. "0,0"). Normal tiles are omitted; missing key = "normal". */
+  terrain?: Record<string, TerrainType>;
 }

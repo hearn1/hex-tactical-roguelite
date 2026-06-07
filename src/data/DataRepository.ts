@@ -400,6 +400,31 @@ export class DataRepository {
           seen.add(key);
         }
       }
+
+      if (def.terrain) {
+        const validTerrainTypes = new Set(["normal", "difficult", "cover", "hazard"]);
+        const terrainSeen = new Set<string>();
+        const heroSpawnKeys = new Set(["-3,0", "-3,1", "-3,-1", "-3,2", "-3,-2", "-3,3", "-3,-3"]);
+        for (const t of def.terrain) {
+          const tKey = hexKey(t);
+          if (!validTerrainTypes.has(t.type)) {
+            errors.push(`Encounter "${id}": terrain (${t.q}, ${t.r}) has invalid type "${t.type}"`);
+          }
+          if (!gridCells.has(tKey)) {
+            errors.push(`Encounter "${id}": terrain (${t.q}, ${t.r}) is outside the grid`);
+          }
+          if (terrainSeen.has(tKey)) {
+            errors.push(`Encounter "${id}": terrain (${t.q}, ${t.r}) is defined twice`);
+          }
+          terrainSeen.add(tKey);
+          if (t.type === "hazard" && heroSpawnKeys.has(tKey)) {
+            errors.push(`Encounter "${id}": terrain (${t.q}, ${t.r}) is hazard and overlaps a hero spawn position`);
+          }
+          if (t.type === "normal") {
+            warnings.push(`Encounter "${id}": terrain (${t.q}, ${t.r}) is type "normal" — this entry is unnecessary`);
+          }
+        }
+      }
     }
 
     for (const [poolId, encounterIds] of Object.entries(ENCOUNTER_POOLS)) {
