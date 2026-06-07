@@ -2,6 +2,14 @@ import * as THREE from "three";
 import { hexKey, parseHexKey } from "../../core/hex.ts";
 import type { CombatState, Hex, UnitInstance } from "../../state/types.ts";
 import { getSpriteDef, type SpriteDef, type SpriteFrameId } from "../../data/sprites.ts";
+import {
+  resolveSpriteLayers,
+  spriteAppearanceKey,
+  getWeaponOverlay,
+  getArmorOverlay,
+  getFlairOverlay,
+  type SpriteLayer,
+} from "../../data/spriteLayers.ts";
 import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/environmentThemes.ts";
 import { axialToWorld, HEX_WORLD_RADIUS } from "./hexWorld.ts";
 import { hexFromPickData } from "./picking.ts";
@@ -25,6 +33,8 @@ type UnitGroup = THREE.Group & {
   userData: {
     unitId: string;
     defId: string;
+    appearanceKey: string;
+    layers: SpriteLayer[];
     sprite: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
     hpFill: THREE.Mesh<THREE.PlaneGeometry, THREE.MeshBasicMaterial>;
     activeRing: THREE.Mesh<THREE.RingGeometry, THREE.MeshBasicMaterial>;
@@ -491,6 +501,8 @@ export class CombatThreeRenderer {
       }
       group.userData.unitId = unit.instanceId;
       group.userData.defId = unit.defId;
+      group.userData.layers = resolveSpriteLayers(unit.defId, unit.equippedItemIds, unit.archetypeId);
+      group.userData.appearanceKey = spriteAppearanceKey(unit.defId, unit.equippedItemIds, unit.archetypeId);
       group.userData.sprite.userData.hexKey = hexKey(unit.pos);
       group.userData.sprite.userData.unitId = unit.instanceId;
 
@@ -498,7 +510,12 @@ export class CombatThreeRenderer {
       const isAttackStance = unit.instanceId === activeId && combat.targetingActionId !== null && !unit.hasActed;
       const nextVisual = this.visualUnits.get(unit.instanceId);
       const frame = nextVisual?.frame ?? (isAttackStance ? "attack" : "idle");
-      group.userData.sprite.material.map = this.getTexture(sprite, frame === "idle" && isAttackStance ? "attack" : frame);
+      group.userData.sprite.material.map = this.getTexture(
+        sprite,
+        frame === "idle" && isAttackStance ? "attack" : frame,
+        group.userData.layers,
+        group.userData.appearanceKey,
+      );
 
       const spriteScale = sprite?.scale ?? 1;
       group.userData.sprite.scale.setScalar(spriteScale);
@@ -544,7 +561,12 @@ export class CombatThreeRenderer {
     if (!visual) return;
     group.position.set(visual.world.x, 0, visual.world.z);
     const spriteMaterial = group.userData.sprite.material;
-    spriteMaterial.map = this.getTexture(getSpriteDef(group.userData.defId), visual.frame);
+    spriteMaterial.map = this.getTexture(
+      getSpriteDef(group.userData.defId),
+      visual.frame,
+      group.userData.layers,
+      group.userData.appearanceKey,
+    );
     spriteMaterial.opacity = visual.alpha;
     spriteMaterial.color.set(visual.glow === "heal" ? "#99ffbb" : visual.glow === "hit" ? "#ff9a9a" : "#ffffff");
     spriteMaterial.needsUpdate = true;
@@ -579,7 +601,9 @@ export class CombatThreeRenderer {
 
   private createUnitGroup(unit: UnitInstance): UnitGroup {
     const group = new THREE.Group() as UnitGroup;
-    const texture = this.getTexture(getSpriteDef(unit.defId), "idle");
+    const layers = resolveSpriteLayers(unit.defId, unit.equippedItemIds, unit.archetypeId);
+    const appearanceKey = spriteAppearanceKey(unit.defId, unit.equippedItemIds, unit.archetypeId);
+    const texture = this.getTexture(getSpriteDef(unit.defId), "idle", layers, appearanceKey);
     const spriteMaterial = new THREE.MeshBasicMaterial({
       map: texture,
       transparent: true,
@@ -615,6 +639,8 @@ export class CombatThreeRenderer {
     group.userData = {
       unitId: unit.instanceId,
       defId: unit.defId,
+      appearanceKey,
+      layers,
       sprite,
       hpFill,
       activeRing,
@@ -622,8 +648,13 @@ export class CombatThreeRenderer {
     return group;
   }
 
-  private getTexture(sprite: SpriteDef | null, frameId: SpriteFrameId): THREE.CanvasTexture {
-    const cacheKey = `${sprite?.id ?? "fallback"}:${frameId}`;
+  private getTexture(
+    sprite: SpriteDef | null,
+    frameId: SpriteFrameId,
+    layers: SpriteLayer[] = [],
+    appearanceKey = "",
+  ): THREE.CanvasTexture {
+    const cacheKey = `${sprite?.id ?? "fallback"}:${frameId}:${appearanceKey}`;
     const cached = this.textureCache.get(cacheKey);
     if (cached) return cached;
 
@@ -633,6 +664,7 @@ export class CombatThreeRenderer {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("Could not create sprite canvas.");
     drawPlaceholderSprite(ctx, sprite, frameId);
+    drawSpriteLayers(ctx, layers, frameId);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.magFilter = THREE.NearestFilter;
@@ -762,6 +794,100 @@ function drawPlaceholderSprite(ctx: CanvasRenderingContext2D, sprite: SpriteDef 
     ctx.fillRect(10, 5, 12, 7);
     ctx.fillStyle = palette.accent;
     ctx.fillRect(24, attacking ? 9 : 13, 5, 3);
+  }
+}
+
+/**
+ * Draw the data-driven gear/archetype overlays (#93) on top of the base sprite, in resolved
+ * order (armor look → weapon → flair). Each overlay is a small procedural shape registered to a
+ * weapon/armor/archetype id, so new visuals are added by data alone.
+ */
+function drawSpriteLayers(ctx: CanvasRenderingContext2D, layers: SpriteLayer[], frameId: SpriteFrameId): void {
+  ctx.imageSmoothingEnabled = false;
+  const attacking = frameId === "attack" || frameId === "cast";
+  for (const layer of layers) {
+    if (layer.kind === "armorLook") drawArmorOverlay(ctx, layer.overlayId);
+    else if (layer.kind === "weapon") drawWeaponOverlay(ctx, layer.overlayId, attacking);
+    else if (layer.kind === "flair") drawFlairOverlay(ctx, layer.overlayId);
+  }
+}
+
+function drawArmorOverlay(ctx: CanvasRenderingContext2D, overlayId: string): void {
+  const armor = getArmorOverlay(overlayId);
+  if (!armor) return;
+  ctx.fillStyle = armor.tint;
+  if (armor.look === "heavy") {
+    // Bulky plated torso + pauldrons.
+    ctx.fillRect(9, 14, 14, 10);
+    ctx.fillRect(8, 15, 2, 5);
+    ctx.fillRect(22, 15, 2, 5);
+  } else if (armor.look === "medium") {
+    ctx.fillRect(11, 15, 10, 8);
+    ctx.fillRect(10, 16, 1, 4);
+    ctx.fillRect(21, 16, 1, 4);
+  } else {
+    // Light: a thin chest band.
+    ctx.fillRect(12, 16, 8, 6);
+  }
+}
+
+function drawWeaponOverlay(ctx: CanvasRenderingContext2D, overlayId: string, attacking: boolean): void {
+  const weapon = getWeaponOverlay(overlayId);
+  if (!weapon) return;
+  ctx.fillStyle = weapon.color;
+  // Hand position shifts forward on the attack/cast frame to read as a swing/thrust.
+  const hx = attacking ? 24 : 22;
+  switch (weapon.shape) {
+    case "sword":
+      ctx.fillRect(hx, 8, 2, 14);
+      ctx.fillRect(hx - 1, 19, 4, 2);
+      break;
+    case "mace":
+      ctx.fillRect(hx, 12, 2, 10);
+      ctx.fillRect(hx - 1, 9, 4, 4);
+      break;
+    case "dagger":
+      ctx.fillRect(hx, 13, 2, 8);
+      ctx.fillRect(hx - 1, 19, 4, 2);
+      break;
+    case "bow":
+      ctx.fillRect(hx, 9, 2, 14);
+      ctx.fillRect(hx - 1, 9, 2, 2);
+      ctx.fillRect(hx - 1, 21, 2, 2);
+      ctx.fillStyle = "#e8e0c8";
+      ctx.fillRect(hx - 1, 10, 1, 12);
+      break;
+    case "wand":
+      ctx.fillRect(hx, 14, 2, 8);
+      ctx.fillRect(hx - 1, 11, 4, 4);
+      break;
+    case "staff":
+      ctx.fillRect(hx, 8, 2, 16);
+      ctx.fillRect(hx - 1, 6, 4, 4);
+      break;
+  }
+}
+
+function drawFlairOverlay(ctx: CanvasRenderingContext2D, overlayId: string): void {
+  const flair = getFlairOverlay(overlayId);
+  if (!flair) return;
+  if (flair.kind === "aura") {
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = flair.color;
+    ctx.fillRect(7, 6, 18, 20);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = flair.color;
+    ctx.fillRect(13, 4, 6, 2);
+  } else if (flair.kind === "cloak") {
+    ctx.fillStyle = flair.color;
+    ctx.fillRect(9, 12, 3, 13);
+    ctx.fillRect(20, 12, 3, 13);
+  } else {
+    // Accessory: a small emblem at the shoulder.
+    ctx.fillStyle = flair.color;
+    ctx.fillRect(8, 14, 4, 5);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(9, 15, 2, 3);
   }
 }
 
