@@ -3,6 +3,7 @@ import { createRng } from "../core/rng.ts";
 import { takeEnemyTurn } from "./EnemyAI.ts";
 import { resolveAction } from "./Action.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
+import { getTraitTriggered } from "./Traits.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 import { hexesWithinRange, hexKey, distance } from "../core/hex.ts";
 
@@ -35,8 +36,7 @@ function makeState(units: UnitInstance[]): CombatState {
     gridKeys: grid.map(hexKey),
     targetingActionId: null,
     perEncounterUses: {},
-    bossActionIndex: 0,
-    bossReinforcementSpawned: false,
+    traitState: { actionRotationIndex: {}, triggered: {} },
   };
 }
 
@@ -71,7 +71,7 @@ describe("Boss", () => {
       boss.hasActed = false;
     }
 
-    expect(state.bossActionIndex).toBe(4);
+    expect(state.traitState?.actionRotationIndex?.["boss:boss_action_rotation"]).toBe(4);
     expect(state.log.length).toBeGreaterThan(0);
 
     const actionEntries = state.log.filter((l) => l.kind === "action");
@@ -115,13 +115,13 @@ describe("Boss", () => {
 
     const state = makeState([boss, hero]);
 
-    expect(state.bossReinforcementSpawned).toBe(false);
+    expect(getTraitTriggered(state, "boss:boss_reinforcement_at_hp_threshold")).toBe(false);
     expect(state.units.length).toBe(2);
 
     resolveAction(ACTION_REGISTRY["action.slash"], hero, boss, state, rng);
 
     expect(state.units.length).toBe(3);
-    expect(state.bossReinforcementSpawned).toBe(true);
+    expect(getTraitTriggered(state, "boss:boss_reinforcement_at_hp_threshold")).toBe(true);
 
     const reinforcementLog = state.log.find((l) => l.text.includes("reinforcement"));
     expect(reinforcementLog).toBeDefined();
@@ -235,7 +235,8 @@ describe("Boss", () => {
 
     const state = makeState([boss, hero1, hero2]);
 
-    state.bossActionIndex = 2;
+    // Advance rotation to index 2 (Ground Slam is at index 2 in the trait rotation).
+    state.traitState!.actionRotationIndex!["boss:boss_action_rotation"] = 2;
     takeEnemyTurn(boss, state, rng);
 
     const hitEntries = state.log.filter((l) => l.text.includes("Ground Slam"));

@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import { takeEnemyTurn } from "./EnemyAI.ts";
 import { resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "./Action.ts";
+import { getTraitTriggered } from "./Traits.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 import { hexesWithinRange, hexKey, neighbors } from "../core/hex.ts";
@@ -37,8 +38,7 @@ function makeBossState(units: UnitInstance[]): CombatState {
     gridKeys: grid.map(hexKey),
     targetingActionId: null,
     perEncounterUses: {},
-    bossActionIndex: 0,
-    bossReinforcementSpawned: false,
+    traitState: { actionRotationIndex: {}, triggered: {} },
     bossTelegraph: null,
     encounterId: "encounter.boss_ogre_hexbreaker",
   };
@@ -190,7 +190,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
 
     // Hero smashes the boss below 50% → reinforcement spawns.
     resolveAction(ACTION_REGISTRY["action.slash"], hero, boss, state, rng);
-    expect(state.bossReinforcementSpawned).toBe(true);
+    expect(getTraitTriggered(state, "boss:boss_reinforcement_at_hp_threshold")).toBe(true);
     const unitsAfterReinforce = state.units.length;
 
     // Boss, now enraged, telegraphs then resolves — both systems coexist.

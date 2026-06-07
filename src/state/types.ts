@@ -178,6 +178,21 @@ export interface BossTelegraph {
   setOnRound: number;
 }
 
+/**
+ * Generic per-combat state for data-driven enemy and encounter traits.
+ */
+export interface CombatTraitState {
+  /**
+   * Per-unit action rotation index, keyed as `${unitInstanceId}:${traitId}`.
+   */
+  actionRotationIndex?: Record<string, number>;
+  /**
+   * Once-only trigger registry, keyed as `${unitInstanceId}:${traitId}` for unit
+   * traits or `encounter:${traitId}` for encounter traits.
+   */
+  triggered?: Record<string, true>;
+}
+
 export interface CombatState {
   round: number;
   activeIndex: number;
@@ -188,12 +203,10 @@ export interface CombatState {
   gridKeys: string[];
   targetingActionId: string | null;
   perEncounterUses: Record<string, number>;
-  bossActionIndex?: number;
-  bossReinforcementSpawned?: boolean;
+  /** Generic per-combat trait state for data-driven boss and encounter mechanics. */
+  traitState?: CombatTraitState;
   /** Pending telegraphed boss attack, or null/undefined when none is wound up (boss only). */
   bossTelegraph?: BossTelegraph | null;
-  /** True once an elite encounter's "Rally" trait has fired (so it only triggers once). */
-  eliteRallyTriggered?: boolean;
   encounterId?: string;
   /** Map node type that launched this combat, used by renderers to pick themed environments. */
   sourceNodeType?: NodeType;
