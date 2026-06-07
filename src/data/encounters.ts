@@ -1,4 +1,4 @@
-import type { Hex } from "../state/types.ts";
+import type { Hex, TerrainHex } from "../state/types.ts";
 import type { EncounterTraitDef } from "./traits.ts";
 
 export interface EncounterDef {
@@ -30,6 +30,12 @@ export interface EncounterDef {
    * Built-in data has been migrated off this field.
    */
   eliteTrait?: "rally";
+  /**
+   * Optional terrain overlay for this encounter. Entries are converted to a
+   * `Record<hexKey, TerrainType>` on `CombatState` at combat creation. Normal tiles
+   * may be omitted — a missing key defaults to "normal" at runtime.
+   */
+  terrain?: TerrainHex[];
 }
 
 export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
@@ -117,6 +123,13 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
     enemyGroups: [
       { enemyId: "enemy.wolf", count: 2 },
       { enemyId: "enemy.skeleton_archer", count: 1 },
+    ],
+    terrain: [
+      { q: -1, r: 0, type: "difficult" },
+      { q: 0, r: 0, type: "difficult" },
+      { q: 1, r: -1, type: "hazard" },
+      { q: 1, r: 0, type: "hazard" },
+      { q: 2, r: -1, type: "cover" },
     ],
   },
   "encounter.long_iron_sergeant_elite": {
@@ -227,6 +240,12 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
       { q: 1, r: 1 },
     ],
     tags: ["ruins", "ranged"],
+    terrain: [
+      { q: -2, r: 0, type: "cover" },
+      { q: -1, r: 1, type: "cover" },
+      { q: 0, r: 0, type: "difficult" },
+      { q: 1, r: 0, type: "difficult" },
+    ],
   },
 
   // Support-protected group — an acolyte hangs back behind a brute wall, healing the line.

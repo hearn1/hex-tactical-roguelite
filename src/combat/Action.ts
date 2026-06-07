@@ -10,6 +10,7 @@ import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
 import { heroLifeState, handleUnitDroppedToZero, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
 import { checkEnemyThresholdTraits, checkEncounterDeathTraits } from "./Traits.ts";
+import { coverArmorBonusForTarget } from "./Terrain.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
@@ -547,7 +548,8 @@ export function resolveAction(
   const wardedBonus = target.conditions.some((c) => c.id === "warded") ? 3 : 0;
   const armoredBonus = target.conditions.some((c) => c.id === "armored") ? 3 : 0;
   const recklessDefensePenalty = target.conditions.some((c) => c.id === "reckless") ? 5 : 0;
-  const effectiveArmor = target.stats.armor + wardedBonus + armoredBonus + recklessDefensePenalty;
+  const coverBonus = coverArmorBonusForTarget(state, action, attacker, target);
+  const effectiveArmor = target.stats.armor + wardedBonus + armoredBonus + recklessDefensePenalty + coverBonus;
   const hit = !isAutoMiss && (isCrit || attackTotal >= effectiveArmor);
 
   if (!hit) {
@@ -558,10 +560,15 @@ export function resolveAction(
         round,
       });
     } else {
-      const armorDisplay = wardedBonus > 0 ? `${target.stats.armor}+${wardedBonus}` : `${target.stats.armor}`;
+      const armorParts: string[] = [];
+      if (wardedBonus > 0) armorParts.push(`+${wardedBonus} warded`);
+      if (coverBonus > 0) armorParts.push(`+${coverBonus} cover`);
+      const armorDisplay = armorParts.length > 0
+        ? `${target.stats.armor} (${armorParts.join(", ")})=${effectiveArmor}`
+        : `${target.stats.armor}`;
       state.log.push({
         kind: "action",
-        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${armorDisplay}=${effectiveArmor} → miss.`,
+        text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${armorDisplay} → miss.`,
         round,
       });
     }
@@ -637,10 +644,15 @@ export function resolveAction(
       round,
     });
   } else {
-    const armorDisplay = wardedBonus > 0 ? `${target.stats.armor}+${wardedBonus}` : `${target.stats.armor}`;
+    const hitArmorParts: string[] = [];
+    if (wardedBonus > 0) hitArmorParts.push(`+${wardedBonus} warded`);
+    if (coverBonus > 0) hitArmorParts.push(`+${coverBonus} cover`);
+    const hitArmorDisplay = hitArmorParts.length > 0
+      ? `${target.stats.armor} (${hitArmorParts.join(", ")})=${effectiveArmor}`
+      : `${target.stats.armor}`;
     state.log.push({
       kind: "action",
-      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${armorDisplay}=${effectiveArmor} → hit, ${dealt} dmg. ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${hitArmorDisplay} → hit, ${dealt} dmg. ${target.displayName}: ${target.hp}/${target.stats.maxHp} HP.`,
       round,
     });
   }

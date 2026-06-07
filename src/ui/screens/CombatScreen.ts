@@ -5,7 +5,8 @@ import { syncPartyFromCombat } from "../../state/GameState.ts";
 import type { BossTelegraph, CombatState, UnitInstance, Hex, ActionElement } from "../../state/types.ts";
 import { distance, hexKey, parseHexKey, pixelToHex, hexEquals } from "../../core/hex.ts";
 import { renderHexOutline, fillHex } from "../HexRenderer.ts";
-import { reachableHexes } from "../../combat/Movement.ts";
+import { reachableHexes, findPath } from "../../combat/Movement.ts";
+import { movementCostForHex, applyHazardsForMovementPath, getTerrainType } from "../../combat/Terrain.ts";
 import { ACTION_REGISTRY } from "../../data/actions.ts";
 import type { ActionDef } from "../../data/actions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
@@ -33,6 +34,9 @@ const REACHABLE_COLOR = "rgba(0,200,100,0.2)";
 const TARGET_COLOR = "rgba(255,50,50,0.35)";
 const TELEGRAPH_COLOR = "rgba(255,140,0,0.45)";
 const ACTIVE_GLOW = "#ffcc00";
+const TERRAIN_DIFFICULT_COLOR = "rgba(120,80,30,0.35)";
+const TERRAIN_COVER_COLOR = "rgba(60,100,160,0.35)";
+const TERRAIN_HAZARD_COLOR = "rgba(200,60,20,0.45)";
 
 interface UnitSnapshot {
   hp: number;
@@ -344,6 +348,14 @@ export class CombatScreen {
       renderHexOutline(ctx, hex, GRID_COLOR, 1);
     }
 
+    // Terrain overlays (drawn before highlights so highlights remain visible on top).
+    for (const hex of gridHexes) {
+      const ttype = getTerrainType(cs, hex);
+      if (ttype === "difficult") fillHex(ctx, hex, TERRAIN_DIFFICULT_COLOR);
+      else if (ttype === "cover") fillHex(ctx, hex, TERRAIN_COVER_COLOR);
+      else if (ttype === "hazard") fillHex(ctx, hex, TERRAIN_HAZARD_COLOR);
+    }
+
     for (const key of highlights.reachableKeys) {
       fillHex(ctx, parseHexKey(key), REACHABLE_COLOR);
     }
@@ -402,7 +414,8 @@ export class CombatScreen {
           return u.team === "hero" && (u.heroLifeState === "downed" || u.heroLifeState === "stable");
         }).map((u) => hexKey(u.pos)),
       );
-      for (const [key] of reachableHexes(activeUnit.pos, activeUnit.movePointsRemaining, occ, new Set(cs.gridKeys))) {
+      const costFn = (h: Hex) => movementCostForHex(cs, h);
+      for (const [key] of reachableHexes(activeUnit.pos, activeUnit.movePointsRemaining, occ, new Set(cs.gridKeys), costFn)) {
         reachableKeys.add(key);
       }
     }
@@ -573,7 +586,8 @@ export class CombatScreen {
         return u.team === "hero" && (u.heroLifeState === "downed" || u.heroLifeState === "stable");
       }).map((u) => hexKey(u.pos)),
     );
-    const reachable = reachableHexes(unit.pos, unit.movePointsRemaining, occ, new Set(cs.gridKeys));
+    const costFn = (h: Hex) => movementCostForHex(cs, h);
+    const reachable = reachableHexes(unit.pos, unit.movePointsRemaining, occ, new Set(cs.gridKeys), costFn);
     const key = hexKey(hex);
     const cost = reachable.get(key);
     if (cost === undefined) return;
@@ -586,6 +600,17 @@ export class CombatScreen {
       text: `[T${cs.round}] ${unit.displayName} moves to (${hex.q}, ${hex.r}). ${unit.movePointsRemaining} move remaining.`,
       round: cs.round,
     });
+
+    // Apply hazard damage for each hazard hex entered along the movement path.
+    const path = findPath(from, hex, occ, new Set(cs.gridKeys), cost + 1, costFn);
+    if (path && path.length > 0) {
+      applyHazardsForMovementPath(unit, cs, path);
+      if (unit.hp <= 0) {
+        checkVictoryDefeat(cs);
+        removeDefeatedFromQueue(cs);
+      }
+    }
+
     this.drawCanvas();
     this.updatePanels();
     const animation = this.playAnimationSteps({ kind: "move", unitId: unit.instanceId, from, to: { ...unit.pos } });

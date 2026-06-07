@@ -1,10 +1,12 @@
-import { distance, neighbors, hexKey, parseHexKey } from "../core/hex.ts";
+import { neighbors, hexKey, parseHexKey } from "../core/hex.ts";
+import type { Hex } from "../state/types.ts";
 
 export function reachableHexes(
-  start: { q: number; r: number },
+  start: Hex,
   movePoints: number,
   occupiedKeys: Set<string>,
   gridKeys: Set<string>,
+  movementCost?: (hex: Hex) => number,
 ): Map<string, number> {
   const result = new Map<string, number>();
   if (movePoints <= 0) return result;
@@ -13,25 +15,38 @@ export function reachableHexes(
   const occupiedWithoutStart = new Set(occupiedKeys);
   occupiedWithoutStart.delete(startKey);
 
-  const visited = new Set<string>();
-  const queue: { key: string; cost: number }[] = [{ key: startKey, cost: 0 }];
-  visited.add(startKey);
+  // Dijkstra: correct for variable terrain costs (uniform cost = BFS equivalent).
+  const dist = new Map<string, number>();
+  dist.set(startKey, 0);
   result.set(startKey, 0);
 
-  let head = 0;
-  while (head < queue.length) {
-    const { key, cost } = queue[head++];
-    const hex = parseHexKey(key);
-    for (const n of neighbors(hex)) {
+  // Simple priority queue for the small 37-hex grid.
+  const queue: { key: string; c: number }[] = [{ key: startKey, c: 0 }];
+
+  while (queue.length > 0) {
+    // Extract minimum-cost entry.
+    let minIdx = 0;
+    for (let i = 1; i < queue.length; i++) {
+      if (queue[i].c < queue[minIdx].c) minIdx = i;
+    }
+    const { key: curKey, c: curCost } = queue[minIdx];
+    queue.splice(minIdx, 1);
+
+    if (curCost > (dist.get(curKey) ?? Infinity)) continue;
+
+    const cur = parseHexKey(curKey);
+    for (const n of neighbors(cur)) {
       const nKey = hexKey(n);
-      if (visited.has(nKey)) continue;
       if (!gridKeys.has(nKey)) continue;
       if (occupiedWithoutStart.has(nKey)) continue;
-      const nextCost = cost + 1;
+      const stepCost = movementCost ? movementCost(n) : 1;
+      const nextCost = curCost + stepCost;
       if (nextCost > movePoints) continue;
-      visited.add(nKey);
+      const prev = dist.get(nKey);
+      if (prev !== undefined && prev <= nextCost) continue;
+      dist.set(nKey, nextCost);
       result.set(nKey, nextCost);
-      queue.push({ key: nKey, cost: nextCost });
+      queue.push({ key: nKey, c: nextCost });
     }
   }
 
@@ -39,47 +54,56 @@ export function reachableHexes(
 }
 
 export function findPath(
-  start: { q: number; r: number },
-  end: { q: number; r: number },
+  start: Hex,
+  end: Hex,
   occupiedKeys: Set<string>,
   gridKeys: Set<string>,
   maxCost: number,
-): { q: number; r: number }[] | null {
+  movementCost?: (hex: Hex) => number,
+): Hex[] | null {
   const endKey = hexKey(end);
-  const occupiedWithoutStart = new Set(occupiedKeys);
-  occupiedWithoutStart.delete(hexKey(start));
-
-  const visited = new Set<string>();
-  const cameFrom = new Map<string, string>();
-  const cost = new Map<string, number>();
   const startKey = hexKey(start);
-  const queue: string[] = [startKey];
-  visited.add(startKey);
-  cost.set(startKey, 0);
+  const occupiedWithoutStart = new Set(occupiedKeys);
+  occupiedWithoutStart.delete(startKey);
+
+  // Dijkstra for cheapest path within maxCost.
+  const dist = new Map<string, number>();
+  const cameFrom = new Map<string, string>();
+  dist.set(startKey, 0);
   cameFrom.set(startKey, "");
 
-  let head = 0;
-  while (head < queue.length) {
-    const curKey = queue[head++];
-    const curCost = cost.get(curKey)!;
+  const queue: { key: string; c: number }[] = [{ key: startKey, c: 0 }];
+
+  while (queue.length > 0) {
+    let minIdx = 0;
+    for (let i = 1; i < queue.length; i++) {
+      if (queue[i].c < queue[minIdx].c) minIdx = i;
+    }
+    const { key: curKey, c: curCost } = queue[minIdx];
+    queue.splice(minIdx, 1);
+
     if (curKey === endKey) break;
-    if (curCost >= maxCost) continue;
+    if (curCost > (dist.get(curKey) ?? Infinity)) continue;
+
     const cur = parseHexKey(curKey);
     for (const n of neighbors(cur)) {
       const nKey = hexKey(n);
-      if (visited.has(nKey)) continue;
       if (!gridKeys.has(nKey)) continue;
       if (nKey !== endKey && occupiedWithoutStart.has(nKey)) continue;
-      visited.add(nKey);
-      cost.set(nKey, curCost + 1);
+      const stepCost = movementCost ? movementCost(n) : 1;
+      const nextCost = curCost + stepCost;
+      if (nextCost > maxCost) continue;
+      const prev = dist.get(nKey);
+      if (prev !== undefined && prev <= nextCost) continue;
+      dist.set(nKey, nextCost);
       cameFrom.set(nKey, curKey);
-      queue.push(nKey);
+      queue.push({ key: nKey, c: nextCost });
     }
   }
 
-  if (!cost.has(endKey)) return null;
+  if (!dist.has(endKey)) return null;
 
-  const path: { q: number; r: number }[] = [];
+  const path: Hex[] = [];
   let cur = endKey;
   while (cur !== startKey) {
     path.unshift(parseHexKey(cur));

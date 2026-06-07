@@ -1,5 +1,5 @@
 import { createRng } from "../core/rng.ts";
-import type { ScreenId, CombatState, Hex, UnitInstance, UnitStats, RunModifier } from "./types.ts";
+import type { ScreenId, CombatState, Hex, UnitInstance, UnitStats, RunModifier, TerrainType } from "./types.ts";
 import { hexesWithinRange, hexKey, distance } from "../core/hex.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
@@ -312,6 +312,11 @@ export function createCombatFromRun(
 
   const theme = nodeTypeToEnvironmentTheme(sourceNodeType, encounterId);
 
+  // Convert authored terrain list to a keyed lookup (normal tiles omitted, missing key = "normal").
+  const terrain: Record<string, TerrainType> | undefined = encounterDef.terrain
+    ? Object.fromEntries(encounterDef.terrain.map((t) => [hexKey({ q: t.q, r: t.r }), t.type]))
+    : undefined;
+
   const log: CombatState["log"] = [
     { kind: "initiative", text: `[T1] Battle begins: ${encounterDef.displayName}`, round: 1 },
   ];
@@ -345,6 +350,7 @@ export function createCombatFromRun(
     theme,
     difficulty: run.difficulty,
     modifierDamageBonus: modifierDamageBonus > 0 ? modifierDamageBonus : undefined,
+    terrain,
   };
 }
 
