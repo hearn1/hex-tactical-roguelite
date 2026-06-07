@@ -78,6 +78,50 @@ describe("equipment helpers", () => {
     expect(hero.equippedItemIds.trinket).toBeNull();
   });
 
+  it("blocks an attuned item when the hero is already at the attunement limit", () => {
+    const hero = makeGuardian();
+    hero.equippedItemIds.weapon = "item.runemark_blade";
+    hero.equippedItemIds.armor = "item.ward_stitched_vest";
+    const inventory = createInventory();
+    inventory.items.push("item.quickstep_buckle");
+
+    const result = equipBagItemToPartyMember(hero, inventory, 0, "trinket");
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain("Mara");
+    expect(result.reason).toContain("2/2");
+    expect(hero.equippedItemIds.trinket).toBeNull();
+    expect(inventory.items).toEqual(["item.quickstep_buckle"]);
+  });
+
+  it("allows an attuned item that replaces another attuned item in the same slot", () => {
+    const hero = makeGuardian();
+    hero.equippedItemIds.weapon = "item.runemark_blade";
+    hero.equippedItemIds.trinket = "item.quickstep_buckle";
+    const inventory = createInventory();
+    inventory.items.push("item.lantern_moth_pin");
+
+    const result = equipBagItemToPartyMember(hero, inventory, 0, "trinket");
+
+    expect(result.ok).toBe(true);
+    expect(result.replacedItemId).toBe("item.quickstep_buckle");
+    expect(hero.equippedItemIds.trinket).toBe("item.lantern_moth_pin");
+    expect(inventory.items).toEqual(["item.quickstep_buckle"]);
+  });
+
+  it("allows a non-attuned item even when at the attunement limit", () => {
+    const hero = makeGuardian();
+    hero.equippedItemIds.weapon = "item.runemark_blade";
+    hero.equippedItemIds.armor = "item.ward_stitched_vest";
+    const inventory = createInventory();
+    inventory.items.push("item.soldier_badge");
+
+    const result = equipBagItemToPartyMember(hero, inventory, 0, "trinket");
+
+    expect(result.ok).toBe(true);
+    expect(hero.equippedItemIds.trinket).toBe("item.soldier_badge");
+  });
+
   it("computes class, item, and run bonus stats together", () => {
     const hero = makeGuardian();
     hero.bonusStats = { maxHp: 2, armor: 1 };

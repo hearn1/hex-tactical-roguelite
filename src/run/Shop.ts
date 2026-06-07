@@ -4,6 +4,7 @@ import type { RunModifier } from "../state/types.ts";
 import type { InventoryState } from "./Inventory.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { SHOP_SERVICE_REGISTRY } from "../data/shopServices.ts";
+import { canEquipWithAttunement } from "./Attunement.ts";
 import { applyShopDiscount } from "./ShopPricing.ts";
 
 export const ITEM_PRICE: Record<string, number> = {
@@ -99,9 +100,22 @@ export function stashShopItem(inventory: InventoryState, itemId: string): void {
   inventory.items.push(itemId);
 }
 
-export function equipShopItem(partyMember: PartyMember, itemId: string, inventory: InventoryState): string | null {
+export interface EquipShopItemResult {
+  ok: boolean;
+  replacedItemId: string | null;
+  reason?: string;
+}
+
+export function equipShopItem(partyMember: PartyMember, itemId: string, inventory: InventoryState): EquipShopItemResult {
   const itemDef = ITEM_REGISTRY[itemId];
-  if (!itemDef) return null;
+  if (!itemDef) {
+    return { ok: false, replacedItemId: null, reason: "Unknown item cannot be equipped." };
+  }
+
+  const attune = canEquipWithAttunement(partyMember.equippedItemIds, itemId);
+  if (!attune.ok) {
+    return { ok: false, replacedItemId: null, reason: attune.reason };
+  }
 
   const slot = itemDef.slot;
   const replacedItemId = partyMember.equippedItemIds[slot];
@@ -111,7 +125,7 @@ export function equipShopItem(partyMember: PartyMember, itemId: string, inventor
     inventory.items.push(replacedItemId);
   }
 
-  return replacedItemId;
+  return { ok: true, replacedItemId };
 }
 
 export function buyShopPotion(inventory: ShopInventory, potionIndex: number): boolean {

@@ -2,6 +2,7 @@ import { CLASS_REGISTRY } from "../data/classes.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import type { PartyMember } from "../state/RunState.ts";
 import type { UnitStats } from "../state/types.ts";
+import { canEquipWithAttunement } from "./Attunement.ts";
 import type { InventoryState } from "./Inventory.ts";
 
 export type EquipmentSlot = keyof PartyMember["equippedItemIds"];
@@ -110,6 +111,14 @@ export function equipBagItemToPartyMember(
     const reason = actualSlot
       ? `${ITEM_REGISTRY[itemId]?.displayName ?? itemId} fits ${actualSlot}, not ${targetSlot}.`
       : "Unknown item cannot be equipped.";
+    return { ok: false, itemId, replacedItemId: null, reason };
+  }
+
+  const attune = canEquipWithAttunement(partyMember.equippedItemIds, itemId);
+  if (!attune.ok) {
+    const reason = attune.reason?.startsWith("Already attuned")
+      ? `${partyMember.displayName} is ${attune.reason.charAt(0).toLowerCase()}${attune.reason.slice(1)}`
+      : attune.reason;
     return { ok: false, itemId, replacedItemId: null, reason };
   }
 

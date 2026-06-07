@@ -3,6 +3,7 @@ import { gameState } from "../../state/GameState.ts";
 import type { RunState } from "../../state/RunState.ts";
 import { rollShopInventory, getShopItemPrice, getShopPotionPrice, buyShopItem, buyShopPotion, equipShopItem, stashShopItem, applyShopService } from "../../run/Shop.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
+import { canEquipWithAttunement } from "../../run/Attunement.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { BACKGROUND_REGISTRY } from "../../data/backgrounds.ts";
 import { SHOP_SERVICE_REGISTRY } from "../../data/shopServices.ts";
@@ -308,7 +309,7 @@ export class ShopScreen {
 
     const desc = document.createElement("div");
     desc.style.cssText = "font-size:12px;color:#ccc;margin-bottom:10px;";
-    desc.textContent = itemDef ? `${itemDef.rarity} ${itemDef.slot}` : "Unknown item";
+    desc.textContent = itemDef ? describeItem(itemId) : "Unknown item";
     panel.appendChild(desc);
 
     const choices = document.createElement("div");
@@ -319,13 +320,21 @@ export class ShopScreen {
       btn.setAttribute("data-testid", `shop-equip-${pm.instanceId}`);
       const replacedItemId = itemDef ? pm.equippedItemIds[itemDef.slot] : null;
       const replacementText = replacedItemId ? `replace ${ITEM_REGISTRY[replacedItemId]?.displayName ?? replacedItemId}` : `${itemDef?.slot ?? "slot"} empty`;
+      const attune = canEquipWithAttunement(pm.equippedItemIds, itemId);
       btn.textContent = `${pm.displayName} (${replacementText})`;
+      btn.disabled = !attune.ok;
+      btn.title = attune.ok ? "" : attune.reason ?? "";
       btn.addEventListener("click", () => {
-        const replaced = equipShopItem(pm, itemId, run.inventory);
+        const result = equipShopItem(pm, itemId, run.inventory);
+        if (!result.ok) {
+          shopMessage = `${pm.displayName}: ${result.reason ?? "Could not equip item."}`;
+          this.app.render();
+          return;
+        }
         pendingPurchasedItemId = null;
         const itemName = itemDef?.displayName ?? itemId;
-        if (replaced) {
-          const replacedName = ITEM_REGISTRY[replaced]?.displayName ?? replaced;
+        if (result.replacedItemId) {
+          const replacedName = ITEM_REGISTRY[result.replacedItemId]?.displayName ?? result.replacedItemId;
           shopMessage = `Equipped ${itemName} to ${pm.displayName}. ${replacedName} was stashed.`;
         } else {
           shopMessage = `Equipped ${itemName} to ${pm.displayName}.`;

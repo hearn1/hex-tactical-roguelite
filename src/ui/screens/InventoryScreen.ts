@@ -12,6 +12,7 @@ import {
   previewEquipItem,
   type EquipmentSlot,
 } from "../../run/Equipment.ts";
+import { ATTUNEMENT_LIMIT, attunementCountFor, canEquipWithAttunement } from "../../run/Attunement.ts";
 
 let selectedBagIndex: number | null = null;
 let inventoryMessage = "";
@@ -135,16 +136,20 @@ export class InventoryScreen {
     name.textContent = hero.displayName;
     identity.appendChild(name);
 
+    const attunementCount = attunementCountFor(hero.equippedItemIds);
     const meta = document.createElement("div");
     meta.style.cssText = "font-size:12px;color:#aaa;margin-top:2px;";
-    meta.textContent = `${classDef?.displayName ?? hero.classId} | HP ${hero.hp}/${stats.maxHp} | Level ${hero.level}`;
+    meta.textContent = `${classDef?.displayName ?? hero.classId} | HP ${hero.hp}/${stats.maxHp} | Level ${hero.level} | Attunement ${attunementCount}/${ATTUNEMENT_LIMIT}`;
     identity.appendChild(meta);
     top.appendChild(identity);
 
-    if (selectedItemDef) {
+    if (selectedItemId && selectedItemDef) {
+      const attune = canEquipWithAttunement(hero.equippedItemIds, selectedItemId);
       const equipBtn = document.createElement("button");
       equipBtn.setAttribute("data-testid", `inventory-equip-${hero.instanceId}`);
       equipBtn.textContent = `Equip ${SLOT_LABELS[selectedItemDef.slot]}`;
+      equipBtn.disabled = !attune.ok;
+      equipBtn.title = attune.ok ? "" : attune.reason ?? "";
       equipBtn.addEventListener("click", () => this.onEquipSelected(hero, selectedItemDef.slot));
       top.appendChild(equipBtn);
     }
@@ -236,6 +241,18 @@ export class InventoryScreen {
       row.appendChild(neutral);
     }
     box.appendChild(row);
+
+    const itemDef = ITEM_REGISTRY[itemId];
+    if (itemDef?.requiresAttunement) {
+      const attune = canEquipWithAttunement(hero.equippedItemIds, itemId);
+      const note = document.createElement("div");
+      note.style.cssText = `margin-top:6px;color:${attune.ok ? "#cc8" : "#f99"};`;
+      note.textContent = attune.ok
+        ? "Requires Attunement"
+        : `Requires Attunement — ${attune.reason ?? "cannot attune."}`;
+      box.appendChild(note);
+    }
+
     return box;
   }
 

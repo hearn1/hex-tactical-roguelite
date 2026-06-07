@@ -379,12 +379,21 @@ export class DataRepository {
           }
         }
       }
+      if (def.requiresAttunement !== undefined && typeof def.requiresAttunement !== "boolean") {
+        errors.push(`Item "${id}": requiresAttunement must be a boolean`);
+      }
       if (def.hook) {
         if (def.hook.type === "oncePerCombatBonus" && def.hook.effect.kind === "applyCondition") {
           if (!validConditionIds.has(def.hook.effect.conditionId)) {
             errors.push(`Item "${id}": hook references unknown condition "${def.hook.effect.conditionId}"`);
           }
         }
+        if (def.requiresAttunement !== true) {
+          warnings.push(`Item "${id}": hook item should usually require attunement.`);
+        }
+      }
+      if (def.rarity === "common" && def.requiresAttunement === true) {
+        warnings.push(`Item "${id}": common item requires attunement.`);
       }
     }
 
