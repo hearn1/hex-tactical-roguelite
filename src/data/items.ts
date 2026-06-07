@@ -31,6 +31,8 @@ export interface ItemDef {
   displayName: string;
   slot: "weapon" | "armor" | "trinket";
   rarity: "common" | "uncommon" | "rare";
+  /** Powerful items require attunement; a hero may attune at most {@link ATTUNEMENT_LIMIT}. */
+  requiresAttunement?: boolean;
   statBonuses?: Partial<UnitStats>;
   grantedActionIds?: string[];
   flavorText?: string;
@@ -132,6 +134,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Runemark Blade",
     slot: "weapon",
     rarity: "uncommon",
+    requiresAttunement: true,
     statBonuses: { might: 1 },
     flavorText: "A steel blade etched with ancient runes that flare on the first strike.",
     hook: { type: "oncePerCombatBonus", trigger: "firstMeleeAttack", effect: { kind: "bonusDamage", value: 1 } },
@@ -141,6 +144,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Emberglass Wand",
     slot: "weapon",
     rarity: "uncommon",
+    requiresAttunement: true,
     statBonuses: { spirit: 1 },
     flavorText: "A wand of obsidian and glass, smoldering with captive flame.",
     hook: { type: "attackBonus", attackType: "spell", value: 1 },
@@ -150,6 +154,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Ward-Stitched Vest",
     slot: "armor",
     rarity: "uncommon",
+    requiresAttunement: true,
     statBonuses: { armor: 1 },
     flavorText: "Reinforced with warding threads that harden against the first blow.",
     hook: { type: "oncePerCombatBonus", trigger: "firstHitTaken", effect: { kind: "damageReduction", value: 1 } },
@@ -167,6 +172,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Hearthstone Charm",
     slot: "trinket",
     rarity: "common",
+    requiresAttunement: true,
     flavorText: "A warm, flickering stone that wraps its bearer in protective energy when battle begins.",
     hook: { type: "oncePerCombatBonus", trigger: "combatStart", effect: { kind: "applyCondition", conditionId: "guarded" } },
   },
@@ -175,6 +181,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Quickstep Buckle",
     slot: "trinket",
     rarity: "uncommon",
+    requiresAttunement: true,
     flavorText: "A buckle that springs with alacrity, granting a burst of speed at the first sign of danger.",
     hook: { type: "oncePerCombatBonus", trigger: "firstTurn", effect: { kind: "bonusMove", value: 1 } },
   },
@@ -183,6 +190,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Lantern Moth Pin",
     slot: "trinket",
     rarity: "uncommon",
+    requiresAttunement: true,
     flavorText: "A pin bearing a luminescent moth; the first healing light each battle shines brighter.",
     hook: { type: "oncePerCombatBonus", trigger: "firstHealDone", effect: { kind: "bonusHealing", value: 2 } },
   },
@@ -205,10 +213,15 @@ const HOOK_KIND_LABELS: Record<string, string> = {
   applyCondition: "grants {conditionId}",
 };
 
+function capitalize(s: string): string {
+  return s.length > 0 ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
 export function describeItem(id: string): string {
   const def = ITEM_REGISTRY[id];
   if (!def) return "Unknown item";
-  const parts: string[] = [def.rarity, def.slot];
+  const parts: string[] = [capitalize(def.rarity), def.slot];
+  if (def.requiresAttunement) parts.push("Requires Attunement");
   if (def.statBonuses) {
     for (const [k, v] of Object.entries(def.statBonuses)) {
       if (v) parts.push(`${STAT_LABELS[k] ?? k} +${v}`);
@@ -245,7 +258,8 @@ function describeHook(hook: ItemHook): string {
 export function describeItemShort(id: string): string {
   const def = ITEM_REGISTRY[id];
   if (!def) return "Unknown item";
-  const parts: string[] = [def.rarity, def.slot];
+  const parts: string[] = [capitalize(def.rarity), def.slot];
+  if (def.requiresAttunement) parts.push("Requires Attunement");
   if (def.statBonuses) {
     for (const [k, v] of Object.entries(def.statBonuses)) {
       if (v) parts.push(`${STAT_LABELS[k] ?? k} +${v}`);

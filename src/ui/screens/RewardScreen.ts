@@ -5,6 +5,7 @@ import { generateReward, applyGoldModifiers, applyXpModifiers, applyEliteRewardM
 import { applyXp } from "../../run/Leveling.ts";
 import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
+import { canEquipWithAttunement } from "../../run/Attunement.ts";
 import { POTION_REGISTRY } from "../../data/potions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import type { UnitInstance } from "../../state/types.ts";
@@ -16,12 +17,14 @@ let rewardCache: CombatReward | null = null;
 let chosenCardIndex: number | null = null;
 let equipPhase: boolean = false;
 let levelUpTexts: string[] = [];
+let equipMessage: string = "";
 
 export function resetRewardScreenState(): void {
   rewardCache = null;
   chosenCardIndex = null;
   equipPhase = false;
   levelUpTexts = [];
+  equipMessage = "";
 }
 
 export class RewardScreen {
@@ -214,8 +217,17 @@ export class RewardScreen {
 
     const label = document.createElement("div");
     label.style.cssText = "margin-bottom:8px;font-size:14px;";
-    label.textContent = `Equip ${ITEM_REGISTRY[itemId]?.displayName ?? itemId} to:`;
+    const itemDef = ITEM_REGISTRY[itemId];
+    const attuneTag = itemDef?.requiresAttunement ? " (Requires Attunement)" : "";
+    label.textContent = `Equip ${itemDef?.displayName ?? itemId}${attuneTag} to:`;
     target.appendChild(label);
+
+    if (equipMessage) {
+      const msg = document.createElement("div");
+      msg.style.cssText = "margin-bottom:8px;font-size:12px;color:#f99;";
+      msg.textContent = equipMessage;
+      target.appendChild(msg);
+    }
 
     const cs = gameState.combat;
     if (!cs) return;
@@ -227,6 +239,9 @@ export class RewardScreen {
       const btn = document.createElement("button");
       const classDef = CLASS_REGISTRY[hero.defId];
       btn.textContent = classDef?.displayName ?? hero.displayName;
+      const attune = canEquipWithAttunement(hero.equippedItemIds, itemId);
+      btn.disabled = !attune.ok;
+      btn.title = attune.ok ? "" : attune.reason ?? "";
       btn.addEventListener("click", () => this.onEquipToHero(hero, itemId));
       buttonsDiv.appendChild(btn);
     }
@@ -249,6 +264,16 @@ export class RewardScreen {
   private onEquipToHero(hero: UnitInstance, newItemId: string): void {
     const itemDef = ITEM_REGISTRY[newItemId];
     if (!itemDef) return;
+
+    const attune = canEquipWithAttunement(hero.equippedItemIds, newItemId);
+    if (!attune.ok) {
+      equipMessage = `${hero.displayName}: ${attune.reason ?? "Cannot attune."}`;
+      this.renderEquipPhase(newItemId);
+      this.app.render();
+      return;
+    }
+
+    equipMessage = "";
     const slot = itemDef.slot;
     const prevItemId = hero.equippedItemIds[slot];
     hero.equippedItemIds[slot] = newItemId;

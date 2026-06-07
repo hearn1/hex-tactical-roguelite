@@ -376,6 +376,19 @@ describe("DataRepository validation rejects broken references", () => {
     expect(report.valid).toBe(false);
   });
 
+  it("rejects a non-boolean requiresAttunement", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const item = repo.getItem("item.runemark_blade")!;
+    const original = item.requiresAttunement;
+    // @ts-expect-error — deliberately invalid type to exercise the validator
+    item.requiresAttunement = "yes";
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("requiresAttunement must be a boolean"))).toBe(true);
+    item.requiresAttunement = original;
+  });
+
   it("rejects legacy check stat 'might' — must use AbilityKey", () => {
     const repo = new DataRepository();
     repo.loadAll();

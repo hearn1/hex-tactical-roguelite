@@ -162,9 +162,10 @@ describe("shop item resolution", () => {
     const [guardian] = makeParty();
     guardian.equippedItemIds.weapon = null;
 
-    const replaced = equipShopItem(guardian, "item.hunter_bow", inventory);
+    const result = equipShopItem(guardian, "item.hunter_bow", inventory);
 
-    expect(replaced).toBeNull();
+    expect(result.ok).toBe(true);
+    expect(result.replacedItemId).toBeNull();
     expect(guardian.equippedItemIds.weapon).toBe("item.hunter_bow");
     expect(inventory.items).toEqual([]);
   });
@@ -173,11 +174,26 @@ describe("shop item resolution", () => {
     const inventory = createInventory();
     const [guardian] = makeParty();
 
-    const replaced = equipShopItem(guardian, "item.hunter_bow", inventory);
+    const result = equipShopItem(guardian, "item.hunter_bow", inventory);
 
-    expect(replaced).toBe("item.iron_sword");
+    expect(result.ok).toBe(true);
+    expect(result.replacedItemId).toBe("item.iron_sword");
     expect(guardian.equippedItemIds.weapon).toBe("item.hunter_bow");
     expect(inventory.items).toEqual(["item.iron_sword"]);
+  });
+
+  it("blocks an attuned item when the hero is already at the attunement limit", () => {
+    const inventory = createInventory();
+    const [guardian] = makeParty();
+    guardian.equippedItemIds.weapon = "item.runemark_blade";
+    guardian.equippedItemIds.armor = "item.ward_stitched_vest";
+
+    const result = equipShopItem(guardian, "item.quickstep_buckle", inventory);
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toContain("2/2");
+    expect(guardian.equippedItemIds.trinket).toBeNull();
+    expect(inventory.items).toEqual([]);
   });
 });
 
