@@ -8,6 +8,11 @@ export interface ClassDef {
   actionIds: string[];
   startingItems: string[];
   /**
+   * Spell slots this class refreshes each Long Rest (#118). Spell-slot actions consume these;
+   * cantrips and martial actions remain unlimited. Non-casters omit this (treated as 0).
+   */
+  spellSlotsMax?: number;
+  /**
    * Background assigned to this class on the Quick Start path so a one-click party is still
    * complete and flavored (maintainer decision, #53). Custom setup defaults to this too but
    * the player may change it or pick "none".
@@ -32,6 +37,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     hitDieSize: 8,
     actionIds: ["action.mace_strike", "action.mend_wounds", "action.bless"],
     startingItems: ["item.padded_armor"],
+    spellSlotsMax: 2,
     defaultBackgroundId: "background.field_medic",
   },
   "class.arcanist": {
@@ -41,6 +47,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     hitDieSize: 6,
     actionIds: ["action.fire_bolt", "action.frost_shard", "action.arcane_ward"],
     startingItems: ["item.apprentice_wand"],
+    spellSlotsMax: 2,
     defaultBackgroundId: "background.hedge_scholar",
   },
 };

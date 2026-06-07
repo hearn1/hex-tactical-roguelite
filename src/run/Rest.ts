@@ -38,10 +38,23 @@ export function syncHitDiceForPartyMember(pm: PartyMember): void {
   pm.hitDiceRemaining = Math.min(nextTotal, Math.max(0, remaining + Math.max(0, nextTotal - oldTotal)));
 }
 
+export function classSpellSlotsMax(classId: string): number {
+  return CLASS_REGISTRY[classId]?.spellSlotsMax ?? 0;
+}
+
+/** Initializes a hero's spell-slot pool from their class (#118), preserving any remaining slots. */
+export function syncSpellSlotsForPartyMember(pm: PartyMember): void {
+  pm.spellSlotsMax = classSpellSlotsMax(pm.classId);
+  pm.spellSlotsRemaining = Math.min(pm.spellSlotsMax, pm.spellSlotsRemaining ?? pm.spellSlotsMax);
+}
+
 export function ensureRunRestState(run: RunState): void {
   run.campSupplies ??= STARTING_CAMP_SUPPLIES;
   run.shortRestsSinceLongRest ??= 0;
-  for (const pm of run.party) syncHitDiceForPartyMember(pm);
+  for (const pm of run.party) {
+    syncHitDiceForPartyMember(pm);
+    syncSpellSlotsForPartyMember(pm);
+  }
 }
 
 export function shortRestsRemaining(run: RunState): number {
@@ -183,6 +196,8 @@ export function applyLongRest(run: RunState): RestResult {
     const beforeHp = pm.hp;
     pm.hp = pm.maxHp;
     pm.hitDiceRemaining = pm.hitDiceTotal ?? pm.level;
+    pm.spellSlotsMax = classSpellSlotsMax(pm.classId);
+    pm.spellSlotsRemaining = pm.spellSlotsMax;
     hooksRecharged = rechargeOptionalUseHooks(pm) || hooksRecharged;
     heroes.push({
       instanceId: pm.instanceId,

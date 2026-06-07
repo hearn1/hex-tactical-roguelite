@@ -109,6 +109,22 @@ export function resolveAction(
     state.perEncounterUses[action.id] = used + 1;
   }
 
+  // Consume a spell slot if the action requires one (#118). Cantrips and martial actions are free.
+  if (action.resourceType === "spell_slot") {
+    const cost = action.slotCost ?? 1;
+    const remaining = attacker.spellSlotsRemaining ?? 0;
+    if (remaining < cost) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} tries to cast ${action.displayName} but has no spell slots remaining.`,
+        round,
+      });
+      if (!skipHasActed) attacker.hasActed = true;
+      return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
+    }
+    attacker.spellSlotsRemaining = remaining - cost;
+  }
+
   // ── removeConditions (Cleanse) ──
   if (action.effect.type === "removeConditions") {
     target.conditions = [];

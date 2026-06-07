@@ -92,6 +92,26 @@ describe("rest mechanics", () => {
     expect(run.party[0].hitDiceRemaining).toBe(run.party[0].hitDiceTotal);
   });
 
+  it("initializes spell slots from class on new runs (#118)", () => {
+    const run = freshRun();
+    // defaultPartySpecs order: guardian, acolyte, arcanist.
+    expect(run.party.map((p) => p.spellSlotsMax)).toEqual([0, 2, 2]);
+    expect(run.party.map((p) => p.spellSlotsRemaining)).toEqual([0, 2, 2]);
+  });
+
+  it("long rest restores spent spell slots to max (#118)", () => {
+    const run = freshRun();
+    run.campSupplies = 5;
+    const acolyte = run.party[1];
+    acolyte.spellSlotsRemaining = 0;
+
+    const result = applyLongRest(run);
+
+    expect(result.ok).toBe(true);
+    expect(acolyte.spellSlotsRemaining).toBe(acolyte.spellSlotsMax);
+    expect(acolyte.spellSlotsRemaining).toBe(2);
+  });
+
   it("long rest gracefully recharges optional per-encounter use fields", () => {
     const run = freshRun() as ReturnType<typeof freshRun> & { perEncounterUses: Record<string, number> };
     run.perEncounterUses = { "action.test": 1 };
