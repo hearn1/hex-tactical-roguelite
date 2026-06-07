@@ -10,6 +10,7 @@ import { ACTION_REGISTRY } from "../../data/actions.ts";
 import type { ActionDef } from "../../data/actions.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "../../combat/Action.ts";
+import { heroLifeState, resolveDeathSaveTurn } from "../../combat/DeathSaves.ts";
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
 import { processTurnStart } from "../../combat/Condition.ts";
 import { resolveOncePerCombatBonus } from "../../combat/ItemHooks.ts";
@@ -360,7 +361,8 @@ export class CombatScreen {
     }
 
     for (const unit of cs.units) {
-      if (unit.hp <= 0) continue;
+      if (unit.team === "enemy" && unit.hp <= 0) continue;
+      if (unit.team === "hero" && heroLifeState(unit) === "dead") continue;
       const isActive = activeUnit !== null && activeUnit.instanceId === unit.instanceId;
       this.drawUnitToken(ctx, unit, isActive);
     }
@@ -394,7 +396,11 @@ export class CombatScreen {
 
     if (activeUnit && activeUnit.team === "hero" && activeUnit.movePointsRemaining > 0 && !cs.targetingActionId) {
       const occ = new Set(
-        cs.units.filter((u) => u.hp > 0 && u.instanceId !== activeUnit.instanceId).map((u) => hexKey(u.pos)),
+        cs.units.filter((u) => {
+          if (u.instanceId === activeUnit.instanceId) return false;
+          if (u.hp > 0) return true;
+          return u.team === "hero" && (u.heroLifeState === "downed" || u.heroLifeState === "stable");
+        }).map((u) => hexKey(u.pos)),
       );
       for (const [key] of reachableHexes(activeUnit.pos, activeUnit.movePointsRemaining, occ, new Set(cs.gridKeys))) {
         reachableKeys.add(key);
@@ -561,7 +567,11 @@ export class CombatScreen {
 
   private async handleMoveClick(hex: Hex, cs: CombatState, unit: UnitInstance): Promise<void> {
     const occ = new Set(
-      cs.units.filter((u) => u.hp > 0 && u.instanceId !== unit.instanceId).map((u) => hexKey(u.pos)),
+      cs.units.filter((u) => {
+        if (u.instanceId === unit.instanceId) return false;
+        if (u.hp > 0) return true;
+        return u.team === "hero" && (u.heroLifeState === "downed" || u.heroLifeState === "stable");
+      }).map((u) => hexKey(u.pos)),
     );
     const reachable = reachableHexes(unit.pos, unit.movePointsRemaining, occ, new Set(cs.gridKeys));
     const key = hexKey(hex);
@@ -595,41 +605,100 @@ export class CombatScreen {
   private advanceTurn(): void {
     const cs = gameState.combat;
     if (!cs) return;
-    cs.activeIndex = (cs.activeIndex + 1) % cs.turnQueue.length;
-    if (cs.activeIndex === 0) {
-      cs.round++;
-    }
-    const active = this.getActiveUnit();
-    if (active) {
-      active.movePointsRemaining = active.stats.move;
-      active.hasActed = false;
-      active.reactionUsedThisTurn = false;
-      // Item hook: first-turn bonus on round 1 (e.g. Quickstep Buckle).
-      if (cs.round === 1 && active.team === "hero") {
-        const turnResult = resolveOncePerCombatBonus(active, "firstTurn", cs);
-        if (turnResult.moveBonus) {
-          active.movePointsRemaining += turnResult.moveBonus;
-        }
+
+    const maxSkips = cs.turnQueue.length + 2;
+    for (let i = 0; i < maxSkips; i++) {
+      if (cs.turnQueue.length === 0) return;
+
+      cs.activeIndex = (cs.activeIndex + 1) % cs.turnQueue.length;
+      if (cs.activeIndex === 0) cs.round++;
+
+      const active = this.getActiveUnit();
+      if (!active) return;
+
+      const ls = heroLifeState(active);
+
+      if (ls === "dead") {
+        removeDefeatedFromQueue(cs);
+        checkVictoryDefeat(cs);
+        if (cs.status !== "active") return;
+        continue;
       }
-      const expired = processTurnStart(active);
-      for (const condId of expired) {
+
+      if (ls === "downed") {
+        const result = resolveDeathSaveTurn(active, cs, gameState.rng);
+        if (result === "dead") {
+          removeDefeatedFromQueue(cs);
+          checkVictoryDefeat(cs);
+          if (cs.status !== "active") return;
+          continue;
+        }
+        if (result === "stable") {
+          checkVictoryDefeat(cs);
+          if (cs.status !== "active") return;
+          continue;
+        }
+        if (result === "revived") {
+          this.setupNormalTurnStart(active, cs);
+          return;
+        }
+        // still_downed: skip
+        continue;
+      }
+
+      if (ls === "stable") {
         cs.log.push({
           kind: "turn_start",
-          text: `[T${cs.round}] ${active.displayName}'s ${condId} expired.`,
+          text: `[T${cs.round}] ${active.displayName} is stable and cannot act this combat.`,
           round: cs.round,
         });
+        checkVictoryDefeat(cs);
+        if (cs.status !== "active") return;
+        continue;
       }
+
+      // Normal turn (standing hero or enemy).
+      this.setupNormalTurnStart(active, cs);
+      return;
+    }
+  }
+
+  private setupNormalTurnStart(active: UnitInstance, cs: CombatState): void {
+    active.movePointsRemaining = active.stats.move;
+    active.hasActed = false;
+    active.reactionUsedThisTurn = false;
+    if (cs.round === 1 && active.team === "hero") {
+      const turnResult = resolveOncePerCombatBonus(active, "firstTurn", cs);
+      if (turnResult.moveBonus) {
+        active.movePointsRemaining += turnResult.moveBonus;
+      }
+    }
+    const expired = processTurnStart(active);
+    for (const condId of expired) {
       cs.log.push({
         kind: "turn_start",
-        text: `[T${cs.round}] ${active.displayName}'s turn begins.`,
+        text: `[T${cs.round}] ${active.displayName}'s ${condId} expired.`,
         round: cs.round,
       });
     }
+    cs.log.push({
+      kind: "turn_start",
+      text: `[T${cs.round}] ${active.displayName}'s turn begins.`,
+      round: cs.round,
+    });
   }
 
   private async processTurns(): Promise<void> {
     const cs = gameState.combat;
     if (!cs) return;
+
+    // Combat may have ended (e.g., from death saves) before the first enemy turn.
+    if (cs.status !== "active") {
+      this.drawCanvas();
+      this.updatePanels();
+      this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat", cs);
+      return;
+    }
 
     while (cs.status === "active") {
       const active = this.getActiveUnit();
@@ -677,6 +746,11 @@ export class CombatScreen {
     this.enemyProcessing = false;
     this.drawCanvas();
     this.updatePanels();
+
+    // Show banner if combat ended (e.g., all heroes died from death saves during advanceTurn).
+    if (cs.status !== "active") {
+      this.showBanner(cs.status === "victory" ? "Victory!" : "Defeat", cs);
+    }
   }
 
   private delay(ms: number): Promise<void> {
@@ -928,14 +1002,14 @@ export class CombatScreen {
       if (cs.turnQueue[cs.activeIndex] === id && unit.hp > 0) {
         entry.classList.add("active");
       }
-      const hpText = unit.hp > 0 ? `${unit.hp}/${unit.stats.maxHp}` : "DEFEATED";
+      const hpText = heroTurnPanelLabel(unit);
       let label = `${unit.displayName} (${hpText})`;
       if (unit.archetypeId) {
         const archDef = ARCHETYPE_REGISTRY[unit.archetypeId];
         if (archDef) label = `${unit.displayName} [${archDef.displayName}] (${hpText})`;
       }
       entry.textContent = label;
-      entry.style.textDecoration = unit.hp <= 0 ? "line-through" : "none";
+      entry.style.textDecoration = (unit.team === "enemy" ? unit.hp <= 0 : heroLifeState(unit) === "dead") ? "line-through" : "none";
       panel.appendChild(entry);
     }
   }
@@ -994,6 +1068,16 @@ export class CombatScreen {
 
     const activeUnit = this.getActiveUnit();
     if (!activeUnit || activeUnit.team !== "hero") return;
+
+    // Downed/stable heroes cannot act — show status text instead of buttons.
+    const ls = heroLifeState(activeUnit);
+    if (ls === "downed" || ls === "stable") {
+      const msg = document.createElement("div");
+      msg.style.cssText = "padding:6px;color:#aaa;font-style:italic;";
+      msg.textContent = ls === "downed" ? "Rolling death save…" : "Stable — cannot act this combat.";
+      bar.appendChild(msg);
+      return;
+    }
 
     const actionIds = this.getActionIds(activeUnit);
 
@@ -1121,6 +1205,21 @@ export class CombatScreen {
   }
 }
 
+function heroTurnPanelLabel(unit: UnitInstance): string {
+  if (unit.team === "enemy") {
+    return unit.hp > 0 ? `${unit.hp}/${unit.stats.maxHp}` : "DEFEATED";
+  }
+  const ls = heroLifeState(unit);
+  if (ls === "downed") {
+    const s = unit.deathSaves?.successes ?? 0;
+    const f = unit.deathSaves?.failures ?? 0;
+    return `DOWNED ${s}S/${f}F`;
+  }
+  if (ls === "stable") return "STABLE";
+  if (ls === "dead") return "DEAD";
+  return unit.hp > 0 ? `${unit.hp}/${unit.stats.maxHp}` : `${unit.hp}/${unit.stats.maxHp}`;
+}
+
 function snapshotCombat(cs: CombatState): CombatSnapshot {
   return {
     units: new Map(
@@ -1165,7 +1264,12 @@ function defeatedUnitIds(before: CombatSnapshot, cs: CombatState): string[] {
   return cs.units
     .filter((unit) => {
       const prev = before.units.get(unit.instanceId);
-      return prev !== undefined && prev.hp > 0 && unit.hp <= 0;
+      if (!prev || prev.hp <= 0 || unit.hp > 0) return false;
+      if (unit.team === "hero") {
+        // Heroes that just became downed are NOT defeated — only confirmed dead.
+        return heroLifeState(unit) === "dead";
+      }
+      return true;
     })
     .map((unit) => unit.instanceId);
 }

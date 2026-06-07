@@ -4,6 +4,7 @@ import { ENEMY_REGISTRY } from "../data/enemies.ts";
 import { distance, hexKey, neighbors } from "../core/hex.ts";
 import { reachableHexes } from "./Movement.ts";
 import { resolveAction, validTargets, resolveBossTelegraph } from "./Action.ts";
+import { isTargetableByEnemies, isStandingHero } from "./DeathSaves.ts";
 
 const BOSS_ROTATION = ["action.roar", "action.massive_swing", "action.ground_slam"] as const;
 
@@ -16,12 +17,12 @@ const AMBUSH_BURST_BONUS = 3;
 const AMBUSH_HOLD_RANGE = 2;
 
 function pickTarget(unit: UnitInstance, state: CombatState): UnitInstance | null {
-  // Honor forced target (taunt) - must target the unit that taunted this enemy.
+  // Honor forced target (taunt) — only if that hero is still a valid standing target.
   if (unit.forcedTargetId) {
-    const forced = state.units.find((u) => u.instanceId === unit.forcedTargetId && u.hp > 0);
+    const forced = state.units.find((u) => u.instanceId === unit.forcedTargetId && isTargetableByEnemies(u));
     if (forced) return forced;
   }
-  const heroes = state.units.filter((u) => u.team === "hero" && u.hp > 0);
+  const heroes = state.units.filter((u) => u.team === "hero" && isTargetableByEnemies(u));
   if (heroes.length === 0) return null;
   heroes.sort((a, b) => {
     if (a.hp !== b.hp) return a.hp - b.hp;
@@ -34,7 +35,7 @@ function pickTarget(unit: UnitInstance, state: CombatState): UnitInstance | null
 }
 
 function pickAdjacentTarget(unit: UnitInstance, state: CombatState): UnitInstance | null {
-  const heroes = state.units.filter((u) => u.team === "hero" && u.hp > 0 && distance(unit.pos, u.pos) <= 1);
+  const heroes = state.units.filter((u) => u.team === "hero" && isTargetableByEnemies(u) && distance(unit.pos, u.pos) <= 1);
   if (heroes.length === 0) return null;
   heroes.sort((a, b) => a.hp - b.hp);
   return heroes[0];
@@ -42,7 +43,14 @@ function pickAdjacentTarget(unit: UnitInstance, state: CombatState): UnitInstanc
 
 function buildOccupied(unit: UnitInstance, state: CombatState): Set<string> {
   return new Set(
-    state.units.filter((u) => u.hp > 0 && u.instanceId !== unit.instanceId).map((u) => hexKey(u.pos)),
+    state.units
+      .filter((u) => {
+        if (u.instanceId === unit.instanceId) return false;
+        if (u.hp > 0) return true;
+        // Downed/stable heroes still physically occupy their hex.
+        return u.team === "hero" && (u.heroLifeState === "downed" || u.heroLifeState === "stable");
+      })
+      .map((u) => hexKey(u.pos)),
   );
 }
 
@@ -230,12 +238,12 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
   }
 }
 
-/** A hero is "exposed" when no living ally stands adjacent to shield them. */
+/** A hero is "exposed" when no standing ally stands adjacent to shield them. */
 function isExposed(hero: UnitInstance, state: CombatState): boolean {
   return !state.units.some(
     (u) =>
       u.team === "hero" &&
-      u.hp > 0 &&
+      isStandingHero(u) &&
       u.instanceId !== hero.instanceId &&
       distance(hero.pos, u.pos) <= 1,
   );
@@ -267,7 +275,7 @@ function executeAmbusherTurn(unit: UnitInstance, state: CombatState, rng: () => 
   const action = ACTION_REGISTRY[enemyDef.actionIds[0]];
   if (!action) return;
 
-  const heroes = state.units.filter((u) => u.team === "hero" && u.hp > 0);
+  const heroes = state.units.filter((u) => u.team === "hero" && isTargetableByEnemies(u));
   if (heroes.length === 0) return;
 
   const order = ambushTargetOrder(unit);

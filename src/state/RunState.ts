@@ -43,6 +43,11 @@ export interface PartyMember {
   spellSlotsMax?: number;
   /** Spell slots remaining; persists across combats in the same run. Restored by Long Rest. */
   spellSlotsRemaining?: number;
+  /**
+   * Hero is dead/defeated for the rest of this run. Persists in party record for summary/UI
+   * continuity but the hero does not enter future combats or receive healing/rest benefits.
+   */
+  deadForRun?: boolean;
 }
 
 /**

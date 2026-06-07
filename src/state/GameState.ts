@@ -227,6 +227,7 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     preparedActionIds: pm.preparedActionIds ? [...pm.preparedActionIds] : [],
     spellSlotsMax: pm.spellSlotsMax ?? classSpellSlotsMax(pm.classId),
     spellSlotsRemaining: pm.spellSlotsRemaining ?? pm.spellSlotsMax ?? classSpellSlotsMax(pm.classId),
+    heroLifeState: "standing",
   };
   unit.stats = computeStats(unit);
   if (pm.hp >= pm.maxHp) {
@@ -251,8 +252,9 @@ export function createCombatFromRun(
   const gridKeys = hexesWithinRange({ q: 0, r: 0 }, 3).map(hexKey);
   const units: UnitInstance[] = [];
 
-  for (let i = 0; i < run.party.length; i++) {
-    const pm = run.party[i];
+  const activeParty = run.party.filter((pm) => !pm.deadForRun);
+  for (let i = 0; i < activeParty.length; i++) {
+    const pm = activeParty[i];
     const pos = HERO_SPAWN_POSITIONS[Math.min(i, HERO_SPAWN_POSITIONS.length - 1)];
     units.push(createHeroFromPartyMember(pm, pos));
   }
@@ -354,14 +356,26 @@ export function createCombatFromRun(
 export function syncPartyFromCombat(combat: CombatState, run: RunState): void {
   for (const pm of run.party) {
     const unit = combat.units.find((u) => u.instanceId === pm.instanceId);
-    if (!unit) continue;
-    pm.hp = unit.hp > 0 ? unit.hp : 1;
+    if (!unit) {
+      // deadForRun heroes were skipped when building the combat — preserve their pm state.
+      continue;
+    }
     pm.maxHp = unit.stats.maxHp;
     pm.xp = unit.xp;
     pm.level = unit.level;
     pm.bonusStats = { ...(unit.bonusStats ?? {}) };
     pm.equippedItemIds = { ...unit.equippedItemIds };
     if (unit.spellSlotsRemaining !== undefined) pm.spellSlotsRemaining = unit.spellSlotsRemaining;
+
+    if (unit.heroLifeState === "dead") {
+      pm.deadForRun = true;
+      pm.hp = 0;
+    } else {
+      pm.deadForRun = false;
+      // Downed/stable survivors after victory return to next combat at 1 HP minimum.
+      pm.hp = Math.max(1, Math.min(unit.hp, unit.stats.maxHp));
+    }
+
     syncHitDiceForPartyMember(pm);
   }
 }

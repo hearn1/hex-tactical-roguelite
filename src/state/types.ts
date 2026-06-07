@@ -20,6 +20,13 @@ export type ScreenId =
 
 export type Team = "hero" | "enemy";
 
+export type HeroLifeState = "standing" | "downed" | "stable" | "dead";
+
+export interface DeathSaveState {
+  successes: number;
+  failures: number;
+}
+
 export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed" | "rallied" | "warded" | "empowered" | "taunted" | "mesmerized" | "reckless" | "armored" | "sanctuary" | "hasted" | "counterspelled";
 
 /** Element type for VFX tinting (fire, frost, arcane, heal, physical, dark). */
@@ -120,6 +127,13 @@ export interface UnitInstance {
   spellSlotsRemaining?: number;
   /** Spell slots refreshed each Long Rest (#118), for display. Copied from the party member. */
   spellSlotsMax?: number;
+  /**
+   * Hero-only combat life state. Undefined normalises to "standing" for save compatibility.
+   * Enemies use hp <= 0 as ordinary defeat and never set this field.
+   */
+  heroLifeState?: HeroLifeState;
+  /** Hero-only death-save counters. Meaningful when heroLifeState === "downed". */
+  deathSaves?: DeathSaveState;
 }
 
 export interface CombatLogEntry {
