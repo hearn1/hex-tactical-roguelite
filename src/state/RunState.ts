@@ -39,6 +39,10 @@ export interface PartyMember {
   spellsKnown?: string[];
   /** Action ids the hero has prepared for the current day (long rest cycle). */
   preparedActionIds?: string[];
+  /** Spell slots refreshed each Long Rest (#118). Set from the class; non-casters are 0. */
+  spellSlotsMax?: number;
+  /** Spell slots remaining; persists across combats in the same run. Restored by Long Rest. */
+  spellSlotsRemaining?: number;
 }
 
 /**

@@ -25,7 +25,7 @@ import { resetLevelUpScreenState } from "../ui/screens/LevelUpScreen.ts";
 import { resetInventoryScreenState } from "../ui/screens/InventoryScreen.ts";
 import { resetEventScreenState } from "../ui/screens/EventScreen.ts";
 import { resetRecruitScreenState } from "../ui/screens/RecruitScreen.ts";
-import { syncHitDiceForPartyMember } from "../run/Rest.ts";
+import { syncHitDiceForPartyMember, classSpellSlotsMax } from "../run/Rest.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -77,6 +77,8 @@ function createHeroInstance(instanceId: string, classId: ClassId, name: string, 
     bonusStats: {},
     spellsKnown: [],
     preparedActionIds: [],
+    spellSlotsMax: classSpellSlotsMax(classId),
+    spellSlotsRemaining: classSpellSlotsMax(classId),
   };
   equipStartingItems(unit);
   unit.stats = computeStats(unit);
@@ -223,6 +225,8 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     firstHealDone: false,
     spellsKnown: pm.spellsKnown ? [...pm.spellsKnown] : [],
     preparedActionIds: pm.preparedActionIds ? [...pm.preparedActionIds] : [],
+    spellSlotsMax: pm.spellSlotsMax ?? classSpellSlotsMax(pm.classId),
+    spellSlotsRemaining: pm.spellSlotsRemaining ?? pm.spellSlotsMax ?? classSpellSlotsMax(pm.classId),
   };
   unit.stats = computeStats(unit);
   if (pm.hp >= pm.maxHp) {
@@ -357,6 +361,7 @@ export function syncPartyFromCombat(combat: CombatState, run: RunState): void {
     pm.level = unit.level;
     pm.bonusStats = { ...(unit.bonusStats ?? {}) };
     pm.equippedItemIds = { ...unit.equippedItemIds };
+    if (unit.spellSlotsRemaining !== undefined) pm.spellSlotsRemaining = unit.spellSlotsRemaining;
     syncHitDiceForPartyMember(pm);
   }
 }

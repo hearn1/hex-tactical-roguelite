@@ -116,6 +116,10 @@ export interface UnitInstance {
   spellsKnown?: string[];
   /** Action ids the hero has prepared for this day. Copied from party member. */
   preparedActionIds?: string[];
+  /** Spell slots remaining for spell-slot actions (#118). Copied from the party member; synced back. */
+  spellSlotsRemaining?: number;
+  /** Spell slots refreshed each Long Rest (#118), for display. Copied from the party member. */
+  spellSlotsMax?: number;
 }
 
 export interface CombatLogEntry {

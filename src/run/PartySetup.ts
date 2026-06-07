@@ -5,7 +5,7 @@ import { DEFAULT_MAP_TEMPLATE_ID, getMapTemplate } from "../data/nodes.ts";
 import { abilityMod, createDefaultAbilityScores, isCompleteAbilityScores } from "../data/abilities.ts";
 import type { AbilityScores } from "../data/abilities.ts";
 import { createInventory } from "./Inventory.ts";
-import { STARTING_CAMP_SUPPLIES, syncHitDiceForPartyMember } from "./Rest.ts";
+import { STARTING_CAMP_SUPPLIES, syncHitDiceForPartyMember, syncSpellSlotsForPartyMember } from "./Rest.ts";
 
 /**
  * Number of heroes the run-setup flow builds.
@@ -120,6 +120,7 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
       preparedActionIds: [],
     };
     syncHitDiceForPartyMember(member);
+    syncSpellSlotsForPartyMember(member);
     return member;
   });
 }

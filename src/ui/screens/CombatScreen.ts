@@ -946,7 +946,12 @@ export class CombatScreen {
       return enemyDef ? [...enemyDef.actionIds] : [];
     }
     const classDef = CLASS_REGISTRY[unit.defId];
-    const cantrips = classDef ? classDef.actionIds.filter((aid) => ACTION_REGISTRY[aid]?.isCantrip) : [];
+    const cantrips = classDef
+      ? classDef.actionIds.filter((aid) => {
+          const a = ACTION_REGISTRY[aid];
+          return a?.isCantrip || a?.resourceType === "spell_slot";
+        })
+      : [];
     const prepared = unit.preparedActionIds ?? [];
     const grantedActions: string[] = [];
     // Archetype action.
@@ -1002,6 +1007,14 @@ export class CombatScreen {
       const rangeInfo = actionDef.targetType === "self" ? "Self" : `Range ${actionDef.range}`;
       btn.title = `${actionDef.displayName} — ${rangeInfo}. ${actionDef.description}`;
 
+      const isSpellSlot = actionDef.resourceType === "spell_slot";
+      const slotCost = actionDef.slotCost ?? 1;
+      const slotsLeft = activeUnit.spellSlotsRemaining ?? 0;
+      const noSlots = isSpellSlot && slotsLeft < slotCost;
+      if (isSpellSlot) {
+        btn.textContent = `${actionDef.displayName} (${slotsLeft})`;
+      }
+
       if (cs.targetingActionId === actionId) {
         btn.classList.add("targeting");
       }
@@ -1020,6 +1033,10 @@ export class CombatScreen {
         btn.classList.add("disabled");
         btn.disabled = true;
         btn.title = "No charges remaining this encounter";
+      } else if (noSlots) {
+        btn.classList.add("disabled");
+        btn.disabled = true;
+        btn.title = "No spell slots remaining — Long Rest to recover.";
       } else {
         const targets = validTargets(actionDef, activeUnit, cs);
         if (targets.length === 0) {

@@ -73,4 +73,40 @@ describe("Action", () => {
       expect(targets.map((t) => t.instanceId)).not.toContain("h2");
     });
   });
+
+  describe("spell slots (#118)", () => {
+    function castState(caster: UnitInstance, ally: UnitInstance): CombatState {
+      return { round: 1, activeIndex: 0, turnQueue: ["a1", "a2"], units: [caster, ally], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null, perEncounterUses: {} };
+    }
+
+    it("casting a spell-slot action decrements the caster's slots", () => {
+      const rng = createRng(42);
+      const acolyte = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.acolyte", spellSlotsMax: 2, spellSlotsRemaining: 2, stats: { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 5 } });
+      const ally = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, hp: 10, stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 } });
+      const result = resolveAction(ACTION_REGISTRY["action.mend_wounds"], acolyte, ally, castState(acolyte, ally), rng);
+      expect(acolyte.spellSlotsRemaining).toBe(1);
+      expect(result.kind).toBe("heal");
+      expect(ally.hp).toBeGreaterThan(10);
+    });
+
+    it("blocks the cast and leaves the target unchanged when no slots remain", () => {
+      const rng = createRng(42);
+      const acolyte = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.acolyte", spellSlotsMax: 2, spellSlotsRemaining: 0, stats: { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 5 } });
+      const ally = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, hp: 10, stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 } });
+      const state = castState(acolyte, ally);
+      const result = resolveAction(ACTION_REGISTRY["action.mend_wounds"], acolyte, ally, state, rng);
+      expect(result.kind).toBe("miss");
+      expect(ally.hp).toBe(10);
+      expect(acolyte.spellSlotsRemaining).toBe(0);
+      expect(state.log.some((e) => e.text.includes("no spell slots remaining"))).toBe(true);
+    });
+
+    it("does not consume slots for cantrips", () => {
+      const rng = createRng(42);
+      const acolyte = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.acolyte", spellSlotsMax: 2, spellSlotsRemaining: 2, stats: { maxHp: 14, armor: 12, move: 3, might: 4, agility: 1, spirit: 1 } });
+      const enemy = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, team: "enemy", hp: 10, stats: { maxHp: 18, armor: 5, move: 3, might: 0, agility: 0, spirit: 0 } });
+      resolveAction(ACTION_REGISTRY["action.mace_strike"], acolyte, enemy, castState(acolyte, enemy), rng);
+      expect(acolyte.spellSlotsRemaining).toBe(2);
+    });
+  });
 });

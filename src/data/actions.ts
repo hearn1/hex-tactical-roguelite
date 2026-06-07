@@ -14,6 +14,15 @@ export interface ActionDef {
   accuracyStat?: "might" | "agility" | "spirit";
   isCantrip?: boolean;
   charges?: number;
+  /**
+   * Resource the action draws on (#118). "cantrip"/"martial" are unlimited; "spell_slot" consumes
+   * the caster's per-Long-Rest spell slots. Untagged actions behave as unlimited.
+   */
+  resourceType?: "cantrip" | "spell_slot" | "martial";
+  /** Spell slots consumed per cast when `resourceType` is "spell_slot" (defaults to 1). */
+  slotCost?: number;
+  /** Nominal spell level, metadata for display/future scaling. */
+  spellLevel?: number;
   effect:
     | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "heal"; formula: string; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
@@ -42,7 +51,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     targetType: "ally",
     range: 3,
     accuracyStat: "spirit",
-    isCantrip: true,
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
     effect: { type: "heal", formula: "1d6 + spirit" },
   },
   "action.fire_bolt": {
@@ -155,7 +166,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "ally",
     range: 3,
-    isCantrip: true,
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
     effect: { type: "applyCondition", conditionId: "blessed", duration: 2 },
   },
   "action.frost_shard": {
@@ -176,7 +189,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "ally_or_self",
     range: 3,
-    isCantrip: true,
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
     effect: { type: "applyCondition", conditionId: "guarded", duration: 1 },
   },
   "action.arrow_shot": {
