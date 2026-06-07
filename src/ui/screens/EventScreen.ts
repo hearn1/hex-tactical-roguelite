@@ -8,9 +8,11 @@ import {
   resolveEventChoice,
   resolveEventChoiceWithHero,
   selectEventForNode,
+  eventDcBonus,
 } from "../../run/Events.ts";
 import { checkModifierFor, rollNeeded, pickBestHero } from "../../run/AbilityCheck.ts";
 import { CLASS_REGISTRY } from "../../data/classes.ts";
+import { ABILITY_FULL_LABELS } from "../../data/abilities.ts";
 
 // Screen state lives at module scope because App rebuilds the EventScreen instance on every
 // render; per-instance fields would reset the picker/result phase between clicks. `activeNodeId`
@@ -164,13 +166,15 @@ export class EventScreen {
   private renderCheckPicker(choice: EventChoice, checkEffect: CheckEffect): HTMLElement {
     const run = gameState.run!;
     const check = checkEffect.check;
-    const statName = check.stat.charAt(0).toUpperCase() + check.stat.slice(1);
+    const statName = ABILITY_FULL_LABELS[check.stat];
+    const adjustedDc = check.dc + eventDcBonus(run);
+    const bestHero = pickBestHero(run.party, check.stat);
 
     const wrap = document.createElement("div");
     wrap.style.cssText = "display:flex;flex-direction:column;align-items:center;gap:8px;";
 
     const label = document.createElement("div");
-    label.textContent = `${statName} check — DC ${check.dc}`;
+    label.textContent = `${statName} check — DC ${adjustedDc}`;
     label.style.cssText = "font-size:16px;font-weight:bold;margin-bottom:2px;";
     wrap.appendChild(label);
 
@@ -185,12 +189,14 @@ export class EventScreen {
       const classDef = CLASS_REGISTRY[pm.classId];
       const mod = checkModifierFor(pm, check.stat);
       const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
-      const need = rollNeeded(mod, check.dc);
+      const need = rollNeeded(mod, adjustedDc);
       const needStr = need <= 1 ? "auto" : need > 20 ? "impossible" : `need ${need}+`;
       const down = pm.hp <= 0;
+      const isRecommended = !down && pm.instanceId === bestHero?.instanceId;
 
       const btn = document.createElement("button");
-      btn.textContent = `${classDef?.displayName ?? pm.classId} — ${pm.displayName}  (${statName} ${modStr} · ${down ? "down" : needStr})`;
+      const recommendedTag = isRecommended ? " ★ Recommended ·" : "";
+      btn.textContent = `${classDef?.displayName ?? pm.classId} — ${pm.displayName}  (${statName} ${modStr} ·${recommendedTag} ${down ? "down" : needStr})`;
       btn.style.cssText = "padding:8px 16px;font-size:13px;width:320px;";
       btn.setAttribute("data-testid", `check-hero-${pm.instanceId}`);
       if (down) {

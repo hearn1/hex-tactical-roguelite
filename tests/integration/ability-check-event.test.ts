@@ -30,14 +30,14 @@ describe("ability-check event flow (F23)", () => {
     clickTestId("event-choice-leap-across");
 
     const text = root.textContent ?? "";
-    expect(text).toContain("Agility check");
+    expect(text).toContain("Dexterity check");
     expect(text).toContain("DC 12");
 
-    // Each living hero button shows its agility modifier and the number it must roll.
+    // Each living hero button shows its dexterity modifier and the number it must roll.
     const heroBtn = root.querySelector('[data-testid="check-hero-hero_001"]');
     expect(heroBtn).not.toBeNull();
     const label = heroBtn!.textContent ?? "";
-    expect(label).toMatch(/Agility [+-]\d+/);
+    expect(label).toMatch(/Dexterity [+-]\d+/);
     expect(label).toMatch(/need \d+\+|auto|impossible/);
   });
 
@@ -66,7 +66,7 @@ describe("ability-check event flow (F23)", () => {
 
     const text = root.textContent ?? "";
     // Log line reports the d20, modifier, total, DC and an outcome.
-    expect(text).toMatch(/Agility check: d20 \d+ [+-]\d+ = \d+ vs DC 12 — (Success|Partial success|Failure)\./);
+    expect(text).toMatch(/Dexterity check: d20 \d+ [+-]\d+ = \d+ vs DC 12 — (Success|Partial success|Failure)\./);
 
     // An outcome branch ran: gold changed (success/partial) or a hero took damage (failure).
     const goldChanged = gameState.run!.gold !== goldBefore;

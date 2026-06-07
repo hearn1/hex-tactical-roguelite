@@ -225,7 +225,7 @@ describe("DataRepository validation rejects broken references", () => {
     const original = [...choice.effects];
     choice.effects = [{
       type: "check",
-      check: { stat: "agility", dc: 12 },
+      check: { stat: "dex", dc: 12 },
       onSuccess: [{ type: "potion", potionId: "potion.nonexistent" }],
       onFailure: [{ type: "noop" }],
     }];
@@ -243,7 +243,7 @@ describe("DataRepository validation rejects broken references", () => {
     const original = [...choice.effects];
     choice.effects = [{
       type: "check",
-      check: { stat: "agility", dc: 0 },
+      check: { stat: "dex", dc: 0 },
       onSuccess: [{ type: "noop" }],
       onFailure: [{ type: "noop" }],
     }];
@@ -374,5 +374,44 @@ describe("DataRepository validation rejects broken references", () => {
     const repo = new DataRepository();
     const report = repo.validate();
     expect(report.valid).toBe(false);
+  });
+
+  it("rejects legacy check stat 'might' — must use AbilityKey", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.crumbling_bridge")!;
+    const choice = ev.choices[0];
+    const original = [...choice.effects];
+    // @ts-expect-error — deliberately injecting a legacy stat to test the validator
+    choice.effects = [{ type: "check", check: { stat: "might", dc: 12 }, onSuccess: [{ type: "noop" }], onFailure: [{ type: "noop" }] }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes('"might"') && e.includes("valid ability"))).toBe(true);
+    choice.effects = original;
+  });
+
+  it("accepts stat_boost with legacy combat stat 'spirit'", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const report = repo.validate();
+    expect(report.valid).toBe(true);
+    // event.strange_shrine and others use stat_boost: spirit — validate must not reject them
+    const shrine = repo.getEvent("event.strange_shrine")!;
+    const prayChoice = shrine.choices.find((c) => c.id === "event.strange_shrine.pray")!;
+    expect(prayChoice.effects[0]).toMatchObject({ type: "stat_boost", stat: "spirit" });
+  });
+
+  it("rejects an invalid ability key in a check stat", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const ev = repo.getEvent("event.crumbling_bridge")!;
+    const choice = ev.choices[0];
+    const original = [...choice.effects];
+    // @ts-expect-error — deliberately injecting a bad ability key
+    choice.effects = [{ type: "check", check: { stat: "luck", dc: 12 }, onSuccess: [{ type: "noop" }], onFailure: [{ type: "noop" }] }];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes('"luck"'))).toBe(true);
+    choice.effects = original;
   });
 });

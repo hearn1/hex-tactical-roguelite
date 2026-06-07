@@ -11,6 +11,7 @@ import { ENCOUNTER_REGISTRY, ENCOUNTER_POOLS } from "./encounters.ts";
 import { hexesWithinRange, hexKey } from "../core/hex.ts";
 import type { EventDef, EventEffect } from "./events.ts";
 import { EVENT_REGISTRY, EVENT_POOLS } from "./events.ts";
+import { ABILITY_KEYS } from "./abilities.ts";
 import type { ItemDef } from "./items.ts";
 import { ITEM_REGISTRY } from "./items.ts";
 import type { NodeDef } from "./nodes.ts";
@@ -226,6 +227,7 @@ export class DataRepository {
     const allPotionIds = new Set(this.potions.keys());
     const allBackgroundIds = new Set(this.backgrounds.keys());
     const checkStats = new Set(["might", "agility", "spirit"]);
+    const abilityKeys = new Set<string>(ABILITY_KEYS);
     const statKeys = new Set(["maxHp", "armor", "move", "might", "agility", "spirit"]);
     const eventTags = new Set(["risk", "social", "treasure", "heal", "train", "moral"]);
     const environmentThemeIds = new Set(Object.keys(ENVIRONMENT_THEMES));
@@ -430,8 +432,8 @@ export class DataRepository {
         errors.push(`${where}: stat "${effect.stat}" is not a valid check stat`);
       } else if (effect.type === "check") {
         if (effect.check.dc <= 0) errors.push(`${where}: check DC must be > 0`);
-        if (!checkStats.has(effect.check.stat)) {
-          errors.push(`${where}: check stat "${effect.check.stat}" is not a valid check stat`);
+        if (!abilityKeys.has(effect.check.stat)) {
+          errors.push(`${where}: check stat "${effect.check.stat}" is not a valid ability`);
         }
         for (const e of effect.onSuccess) validateEventEffect(e, `${where} (onSuccess)`);
         for (const e of effect.onFailure) validateEventEffect(e, `${where} (onFailure)`);
