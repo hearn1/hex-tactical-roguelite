@@ -1,5 +1,5 @@
 import type { App } from "../App.ts";
-import { gameState, routeAfterXp } from "../../state/GameState.ts";
+import { gameState, routeAfterXp, syncPartyFromCombat } from "../../state/GameState.ts";
 import type { CombatReward, RewardCard } from "../../run/RewardManager.ts";
 import { generateReward, applyGoldModifiers, applyXpModifiers, applyEliteRewardMultiplier, applyDifficultyToReward, applyDifficultyToXp } from "../../run/RewardManager.ts";
 import { applyXp } from "../../run/Leveling.ts";
@@ -11,7 +11,7 @@ import { CLASS_REGISTRY } from "../../data/classes.ts";
 import type { UnitInstance } from "../../state/types.ts";
 import { visitNode } from "../../run/MapGraph.ts";
 import { NODE_REGISTRY } from "../../data/nodes.ts";
-import { ensureRunRestState, syncHitDiceForPartyMember } from "../../run/Rest.ts";
+import { ensureRunRestState } from "../../run/Rest.ts";
 import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 
 let rewardCache: CombatReward | null = null;
@@ -340,17 +340,7 @@ export class RewardScreen {
       const cs = gameState.combat;
 
       if (run && cs) {
-        for (const pm of run.party) {
-          const unit = cs.units.find((u) => u.instanceId === pm.instanceId);
-          if (unit) {
-            pm.hp = unit.hp > 0 ? unit.hp : 1;
-            pm.xp = unit.xp;
-            pm.level = unit.level;
-            // Persist the reward-time auto level-up stat gains so chosen upgrades stack on top (F29).
-            pm.bonusStats = { ...unit.bonusStats };
-            syncHitDiceForPartyMember(pm);
-          }
-        }
+        syncPartyFromCombat(cs, run);
         const nd = NODE_REGISTRY[run.mapState.currentNodeId];
         const nodeId = run.mapState.currentNodeId;
         const encounterName = cs.units.find((u) => u.team === "enemy")?.displayName ?? nd?.title ?? "Combat";
