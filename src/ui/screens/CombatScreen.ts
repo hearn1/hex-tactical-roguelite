@@ -9,13 +9,13 @@ import { reachableHexes, findPath } from "../../combat/Movement.ts";
 import { movementCostForHex, applyHazardsForMovementPath, getTerrainType } from "../../combat/Terrain.ts";
 import { ACTION_REGISTRY } from "../../data/actions.ts";
 import type { ActionDef } from "../../data/actions.ts";
-import { CLASS_REGISTRY } from "../../data/classes.ts";
 import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "../../combat/Action.ts";
 import { heroLifeState, resolveDeathSaveTurn } from "../../combat/DeathSaves.ts";
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
 import { processTurnStart } from "../../combat/Condition.ts";
 import { resolveOncePerCombatBonus } from "../../combat/ItemHooks.ts";
-import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
+import { getHeroActionIds, chargesRemaining, isChargeExhausted } from "../../combat/ActionBar.ts";
+import { ITEM_REGISTRY } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
@@ -1043,47 +1043,7 @@ export class CombatScreen {
   }
 
   private getActionIds(unit: UnitInstance): string[] {
-    if (unit.team !== "hero") {
-      const enemyDef = ENEMY_REGISTRY[unit.defId];
-      return enemyDef ? [...enemyDef.actionIds] : [];
-    }
-    const classDef = CLASS_REGISTRY[unit.defId];
-    const cantrips = classDef
-      ? classDef.actionIds.filter((aid) => {
-          const a = ACTION_REGISTRY[aid];
-          return a?.isCantrip || a?.resourceType === "spell_slot";
-        })
-      : [];
-    const prepared = unit.preparedActionIds ?? [];
-    const grantedActions: string[] = [];
-    // Archetype action.
-    if (unit.archetypeId) {
-      const archDef = ARCHETYPE_REGISTRY[unit.archetypeId];
-      if (archDef?.grantedActionId && !grantedActions.includes(archDef.grantedActionId)) {
-        grantedActions.push(archDef.grantedActionId);
-      }
-    }
-    for (const slot of ["weapon", "armor", "trinket"] as const) {
-      const itemId = unit.equippedItemIds[slot];
-      if (!itemId) continue;
-      const itemDef = ITEM_REGISTRY[itemId];
-      if (itemDef?.grantedActionIds) {
-        for (const aid of itemDef.grantedActionIds) {
-          if (!grantedActions.includes(aid)) {
-            grantedActions.push(aid);
-          }
-        }
-      }
-    }
-    const seen = new Set<string>();
-    const result: string[] = [];
-    for (const aid of [...cantrips, ...prepared, ...grantedActions]) {
-      if (!seen.has(aid)) {
-        seen.add(aid);
-        result.push(aid);
-      }
-    }
-    return result;
+    return getHeroActionIds(unit);
   }
 
   private updateActionBar(): void {
@@ -1127,12 +1087,16 @@ export class CombatScreen {
         btn.textContent = `${actionDef.displayName} (${slotsLeft})`;
       }
 
+      const remaining = chargesRemaining(actionId, cs.perEncounterUses as Record<string, number>);
+      if (remaining !== null) {
+        btn.textContent = `${actionDef.displayName} (${remaining}/${actionDef.charges})`;
+      }
+
       if (cs.targetingActionId === actionId) {
         btn.classList.add("targeting");
       }
 
-      const chargesLeft = (cs.perEncounterUses as Record<string, number>)[actionId] ?? -1;
-      const noCharges = actionDef.charges !== undefined && chargesLeft <= 0;
+      const noCharges = isChargeExhausted(actionId, cs);
 
       if (this.animationBlocking || this.enemyProcessing) {
         btn.disabled = true;
