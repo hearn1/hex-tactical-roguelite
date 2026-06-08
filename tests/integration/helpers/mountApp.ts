@@ -47,4 +47,13 @@ export function cleanup(): void {
   const appEl = document.getElementById("app");
   if (appEl) appEl.remove();
   resetGameState();
+  // Cancel all pending happy-dom async operations (timers, requestAnimationFrame loops,
+  // fetch, etc.) between tests. Use cancelAsync (not abort) so the window stays open
+  // for subsequent tests in the same file. By the time vitest runs its own environment
+  // teardown (win.happyDOM.abort), all pending operations are already gone, so abort()
+  // returns immediately instead of hanging on the 3D renderer's infinite rAF loop.
+  const win = globalThis.window as (Window & { happyDOM?: { cancelAsync(): void } }) | undefined;
+  if (win?.happyDOM?.cancelAsync) {
+    win.happyDOM.cancelAsync();
+  }
 }
