@@ -6,6 +6,7 @@ import { ITEM_REGISTRY } from "../data/items.ts";
 import { SHOP_SERVICE_REGISTRY } from "../data/shopServices.ts";
 import { canEquipWithAttunement } from "./Attunement.ts";
 import { applyShopDiscount } from "./ShopPricing.ts";
+import { canPartyMemberBeHealed } from "./Rest.ts";
 
 export const ITEM_PRICE: Record<string, number> = {
   common: 8,
@@ -139,7 +140,7 @@ export function useHealService(inventory: ShopInventory, party: PartyMember[]): 
   if (inventory.servicesUsed["service.heal_party"]) return false;
   inventory.servicesUsed["service.heal_party"] = true;
   for (const pm of party) {
-    if (pm.hp > 0) {
+    if (pm.hp > 0 && canPartyMemberBeHealed(pm)) {
       pm.hp = Math.min(pm.maxHp, pm.hp + HEAL_AMOUNT);
     }
   }

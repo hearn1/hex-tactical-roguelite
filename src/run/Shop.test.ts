@@ -236,6 +236,16 @@ describe("useHealService", () => {
     useHealService(shop, party);
     expect(party[0].hp).toBe(0);
   });
+
+  it("does not heal a dead-for-run hero even if hp were somehow above 0 (#143)", () => {
+    const rng = createRng(42);
+    const shop = rollShopInventory(rng);
+    const party = makeParty();
+    party[0].deadForRun = true;
+    party[0].hp = 5; // abnormal state to verify the explicit guard
+    useHealService(shop, party);
+    expect(party[0].hp).toBe(5);
+  });
 });
 
 describe("applyShopService — heal party", () => {
