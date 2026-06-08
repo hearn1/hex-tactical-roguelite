@@ -1,4 +1,4 @@
-import type { CheckStat, RunModifier } from "../state/types.ts";
+import type { RunModifier } from "../state/types.ts";
 import type { AbilityKey } from "./abilities.ts";
 
 /**
@@ -18,7 +18,7 @@ export type EventEffect =
   | { type: "gold"; amount: number }
   | { type: "gold_cost"; amount: number }
   | { type: "hp_damage"; amount: number; target?: "random_hero" }
-  | { type: "stat_boost"; stat: CheckStat; amount: number }
+  | { type: "stat_boost"; stat: AbilityKey; amount: number }
   | { type: "potion"; potionId: string }
   | { type: "item"; itemId: string }
   | { type: "heal_party"; percent: number }
@@ -146,8 +146,8 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.strange_shrine.pray",
         label: "Pray",
-        description: "Choose one hero to gain +1 Spirit.",
-        effects: [{ type: "stat_boost", stat: "spirit", amount: 1 }],
+        description: "Choose one hero to gain +1 Wisdom.",
+        effects: [{ type: "stat_boost", stat: "wis", amount: 1 }],
       },
       {
         id: "event.strange_shrine.loot",
@@ -358,8 +358,8 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.hearth_wardens_remains.respects",
         label: "Pay Respects",
-        description: "Honor the warden; one chosen hero leaves steadied (+1 Spirit for the run).",
-        effects: [{ type: "stat_boost", stat: "spirit", amount: 1 }],
+        description: "Honor the warden; one chosen hero leaves steadied (+1 Wisdom for the run).",
+        effects: [{ type: "stat_boost", stat: "wis", amount: 1 }],
       },
     ],
   },
@@ -373,12 +373,12 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       {
         id: "event.whispering_milestone.listen",
         label: "Let One Hero Listen",
-        description: "Wisdom check (DC 13). Success: that hero gains +1 Spirit for the run. Failure: nothing.",
+        description: "Wisdom check (DC 13). Success: that hero gains +1 Wisdom for the run. Failure: nothing.",
         effects: [
           {
             type: "check",
             check: { stat: "wis", dc: 13 },
-            onSuccess: [{ type: "stat_boost", stat: "spirit", amount: 1 }],
+            onSuccess: [{ type: "stat_boost", stat: "wis", amount: 1 }],
             onFailure: [{ type: "noop" }],
           },
         ],
@@ -400,31 +400,31 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
     choices: [
       {
         id: "event.ashen_star_shrine.offer_might",
-        label: "Offer Coin for Might",
-        description: "Spend 20 gold; one chosen hero gains +1 Might for the run.",
+        label: "Offer Coin for Strength",
+        description: "Spend 20 gold; one chosen hero gains +1 Strength for the run.",
         effects: [
           { type: "gold_cost", amount: 20 },
-          { type: "stat_boost", stat: "might", amount: 1 },
+          { type: "stat_boost", stat: "str", amount: 1 },
         ],
         requirements: [{ type: "minGold", amount: 20 }],
       },
       {
         id: "event.ashen_star_shrine.offer_agility",
-        label: "Offer Coin for Agility",
-        description: "Spend 20 gold; one chosen hero gains +1 Agility for the run.",
+        label: "Offer Coin for Dexterity",
+        description: "Spend 20 gold; one chosen hero gains +1 Dexterity for the run.",
         effects: [
           { type: "gold_cost", amount: 20 },
-          { type: "stat_boost", stat: "agility", amount: 1 },
+          { type: "stat_boost", stat: "dex", amount: 1 },
         ],
         requirements: [{ type: "minGold", amount: 20 }],
       },
       {
         id: "event.ashen_star_shrine.offer_spirit",
-        label: "Offer Coin for Spirit",
-        description: "Spend 20 gold; one chosen hero gains +1 Spirit for the run.",
+        label: "Offer Coin for Wisdom",
+        description: "Spend 20 gold; one chosen hero gains +1 Wisdom for the run.",
         effects: [
           { type: "gold_cost", amount: 20 },
-          { type: "stat_boost", stat: "spirit", amount: 1 },
+          { type: "stat_boost", stat: "wis", amount: 1 },
         ],
         requirements: [{ type: "minGold", amount: 20 }],
       },

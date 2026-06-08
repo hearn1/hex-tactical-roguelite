@@ -32,9 +32,9 @@ describe("CombatInspectPanel", () => {
     expect(html).toContain("5/8"); // current/max HP
     expect(html).toContain("Armor</b> 12");
     expect(html).toContain("Move</b> 4");
-    expect(html).toContain("Might");
-    expect(html).toContain("Agility");
-    expect(html).toContain("Spirit");
+    expect(html).toContain("STR");
+    expect(html).toContain("DEX");
+    expect(html).toContain("INT");
   });
 
   it("lists each enemy action with its range and description", () => {

@@ -7,9 +7,9 @@ import { DataRepository } from "./DataRepository.ts";
 describe("scout class (#119)", () => {
   const scout = CLASS_REGISTRY["class.scout"];
 
-  it("registers an agility-based scout with a default hero name", () => {
+  it("registers a dexterity-based scout with a default hero name", () => {
     expect(scout).toBeDefined();
-    expect(scout.baseStats.agility).toBeGreaterThanOrEqual(scout.baseStats.might);
+    expect(scout.baseStats.dex).toBeGreaterThanOrEqual(scout.baseStats.str);
     expect(HERO_DEFAULT_NAMES["class.scout"]).toBe("Nyx");
   });
 
@@ -26,9 +26,9 @@ describe("scout class (#119)", () => {
     }
     const stab = ACTION_REGISTRY["action.precise_stab"];
     const shot = ACTION_REGISTRY["action.shortbow_shot"];
-    expect(stab.accuracyStat).toBe("agility");
+    expect(stab.accuracyStat).toBe("dex");
     expect(stab.range).toBe(1);
-    expect(shot.accuracyStat).toBe("agility");
+    expect(shot.accuracyStat).toBe("dex");
     expect(shot.range).toBeGreaterThan(1);
   });
 

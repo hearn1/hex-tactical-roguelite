@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { getHeroActionIds, chargesRemaining, isChargeExhausted } from "./ActionBar.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 
@@ -10,7 +10,7 @@ function makeScout(overrides: Partial<UnitInstance> = {}): UnitInstance {
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 13, armor: 13, move: 4, might: 1, agility: 3, spirit: 0 },
+    stats: { maxHp: 13, armor: 13, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 13,
     conditions: [],
     movePointsRemaining: 4,
@@ -30,7 +30,7 @@ function makeArcanist(overrides: Partial<UnitInstance> = {}): UnitInstance {
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 11, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
+    stats: { maxHp: 11, armor: 11, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
     hp: 11,
     conditions: [],
     movePointsRemaining: 3,
@@ -97,7 +97,7 @@ describe("getHeroActionIds (#140)", () => {
   it("item-granted actions appear in the list", () => {
     const scout = makeScout({ equippedItemIds: { weapon: "item.shortbow", armor: null, trinket: null } });
     const ids = getHeroActionIds(scout);
-    // Shortbow grants action.shortbow_shot — already in class list, deduped.
+    // Shortbow grants action.shortbow_shot â€” already in class list, deduped.
     expect(ids).toContain("action.precise_stab");
   });
 });

@@ -29,7 +29,7 @@ describe("BACKGROUND_REGISTRY", () => {
 
   it("getBackground returns the matching def or undefined", () => {
     expect(getBackground("background.cutpurse")?.statBonus).toEqual({
-      stat: "agility",
+      stat: "dex",
       amount: 1,
     });
     expect(getBackground("background.cutpurse")?.perk).toEqual({ type: "bonusGold", amount: 10 });
@@ -40,7 +40,7 @@ describe("BACKGROUND_REGISTRY", () => {
 describe("describeBackgroundEffect", () => {
   it("summarizes stat, starter, and perk for a guarded background", () => {
     expect(describeBackgroundEffect(BACKGROUND_REGISTRY["background.caravan_guard"])).toBe(
-      "Stat: +1 Might | Item: 1x Healing Potion | Perk: Start each combat Guarded",
+      "Stat: +1 Strength | Item: 1x Healing Potion | Perk: Start each combat Guarded",
     );
   });
 

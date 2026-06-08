@@ -51,7 +51,7 @@ describe("screen-transitions", () => {
     app.render();
     clickButton("Custom Party");
 
-    expect(root.textContent).toContain("Stat: +1 Might");
+    expect(root.textContent).toContain("Stat: +1 Strength");
     expect(root.textContent).toContain("Item: 1x Healing Potion");
     expect(root.textContent).toContain("Perk: Start each combat Guarded");
     expect(root.textContent).toContain("Perk: Reveal 2 upcoming nodes");
@@ -61,8 +61,8 @@ describe("screen-transitions", () => {
     expect(getScreen()).toBe("map");
     const run = gameState.run!;
     expect(run.party[0].passives).toContain(LEVELUP_PASSIVE_START_COMBAT_GUARDED);
-    expect(run.party[1].bonusStats.spirit).toBe(1);
-    expect(run.party[2].bonusStats.spirit).toBe(1);
+    expect(run.party[1].bonusStats.wis).toBe(1);
+    expect(run.party[2].bonusStats.int).toBe(1);
     expect(run.inventory.potions).toEqual(["potion.healing", "potion.healing"]);
     expect(run.runModifiers).toContainEqual({ kind: "reward_xp_multiplier", value: 1.1 });
     expect(Object.keys(run.revealedForecasts ?? {})).toEqual(
@@ -108,7 +108,7 @@ describe("screen-transitions", () => {
     expect(getScreen()).toBe("inventory");
     expect(root.textContent).toContain("Shared Bag");
     clickTestId("inventory-bag-item-0");
-    expect(root.textContent).toContain("Might 3 -> 4 (+1)");
+    expect(root.textContent).toContain("STR 3 -> 4 (+1)");
 
     (root.querySelector('[data-testid="inventory-equip-hero_001"]') as HTMLButtonElement).click();
 
@@ -292,7 +292,7 @@ describe("screen-transitions", () => {
     const combat = createCombatFromRun(run, "encounter.road_ambush", gameState.rng);
     const guardian = combat.units.find((u) => u.instanceId === "hero_001")!;
     expect(guardian.equippedItemIds.trinket).toBe("item.soldier_badge");
-    expect(guardian.stats.might).toBe(4);
+    expect(guardian.stats.str).toBe(4);
   });
 
   it('Camp: "Leave" transitions to map', () => {

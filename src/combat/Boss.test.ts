@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import { takeEnemyTurn } from "./EnemyAI.ts";
 import { resolveAction } from "./Action.ts";
@@ -13,7 +13,7 @@ function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: 
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     conditions: [],
     movePointsRemaining: 0,
@@ -49,7 +49,7 @@ describe("Boss", () => {
       defId: "enemy.ogre_hexbreaker",
       team: "enemy",
       displayName: "Ogre Hexbreaker",
-      stats: { maxHp: 42, armor: 13, move: 3, might: 4, agility: 0, spirit: 1 },
+      stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 0, int: 1, wis: 0, cha: 0 },
       hp: 42,
       movePointsRemaining: 3,
     });
@@ -60,7 +60,7 @@ describe("Boss", () => {
         instanceId: `hero_${i}`,
         pos: { q: 0, r: i + 1 },
         defId: "class.guardian",
-        stats: { maxHp: 18, armor: 10, move: 3, might: 3, agility: 1, spirit: 0 },
+        stats: { maxHp: 18, armor: 10, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       }));
     }
 
@@ -100,7 +100,7 @@ describe("Boss", () => {
       defId: "enemy.ogre_hexbreaker",
       team: "enemy",
       displayName: "Ogre Hexbreaker",
-      stats: { maxHp: 42, armor: 10, move: 3, might: 4, agility: 0, spirit: 1 },
+      stats: { maxHp: 42, armor: 10, move: 3, str: 4, dex: 0, con: 0, int: 1, wis: 0, cha: 0 },
       hp: 30,
       movePointsRemaining: 3,
     });
@@ -109,7 +109,7 @@ describe("Boss", () => {
       instanceId: "hero_0",
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
-      stats: { maxHp: 100, armor: 10, move: 3, might: 10, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 10, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 100,
     });
 
@@ -139,7 +139,7 @@ describe("Boss", () => {
       defId: "enemy.ogre_hexbreaker",
       team: "enemy",
       displayName: "Ogre Hexbreaker",
-      stats: { maxHp: 42, armor: 10, move: 3, might: 4, agility: 0, spirit: 1 },
+      stats: { maxHp: 42, armor: 10, move: 3, str: 4, dex: 0, con: 0, int: 1, wis: 0, cha: 0 },
       hp: 30,
       movePointsRemaining: 3,
     });
@@ -148,14 +148,14 @@ describe("Boss", () => {
       instanceId: "hero_1",
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
-      stats: { maxHp: 100, armor: 10, move: 3, might: 10, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 10, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 100,
     });
     const hero2 = makeUnit({
       instanceId: "hero_2",
       pos: { q: 0, r: 1 },
       defId: "class.guardian",
-      stats: { maxHp: 100, armor: 10, move: 3, might: 10, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 10, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 100,
     });
 
@@ -176,7 +176,7 @@ describe("Boss", () => {
       defId: "enemy.ogre_hexbreaker",
       team: "enemy",
       displayName: "Ogre Hexbreaker",
-      stats: { maxHp: 42, armor: 10, move: 3, might: 4, agility: 0, spirit: 1 },
+      stats: { maxHp: 42, armor: 10, move: 3, str: 4, dex: 0, con: 0, int: 1, wis: 0, cha: 0 },
       hp: 30,
       movePointsRemaining: 3,
     });
@@ -185,14 +185,14 @@ describe("Boss", () => {
       instanceId: "hero_1",
       pos: { q: 0, r: 1 },
       defId: "class.guardian",
-      stats: { maxHp: 100, armor: 10, move: 3, might: 10, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 10, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 100,
     });
     const hero2 = makeUnit({
       instanceId: "hero_2",
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
-      stats: { maxHp: 100, armor: 10, move: 3, might: 10, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 10, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 100,
     });
 
@@ -213,7 +213,7 @@ describe("Boss", () => {
       defId: "enemy.ogre_hexbreaker",
       team: "enemy",
       displayName: "Ogre Hexbreaker",
-      stats: { maxHp: 42, armor: 13, move: 3, might: 4, agility: 0, spirit: 1 },
+      stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 0, int: 1, wis: 0, cha: 0 },
       hp: 42,
       movePointsRemaining: 3,
     });
@@ -222,14 +222,14 @@ describe("Boss", () => {
       instanceId: "hero_1",
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
-      stats: { maxHp: 100, armor: 10, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 100,
     });
     const hero2 = makeUnit({
       instanceId: "hero_2",
       pos: { q: 0, r: 1 },
       defId: "class.guardian",
-      stats: { maxHp: 100, armor: 10, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 100,
     });
 

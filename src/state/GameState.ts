@@ -136,7 +136,7 @@ export function scatterEnemyPositions(count: number): Hex[] {
 function buildTurnQueue(units: UnitInstance[], rng: () => number): string[] {
   const rolls = units.map((u) => ({
     id: u.instanceId,
-    value: Math.floor(rng() * 20) + 1 + u.stats.agility,
+    value: Math.floor(rng() * 20) + 1 + u.stats.dex,
   }));
   rolls.sort((a, b) => {
     if (b.value !== a.value) return b.value - a.value;
@@ -162,7 +162,7 @@ export function initCombatState(rng: () => number): CombatState {
 
   const rolls = units.map((u) => ({
     id: u.instanceId,
-    value: Math.floor(rng() * 20) + 1 + u.stats.agility,
+    value: Math.floor(rng() * 20) + 1 + u.stats.dex,
   }));
   rolls.sort((a, b) => {
     if (b.value !== a.value) return b.value - a.value;

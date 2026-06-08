@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import type { CombatState, UnitInstance, Hex } from "../state/types.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import {
@@ -21,7 +21,7 @@ function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: 
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 2, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 2, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     conditions: [],
     movePointsRemaining: 3,
@@ -47,7 +47,7 @@ function makeState(terrain?: Record<string, "normal" | "difficult" | "cover" | "
   };
 }
 
-// ── getTerrainType ────────────────────────────────────────────────────────────
+// â”€â”€ getTerrainType â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe("getTerrainType", () => {
   it("returns 'normal' when state has no terrain map", () => {
@@ -73,7 +73,7 @@ describe("getTerrainType", () => {
   });
 });
 
-// ── movementCostForHex ────────────────────────────────────────────────────────
+// â”€â”€ movementCostForHex â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe("movementCostForHex", () => {
   it("returns NORMAL_TERRAIN_COST for normal terrain", () => {
@@ -96,7 +96,7 @@ describe("movementCostForHex", () => {
   });
 });
 
-// ── coverArmorBonusForTarget ──────────────────────────────────────────────────
+// â”€â”€ coverArmorBonusForTarget â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe("coverArmorBonusForTarget", () => {
   const rangedAction = ACTION_REGISTRY["action.fire_bolt"]; // range 4
@@ -139,7 +139,7 @@ describe("coverArmorBonusForTarget", () => {
   });
 });
 
-// ── isHazardHex ───────────────────────────────────────────────────────────────
+// â”€â”€ isHazardHex â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe("isHazardHex", () => {
   it("returns true for hazard hex", () => {
@@ -157,7 +157,7 @@ describe("isHazardHex", () => {
   });
 });
 
-// ── applyHazardOnEntry ────────────────────────────────────────────────────────
+// â”€â”€ applyHazardOnEntry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe("applyHazardOnEntry", () => {
   it("deals HAZARD_DAMAGE when unit enters a hazard hex", () => {
@@ -189,7 +189,7 @@ describe("applyHazardOnEntry", () => {
   });
 });
 
-// ── applyHazardsForMovementPath ───────────────────────────────────────────────
+// â”€â”€ applyHazardsForMovementPath â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 describe("applyHazardsForMovementPath", () => {
   it("does nothing for a path with no hazard hexes", () => {
@@ -223,7 +223,7 @@ describe("applyHazardsForMovementPath", () => {
     const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: HAZARD_DAMAGE, team: "enemy" });
     state.units.push(unit);
     applyHazardsForMovementPath(unit, state, [{ q: 1, r: 0 }, { q: 2, r: 0 }]);
-    // Should stop after first hazard kills the unit — only HAZARD_DAMAGE damage total.
+    // Should stop after first hazard kills the unit â€” only HAZARD_DAMAGE damage total.
     expect(unit.hp).toBe(0);
     const hazardLogs = state.log.filter((e) => e.kind === "action");
     expect(hazardLogs.length).toBe(1);

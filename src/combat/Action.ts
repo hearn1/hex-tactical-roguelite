@@ -1,5 +1,6 @@
 import type { ActionDef, ConditionApply } from "../data/actions.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
+import type { AbilityKey } from "../data/abilities.ts";
 import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus, ActionResult, ActionElement } from "../state/types.ts";
 import { distance, hexKey } from "../core/hex.ts";
 import { roll } from "../core/dice.ts";
@@ -38,7 +39,7 @@ function actionBonus(attacker: UnitInstance, actionId: string): ActionUpgradeBon
  * Roll a saving throw: d20 + stat modifier vs DC.
  * Returns true if the save succeeds (the effect is negated or resisted).
  */
-export function rollSave(unit: UnitInstance, stat: "might" | "agility" | "spirit", dc: number, rng: () => number, state?: CombatState): boolean {
+export function rollSave(unit: UnitInstance, stat: AbilityKey, dc: number, rng: () => number, state?: CombatState): boolean {
   const mod = unit.stats[stat];
   const bonus = (state && getBeaconSaveBonus(unit, state)) ?? 0;
   const d20 = Math.floor(rng() * 20) + 1;
@@ -100,9 +101,12 @@ export function validTargets(
 
 function rewriteFormula(formula: string, attacker: UnitInstance): string {
   return formula
-    .replace("+ might", `+ ${attacker.stats.might}`)
-    .replace("+ agility", `+ ${attacker.stats.agility}`)
-    .replace("+ spirit", `+ ${attacker.stats.spirit}`)
+    .replace("+ str", `+ ${attacker.stats.str}`)
+    .replace("+ dex", `+ ${attacker.stats.dex}`)
+    .replace("+ con", `+ ${attacker.stats.con}`)
+    .replace("+ int", `+ ${attacker.stats.int}`)
+    .replace("+ wis", `+ ${attacker.stats.wis}`)
+    .replace("+ cha", `+ ${attacker.stats.cha}`)
     .replace("+ level", `+ ${attacker.level}`);
 }
 
@@ -167,7 +171,7 @@ export function resolveAction(
     const affected = state.units.filter(
       (u) => u.team !== attacker.team && u.hp > 0 && distance(attacker.pos, u.pos) <= lineRange,
     );
-    const atkStat = action.accuracyStat ?? "spirit";
+    const atkStat = action.accuracyStat ?? "str";
     const atkMod = attacker.stats[atkStat];
     const prof = 2 + Math.floor((attacker.level - 1) / 3);
     const d20 = Math.floor(rng() * 20) + 1;
@@ -404,7 +408,7 @@ export function resolveAction(
       if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
-    const atkStat = action.accuracyStat ?? "might";
+    const atkStat = action.accuracyStat ?? "str";
     const atkMod = attacker.stats[atkStat];
     const prof = 2 + Math.floor((attacker.level - 1) / 3);
     const d20 = Math.floor(rng() * 20) + 1;
@@ -457,7 +461,7 @@ export function resolveAction(
       if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
-    const atkStat = action.accuracyStat ?? "might";
+    const atkStat = action.accuracyStat ?? "str";
     const atkMod = attacker.stats[atkStat];
     const prof = 2 + Math.floor((attacker.level - 1) / 3);
     const d20 = Math.floor(rng() * 20) + 1;
@@ -495,7 +499,7 @@ export function resolveAction(
     return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
   }
 
-  const attackStat = action.accuracyStat ?? "might";
+  const attackStat = action.accuracyStat ?? "str";
   const stat = attacker.stats[attackStat];
   const proficiency = 2 + Math.floor((attacker.level - 1) / 3);
 
@@ -590,7 +594,7 @@ export function resolveAction(
   damage += actionBonus(attacker, action.id).damageBonus ?? 0;
 
   // Item hook: continuous attack bonus (e.g. Emberglass Wand for spell attacks).
-  const itemAttackType = attackStat === "spirit" ? "spell" : attackStat === "might" ? "melee" : null;
+  const itemAttackType = (attackStat === "int" || attackStat === "wis" || attackStat === "cha") ? "spell" : attackStat === "str" ? "melee" : null;
   if (itemAttackType) {
     damage += resolveAttackBonus(attacker, itemAttackType, state);
   }
@@ -685,10 +689,10 @@ export function resolveAction(
       target.reactionUsedThisTurn = true;
       const retribAction = ACTION_REGISTRY["action.archetype_retributive_strike"];
       if (retribAction) {
-        const retribFormula = rewriteFormula("1d6 + might", target);
+        const retribFormula = rewriteFormula("1d6 + str", target);
         const retribResult = roll(retribFormula, rng);
         const retribD20 = Math.floor(rng() * 20) + 1;
-        const retribTotal = retribD20 + target.stats.might + (2 + Math.floor((target.level - 1) / 3));
+        const retribTotal = retribD20 + target.stats.str + (2 + Math.floor((target.level - 1) / 3));
         const retribCrit = retribD20 >= getCritFloor(target);
         const retribHit = retribD20 !== 1 && (retribCrit || retribTotal >= attacker.stats.armor);
         if (retribHit) {
@@ -734,7 +738,7 @@ function resolvePrimaryPlusAdjacent(
   skipHasActed?: boolean,
 ): void {
   const round = state.round;
-  const attackStat = action.accuracyStat ?? "might";
+  const attackStat = action.accuracyStat ?? "str";
   const stat = attacker.stats[attackStat];
   const proficiency = 2 + Math.floor((attacker.level - 1) / 3);
   const dmgFormula = (action.effect as { formula: string }).formula;
@@ -835,7 +839,7 @@ export function resolveBossTelegraph(
   const round = state.round;
   const action = ACTION_REGISTRY[telegraph.actionId];
   const formulaSource =
-    action && action.effect.type === "damage" ? action.effect.formula : "1d8 + might";
+    action && action.effect.type === "damage" ? action.effect.formula : "1d8 + str";
   const displayName = action?.displayName ?? "Ground Slam";
 
   const targetSet = new Set(telegraph.targetHexes);

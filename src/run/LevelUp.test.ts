@@ -119,9 +119,9 @@ describe("applyLevelUpChoice — each reward type", () => {
       id: "t.hp",
       name: "HP",
       description: "+1 maxHp",
-      upgrade: { kind: "stat", stats: { spirit: 1, maxHp: 1 } },
+      upgrade: { kind: "stat", stats: { wis: 1, maxHp: 1 } },
     });
-    expect(pm.bonusStats.spirit).toBe(1);
+    expect(pm.bonusStats.wis).toBe(1);
     expect(pm.maxHp).toBe(15);
     expect(pm.hp).toBe(15);
   });

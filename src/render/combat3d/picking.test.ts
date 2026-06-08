@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+﻿import { describe, expect, it } from "vitest";
 import { hexFromPickData } from "./picking.ts";
 import type { UnitInstance } from "../../state/types.ts";
 
@@ -10,7 +10,7 @@ function unit(instanceId: string, q: number, r: number, hp: number = 5): UnitIns
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 5, armor: 10, move: 3, might: 1, agility: 1, spirit: 1 },
+    stats: { maxHp: 5, armor: 10, move: 3, str: 1, dex: 1, con: 0, int: 1, wis: 0, cha: 0 },
     hp,
     pos: { q, r },
     conditions: [],

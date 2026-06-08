@@ -514,12 +514,12 @@ export class SetupScreen {
 
     const s = def.baseStats;
     const stats = document.createElement("div");
-    stats.textContent = `HP ${s.maxHp} · Armor ${s.armor} · Move ${s.move} · Might ${s.might} · Agility ${s.agility} · Spirit ${s.spirit}`;
+    stats.textContent = `HP ${s.maxHp} · Armor ${s.armor} · Move ${s.move} · STR ${s.str} · DEX ${s.dex} · CON ${s.con} · INT ${s.int} · WIS ${s.wis} · CHA ${s.cha}`;
     wrap.appendChild(stats);
 
     const previewStats = this.computePreviewStats(classId, abilityScores, backgroundId);
     const preview = document.createElement("div");
-    preview.textContent = `Preview: HP ${previewStats.maxHp} | Armor ${previewStats.armor} | Move ${previewStats.move} | Might ${previewStats.might} | Agility ${previewStats.agility} | Spirit ${previewStats.spirit}`;
+    preview.textContent = `Preview: HP ${previewStats.maxHp} | Armor ${previewStats.armor} | Move ${previewStats.move} | STR ${previewStats.str} | DEX ${previewStats.dex} | CON ${previewStats.con} | INT ${previewStats.int} | WIS ${previewStats.wis} | CHA ${previewStats.cha}`;
     preview.style.color = abilityScores ? "#8c8" : "#aaa";
     wrap.appendChild(preview);
 

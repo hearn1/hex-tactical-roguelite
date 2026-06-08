@@ -1,7 +1,9 @@
+import type { AbilityKey } from "./abilities.ts";
+
 export interface ConditionApply {
   id: string;
   duration: number;
-  save?: { stat: "might" | "agility" | "spirit"; dc: number };
+  save?: { stat: AbilityKey; dc: number };
 }
 
 export interface ActionDef {
@@ -11,7 +13,7 @@ export interface ActionDef {
   source: "class" | "item" | "enemy";
   targetType: "enemy" | "ally" | "self" | "ally_or_self";
   range: number;
-  accuracyStat?: "might" | "agility" | "spirit";
+  accuracyStat?: AbilityKey;
   isCantrip?: boolean;
   charges?: number;
   /**
@@ -39,9 +41,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
+    accuracyStat: "str",
     isCantrip: true,
-    effect: { type: "damage", formula: "1d6 + might" },
+    effect: { type: "damage", formula: "1d6 + str" },
   },
   "action.mend_wounds": {
     id: "action.mend_wounds",
@@ -50,11 +52,11 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "ally",
     range: 3,
-    accuracyStat: "spirit",
+    accuracyStat: "wis",
     resourceType: "spell_slot",
     slotCost: 1,
     spellLevel: 1,
-    effect: { type: "heal", formula: "1d6 + spirit" },
+    effect: { type: "heal", formula: "1d6 + wis" },
   },
   "action.fire_bolt": {
     id: "action.fire_bolt",
@@ -63,9 +65,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "spirit",
+    accuracyStat: "int",
     isCantrip: true,
-    effect: { type: "damage", formula: "1d8 + spirit" },
+    effect: { type: "damage", formula: "1d8 + int" },
   },
   "action.precise_stab": {
     id: "action.precise_stab",
@@ -74,9 +76,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "agility",
+    accuracyStat: "dex",
     isCantrip: true,
-    effect: { type: "damage", formula: "1d8 + agility" },
+    effect: { type: "damage", formula: "1d8 + dex" },
   },
   "action.shortbow_shot": {
     id: "action.shortbow_shot",
@@ -85,9 +87,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "agility",
+    accuracyStat: "dex",
     isCantrip: true,
-    effect: { type: "damage", formula: "1d6 + agility" },
+    effect: { type: "damage", formula: "1d6 + dex" },
   },
   "action.cunning_step": {
     id: "action.cunning_step",
@@ -106,8 +108,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
-    effect: { type: "damage", formula: "1d4 + might" },
+    accuracyStat: "str",
+    effect: { type: "damage", formula: "1d4 + str" },
   },
   "action.bite": {
     id: "action.bite",
@@ -116,8 +118,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
-    effect: { type: "damage", formula: "1d6 + might" },
+    accuracyStat: "str",
+    effect: { type: "damage", formula: "1d6 + str" },
   },
   "action.bone_arrow": {
     id: "action.bone_arrow",
@@ -126,8 +128,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 5,
-    accuracyStat: "agility",
-    effect: { type: "damage", formula: "1d6 + agility" },
+    accuracyStat: "dex",
+    effect: { type: "damage", formula: "1d6 + dex" },
   },
   "action.heavy_club": {
     id: "action.heavy_club",
@@ -136,8 +138,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
-    effect: { type: "damage", formula: "1d8 + might" },
+    accuracyStat: "str",
+    effect: { type: "damage", formula: "1d8 + str" },
   },
   "action.dark_bolt": {
     id: "action.dark_bolt",
@@ -146,8 +148,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "spirit",
-    effect: { type: "damage", formula: "1d6 + spirit" },
+    accuracyStat: "int",
+    effect: { type: "damage", formula: "1d6 + int" },
   },
   "action.minor_heal": {
     id: "action.minor_heal",
@@ -156,8 +158,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "ally",
     range: 3,
-    accuracyStat: "spirit",
-    effect: { type: "heal", formula: "1d4 + spirit" },
+    accuracyStat: "wis",
+    effect: { type: "heal", formula: "1d4 + wis" },
   },
   "action.shield_bash": {
     id: "action.shield_bash",
@@ -166,9 +168,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
+    accuracyStat: "str",
     isCantrip: true,
-    effect: { type: "damage", formula: "1d4 + might", applyCondition: { id: "weakened", duration: 1 } },
+    effect: { type: "damage", formula: "1d4 + str", applyCondition: { id: "weakened", duration: 1 } },
   },
   "action.guard": {
     id: "action.guard",
@@ -187,9 +189,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
+    accuracyStat: "str",
     isCantrip: true,
-    effect: { type: "damage", formula: "1d6 + might" },
+    effect: { type: "damage", formula: "1d6 + str" },
   },
   "action.bless": {
     id: "action.bless",
@@ -210,9 +212,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "spirit",
+    accuracyStat: "int",
     isCantrip: true,
-    effect: { type: "damage", formula: "1d6 + spirit", applyCondition: { id: "slowed", duration: 1 } },
+    effect: { type: "damage", formula: "1d6 + int", applyCondition: { id: "slowed", duration: 1 } },
   },
   "action.arcane_ward": {
     id: "action.arcane_ward",
@@ -233,8 +235,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "item",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "agility",
-    effect: { type: "damage", formula: "1d6 + agility" },
+    accuracyStat: "dex",
+    effect: { type: "damage", formula: "1d6 + dex" },
   },
   "action.massive_swing": {
     id: "action.massive_swing",
@@ -243,8 +245,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
-    effect: { type: "damage", formula: "2d6 + might" },
+    accuracyStat: "str",
+    effect: { type: "damage", formula: "2d6 + str" },
   },
   "action.ground_slam": {
     id: "action.ground_slam",
@@ -253,8 +255,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
-    effect: { type: "damage", formula: "1d8 + might", targetMode: "primary_plus_adjacent" },
+    accuracyStat: "str",
+    effect: { type: "damage", formula: "1d8 + str", targetMode: "primary_plus_adjacent" },
   },
   "action.roar": {
     id: "action.roar",
@@ -272,8 +274,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "enemy",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "agility",
-    effect: { type: "damage", formula: "2d4 + agility" },
+    accuracyStat: "dex",
+    effect: { type: "damage", formula: "2d4 + dex" },
   },
   // --- Archetype actions (F84) ---
   "action.archetype_protective_ward": {
@@ -297,12 +299,12 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.archetype_healing_burst": {
     id: "action.archetype_healing_burst",
     displayName: "Healing Burst",
-    description: "A burst of healing energy, restoring 1d4 + Spirit HP to all nearby allies.",
+    description: "A burst of healing energy, restoring 1d4 + Wisdom HP to all nearby allies.",
     source: "class",
     targetType: "ally",
     range: 2,
-    accuracyStat: "spirit",
-    effect: { type: "heal", formula: "1d4 + spirit", targetMode: "aoe_around_caster" },
+    accuracyStat: "wis",
+    effect: { type: "heal", formula: "1d4 + wis", targetMode: "aoe_around_caster" },
   },
   "action.archetype_taunt": {
     id: "action.archetype_taunt",
@@ -316,12 +318,12 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.archetype_retributive_strike": {
     id: "action.archetype_retributive_strike",
     displayName: "Retributive Strike",
-    description: "When you are hit by a melee attack, strike back for 1d6 + Might damage.",
+    description: "When you are hit by a melee attack, strike back for 1d6 + Strength damage.",
     source: "class",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
-    effect: { type: "damage", formula: "1d6 + might" },
+    accuracyStat: "str",
+    effect: { type: "damage", formula: "1d6 + str" },
   },
   "action.archetype_mesmerize": {
     id: "action.archetype_mesmerize",
@@ -330,8 +332,8 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "spirit",
-    effect: { type: "damage", formula: "1d4 + spirit", applyCondition: { id: "mesmerized", duration: 1, save: { stat: "spirit", dc: 12 } } },
+    accuracyStat: "cha",
+    effect: { type: "damage", formula: "1d4 + cha", applyCondition: { id: "mesmerized", duration: 1, save: { stat: "wis", dc: 12 } } },
   },
   // ── Guardian pool actions ──────────────────────────────────────────────
   "action.cleave": {
@@ -341,9 +343,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 1,
-    accuracyStat: "might",
+    accuracyStat: "str",
     charges: 1,
-    effect: { type: "damage", formula: "1d8 + might", targetMode: "aoe_around_caster" },
+    effect: { type: "damage", formula: "1d8 + str", targetMode: "aoe_around_caster" },
   },
   "action.war_cry": {
     id: "action.war_cry",
@@ -399,13 +401,13 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.mass_heal": {
     id: "action.mass_heal",
     displayName: "Mass Heal",
-    description: "Heal all allies within radius 2 for 1d6 + spirit.",
+    description: "Heal all allies within radius 2 for 1d6 + Wisdom.",
     source: "class",
     targetType: "ally",
     range: 2,
-    accuracyStat: "spirit",
+    accuracyStat: "wis",
     charges: 1,
-    effect: { type: "heal", formula: "1d6 + spirit", targetMode: "aoe_radius", radius: 2 },
+    effect: { type: "heal", formula: "1d6 + wis", targetMode: "aoe_radius", radius: 2 },
   },
   "action.cleanse": {
     id: "action.cleanse",
@@ -451,13 +453,13 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.fireball": {
     id: "action.fireball",
     displayName: "Fireball",
-    description: "An explosive ball of flame deals 2d6 + spirit damage to all enemies in radius 2.",
+    description: "An explosive ball of flame deals 2d6 + Intelligence damage to all enemies in radius 2.",
     source: "class",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "spirit",
+    accuracyStat: "int",
     charges: 1,
-    effect: { type: "damage", formula: "2d6 + spirit", targetMode: "aoe_radius", radius: 2 },
+    effect: { type: "damage", formula: "2d6 + int", targetMode: "aoe_radius", radius: 2 },
   },
   "action.lightning_bolt": {
     id: "action.lightning_bolt",
@@ -466,9 +468,9 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "enemy",
     range: 4,
-    accuracyStat: "spirit",
+    accuracyStat: "int",
     charges: 1,
-    effect: { type: "lineDamage", formula: "2d6 + spirit", lineRange: 4 },
+    effect: { type: "lineDamage", formula: "2d6 + int", lineRange: 4 },
   },
   "action.haste": {
     id: "action.haste",

@@ -28,12 +28,13 @@ export interface LevelUpResult {
 }
 
 const CLASS_LEVEL_GAINS: Record<string, Partial<UnitStats>> = {
-  "class.guardian": { maxHp: 2, might: 1 },
-  "class.acolyte": { maxHp: 1, spirit: 1 },
-  "class.arcanist": { maxHp: 1, spirit: 1 },
+  "class.guardian": { maxHp: 2, str: 1 },
+  "class.acolyte": { maxHp: 1, wis: 1 },
+  "class.arcanist": { maxHp: 1, int: 1 },
+  "class.scout": { maxHp: 1, dex: 1 },
 };
 
-const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "might", "agility", "spirit"];
+const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "str", "dex", "con", "int", "wis", "cha"];
 
 function sumGains(a: Partial<UnitStats>, b: Partial<UnitStats>): Partial<UnitStats> {
   const result: Partial<UnitStats> = {};
@@ -52,7 +53,7 @@ export function applyXp(unit: UnitInstance, xp: number): LevelUpResult {
   unit.xp += xp;
 
   const classId = unit.defId;
-  const perLevelGains = CLASS_LEVEL_GAINS[classId] ?? { maxHp: 1, spirit: 1 };
+  const perLevelGains = CLASS_LEVEL_GAINS[classId] ?? { maxHp: 1, wis: 1 };
 
   let totalGains: Partial<UnitStats> = {};
   let currentLevel = levelForXp(startXp);
@@ -104,7 +105,7 @@ export function applyXpToPartyMember(pm: PartyMember, xp: number): LevelUpResult
   pm.xp += xp;
 
   const classId = pm.classId;
-  const perLevelGains = CLASS_LEVEL_GAINS[classId] ?? { maxHp: 1, spirit: 1 };
+  const perLevelGains = CLASS_LEVEL_GAINS[classId] ?? { maxHp: 1, wis: 1 };
 
   let totalGains: Partial<UnitStats> = {};
   let currentLevel = levelForXp(startXp);

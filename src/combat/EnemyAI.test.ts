@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import { takeEnemyTurn } from "./EnemyAI.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
@@ -11,7 +11,7 @@ function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: 
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     conditions: [],
     movePointsRemaining: 0,
@@ -43,12 +43,12 @@ describe("EnemyAI", () => {
     const enemy = makeUnit({
       instanceId: "e1", pos: { q: 0, r: 0 }, defId: "enemy.wolf",
       team: "enemy", displayName: "Wolf",
-      stats: { maxHp: 10, armor: 12, move: 5, might: 2, agility: 2, spirit: 0 },
+      stats: { maxHp: 10, armor: 12, move: 5, str: 2, dex: 2, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 10, movePointsRemaining: 5,
     });
     const hero = makeUnit({
       instanceId: "h1", pos: { q: 3, r: 0 }, defId: "class.guardian",
-      stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeState([enemy, hero]);
     takeEnemyTurn(enemy, state, rng);
@@ -61,12 +61,12 @@ describe("EnemyAI", () => {
     const enemy = makeUnit({
       instanceId: "e1", pos: { q: 0, r: 0 }, defId: "enemy.wolf",
       team: "enemy", displayName: "Wolf",
-      stats: { maxHp: 10, armor: 12, move: 5, might: 2, agility: 2, spirit: 0 },
+      stats: { maxHp: 10, armor: 12, move: 5, str: 2, dex: 2, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 10, movePointsRemaining: 5,
     });
     const hero = makeUnit({
       instanceId: "h1", pos: { q: 1, r: 0 }, defId: "class.guardian",
-      stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeState([enemy, hero]);
     const beforePos = { ...enemy.pos };
@@ -80,12 +80,12 @@ describe("EnemyAI", () => {
     const enemy = makeUnit({
       instanceId: "e1", pos: { q: 0, r: 0 }, defId: "enemy.goblin_skirmisher",
       team: "enemy", displayName: "Goblin",
-      stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 },
+      stats: { maxHp: 8, armor: 12, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 8, movePointsRemaining: 4,
     });
     const hero = makeUnit({
       instanceId: "h1", pos: { q: 4, r: 0 }, defId: "class.guardian",
-      stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeState([enemy, hero]);
     takeEnemyTurn(enemy, state, rng);
@@ -98,12 +98,12 @@ describe("EnemyAI", () => {
     const enemy = makeUnit({
       instanceId: "e1", pos: { q: 0, r: 0 }, defId: "enemy.wolf",
       team: "enemy", displayName: "Wolf",
-      stats: { maxHp: 10, armor: 12, move: 5, might: 2, agility: 2, spirit: 0 },
+      stats: { maxHp: 10, armor: 12, move: 5, str: 2, dex: 2, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 10, movePointsRemaining: 5,
     });
     const deadHero = makeUnit({
       instanceId: "h1", pos: { q: 1, r: 0 }, defId: "class.guardian",
-      hp: 0, stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      hp: 0, stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeState([enemy, deadHero]);
     expect(() => takeEnemyTurn(enemy, state, rng)).not.toThrow();
@@ -113,7 +113,7 @@ describe("EnemyAI", () => {
 function makeStalker(pos: Hex, move = 5): UnitInstance {
   return makeUnit({
     instanceId: "amb1", pos, defId: "enemy.shadow_stalker", team: "enemy", displayName: "Shadow Stalker",
-    stats: { maxHp: 11, armor: 13, move, might: 2, agility: 4, spirit: 0 },
+    stats: { maxHp: 11, armor: 13, move, str: 2, dex: 4, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 11, movePointsRemaining: move,
   });
 }
@@ -143,7 +143,7 @@ describe("EnemyAI ambusher", () => {
     // A single hero with no ally adjacent is "exposed" -> prime target.
     const lone = makeUnit({
       instanceId: "h1", pos: { q: 2, r: 0 }, defId: "class.guardian",
-      stats: { maxHp: 18, armor: 5, move: 3, might: 3, agility: 1, spirit: 0 }, hp: 18,
+      stats: { maxHp: 18, armor: 5, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 }, hp: 18,
     });
     const state = makeState([stalker, lone]);
     takeEnemyTurn(stalker, state, rng);
@@ -159,11 +159,11 @@ describe("EnemyAI ambusher", () => {
     const stalker = makeStalker({ q: 0, r: 0 });
     const wounded = makeUnit({
       instanceId: "h1", pos: { q: 1, r: 0 }, defId: "class.guardian",
-      stats: { maxHp: 18, armor: 5, move: 3, might: 3, agility: 1, spirit: 0 }, hp: 4,
+      stats: { maxHp: 18, armor: 5, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 }, hp: 4,
     });
     const ally = makeUnit({
       instanceId: "h2", pos: { q: 1, r: 1 }, defId: "class.guardian",
-      stats: { maxHp: 18, armor: 5, move: 3, might: 3, agility: 1, spirit: 0 }, hp: 18,
+      stats: { maxHp: 18, armor: 5, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 }, hp: 18,
     });
     const state = makeState([stalker, wounded, ally]);
     takeEnemyTurn(stalker, state, rng);

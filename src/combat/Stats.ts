@@ -7,7 +7,7 @@ export function computeStats(unit: UnitInstance): UnitStats {
   const baseDef = CLASS_REGISTRY[unit.defId];
   const base = baseDef ? baseDef.baseStats : unit.stats;
 
-  const bonuses: UnitStats = { maxHp: 0, armor: 0, move: 0, might: 0, agility: 0, spirit: 0 };
+  const bonuses: UnitStats = { maxHp: 0, armor: 0, move: 0, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
 
   for (const slot of ["weapon", "armor", "trinket"] as const) {
     const itemId = unit.equippedItemIds[slot];
@@ -29,20 +29,25 @@ export function computeStats(unit: UnitInstance): UnitStats {
 
   if (unit.abilityScores) {
     const scores = unit.abilityScores;
-    bonuses.might += Math.max(0, abilityMod(scores.str));
-    bonuses.agility += abilityMod(scores.dex);
+    bonuses.str += abilityMod(scores.str);
+    bonuses.dex += abilityMod(scores.dex);
+    bonuses.con += abilityMod(scores.con);
+    bonuses.int += abilityMod(scores.int);
+    bonuses.wis += abilityMod(scores.wis);
+    bonuses.cha += abilityMod(scores.cha);
     if (scores.dex > 10) bonuses.armor += 1;
     bonuses.maxHp += abilityMod(scores.con) * Math.max(1, unit.level);
-    if (unit.defId === "class.arcanist") bonuses.spirit += abilityMod(scores.int);
-    if (unit.defId === "class.acolyte") bonuses.spirit += abilityMod(scores.wis);
   }
 
   return {
     maxHp: base.maxHp + bonuses.maxHp,
     armor: base.armor + bonuses.armor,
     move: base.move + bonuses.move,
-    might: base.might + bonuses.might,
-    agility: base.agility + bonuses.agility,
-    spirit: base.spirit + bonuses.spirit,
+    str: base.str + bonuses.str,
+    dex: base.dex + bonuses.dex,
+    con: base.con + bonuses.con,
+    int: base.int + bonuses.int,
+    wis: base.wis + bonuses.wis,
+    cha: base.cha + bonuses.cha,
   };
 }

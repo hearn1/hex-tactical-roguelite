@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { levelForXp, nextThresholdXp, applyXp, MAX_LEVEL, XP_THRESHOLDS } from "./Leveling.ts";
 import type { UnitInstance } from "../state/types.ts";
 
@@ -10,7 +10,7 @@ function makeUnit(overrides: Partial<UnitInstance> = {}): UnitInstance {
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     pos: { q: 0, r: 0 },
     conditions: [],
@@ -60,14 +60,14 @@ describe("applyXp", () => {
       defId: "class.guardian",
       xp: 19,
       level: 1,
-      stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 10,
     });
     const result = applyXp(unit, 1);
     expect(result.leveledUp).toBe(true);
     expect(result.newLevel).toBe(2);
     expect(result.gains.maxHp).toBe(2);
-    expect(result.gains.might).toBe(1);
+    expect(result.gains.str).toBe(1);
   });
 
   it("applyXp on level-1 Arcanist with 200 XP reaches level 5", () => {
@@ -75,14 +75,14 @@ describe("applyXp", () => {
       defId: "class.arcanist",
       xp: 0,
       level: 1,
-      stats: { maxHp: 11, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
+      stats: { maxHp: 11, armor: 11, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
       hp: 11,
     });
     const result = applyXp(unit, 200);
     expect(result.leveledUp).toBe(true);
     expect(unit.level).toBe(5);
     expect(result.gains.maxHp).toBe(4);
-    expect(result.gains.spirit).toBe(4);
+    expect(result.gains.int).toBe(4);
   });
 
   it("reports each level reached in order (multi-threshold grant)", () => {
@@ -90,7 +90,7 @@ describe("applyXp", () => {
       defId: "class.arcanist",
       xp: 0,
       level: 1,
-      stats: { maxHp: 11, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
+      stats: { maxHp: 11, armor: 11, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
       hp: 11,
     });
     const result = applyXp(unit, 200);
@@ -109,7 +109,7 @@ describe("applyXp", () => {
       defId: "class.guardian",
       xp: 19,
       level: 1,
-      stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 10,
     });
     applyXp(unit, 1);

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { resolveAction, RALLY_TO_HIT_BONUS, RALLY_DURATION } from "./Action.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import { getTraitTriggered } from "./Traits.ts";
@@ -14,7 +14,7 @@ function makeUnit(
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     conditions: [],
     movePointsRemaining: 0,
@@ -48,7 +48,7 @@ function makeHero(): UnitInstance {
     pos: { q: 1, r: 0 },
     defId: "class.guardian",
     hp: 100,
-    stats: { maxHp: 100, armor: 10, move: 3, might: 20, agility: 1, spirit: 0 },
+    stats: { maxHp: 100, armor: 10, move: 3, str: 20, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
   });
 }
 
@@ -59,7 +59,7 @@ function makeEnemy(id: string, hp: number, pos: Hex): UnitInstance {
     defId: "enemy.goblin_skirmisher",
     team: "enemy",
     displayName: id,
-    stats: { maxHp: 20, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 },
+    stats: { maxHp: 20, armor: 12, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 },
     hp,
   });
 }
@@ -91,7 +91,7 @@ describe("Elite Rally trait (F28 / #59)", () => {
 
     resolveAction(ACTION_REGISTRY["action.slash"], hero, e1, state, rng);
     expect(getTraitTriggered(state, "encounter:elite_rally_on_first_death")).toBe(true);
-    // Clear logs and kill the second enemy — no second Rally line should appear.
+    // Clear logs and kill the second enemy â€” no second Rally line should appear.
     const logLenBefore = state.log.length;
     resolveAction(ACTION_REGISTRY["action.slash"], hero, e2, state, rng);
     const newRallyLogs = state.log
@@ -123,12 +123,12 @@ describe("Elite Rally trait (F28 / #59)", () => {
       defId: "class.guardian",
       hp: 50,
       // Armor tuned so the attack only connects thanks to the +RALLY_TO_HIT_BONUS.
-      stats: { maxHp: 50, armor: 12, move: 3, might: 0, agility: 0, spirit: 0 },
+      stats: { maxHp: 50, armor: 12, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeEliteState([hero, enemy]);
 
     // rusty_stab uses might (1) + proficiency (2) = 3 fixed. d20 for rng()=0.3 is 7.
-    // Without rally: 7 + 3 = 10 < armor 12 → miss. With rally +2: 12 ≥ 12 → hit.
+    // Without rally: 7 + 3 = 10 < armor 12 â†’ miss. With rally +2: 12 â‰¥ 12 â†’ hit.
     const rng = () => 0.3;
     const hpBefore = hero.hp;
     resolveAction(ACTION_REGISTRY["action.rusty_stab"], enemy, hero, state, rng);
