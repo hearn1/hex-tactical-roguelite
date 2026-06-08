@@ -6,6 +6,10 @@ import {
   applyShortRest,
   ensureRunRestState,
   shortRestsRemaining,
+  isPartyMemberAlive,
+  canPartyMemberBeHealed,
+  canPartyMemberRest,
+  canPartyMemberEnterCombat,
 } from "./Rest.ts";
 
 function freshRun() {
@@ -121,5 +125,83 @@ describe("rest mechanics", () => {
     expect(result.ok).toBe(true);
     expect(run.perEncounterUses).toEqual({});
     expect(result.hooksRecharged).toBe(true);
+  });
+
+  it("long rest does not restore a dead-for-run hero (#143)", () => {
+    const run = freshRun();
+    ensureRunRestState(run);
+    run.campSupplies = 5;
+    const dead = run.party[0];
+    dead.hp = 0;
+    dead.deadForRun = true;
+
+    const result = applyLongRest(run);
+
+    expect(result.ok).toBe(true);
+    expect(dead.hp).toBe(0);
+    expect(dead.deadForRun).toBe(true);
+    expect(result.heroes.find((h) => h.instanceId === dead.instanceId)).toBeUndefined();
+  });
+
+  it("long rest cost counts only living heroes (#143)", () => {
+    const run = freshRun();
+    ensureRunRestState(run);
+    run.campSupplies = 2;
+    run.party[0].hp = 0;
+    run.party[0].deadForRun = true;
+    // 2 living heroes remain; cost should be 2
+
+    const result = applyLongRest(run);
+
+    expect(result.ok).toBe(true);
+    expect(run.campSupplies).toBe(0);
+  });
+
+  it("short rest does not restore a dead-for-run hero (#143)", () => {
+    const run = freshRun();
+    ensureRunRestState(run);
+    const dead = run.party[0];
+    dead.hp = 0;
+    dead.deadForRun = true;
+    dead.hitDiceRemaining = 3;
+    // living hero is wounded so short rest can proceed
+    run.party[1].hp = 1;
+
+    const result = applyShortRest(run, () => 0.5);
+
+    expect(result.ok).toBe(true);
+    expect(dead.hp).toBe(0);
+    expect(dead.deadForRun).toBe(true);
+    expect(result.heroes.find((h) => h.instanceId === dead.instanceId)).toBeUndefined();
+  });
+});
+
+describe("party member life-state helpers (#143)", () => {
+  it("isPartyMemberAlive returns false for deadForRun heroes", () => {
+    const run = freshRun();
+    run.party[0].deadForRun = true;
+    expect(isPartyMemberAlive(run.party[0])).toBe(false);
+    expect(isPartyMemberAlive(run.party[1])).toBe(true);
+  });
+
+  it("canPartyMemberBeHealed returns false for deadForRun heroes", () => {
+    const run = freshRun();
+    run.party[0].deadForRun = true;
+    expect(canPartyMemberBeHealed(run.party[0])).toBe(false);
+    expect(canPartyMemberBeHealed(run.party[1])).toBe(true);
+  });
+
+  it("canPartyMemberRest returns false for deadForRun heroes", () => {
+    const run = freshRun();
+    run.party[0].deadForRun = true;
+    expect(canPartyMemberRest(run.party[0])).toBe(false);
+    expect(canPartyMemberRest(run.party[1])).toBe(true);
+  });
+
+  it("canPartyMemberEnterCombat returns false for deadForRun heroes", () => {
+    const run = freshRun();
+    run.party[0].deadForRun = true;
+    expect(canPartyMemberEnterCombat(run.party[0])).toBe(false);
+    expect(canPartyMemberEnterCombat(run.party[1])).toBe(true);
   });
 });

@@ -1,6 +1,22 @@
 import { CLASS_REGISTRY } from "../data/classes.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
 
+export function isPartyMemberAlive(pm: PartyMember): boolean {
+  return !pm.deadForRun;
+}
+
+export function canPartyMemberBeHealed(pm: PartyMember): boolean {
+  return !pm.deadForRun;
+}
+
+export function canPartyMemberRest(pm: PartyMember): boolean {
+  return !pm.deadForRun;
+}
+
+export function canPartyMemberEnterCombat(pm: PartyMember): boolean {
+  return !pm.deadForRun;
+}
+
 export const STARTING_CAMP_SUPPLIES = 3;
 export const SHORT_RESTS_PER_LONG_REST = 2;
 
@@ -64,6 +80,7 @@ export function shortRestsRemaining(run: RunState): number {
 
 export function canAnyHeroSpendHitDice(party: PartyMember[]): boolean {
   return party.some((pm) => {
+    if (!canPartyMemberRest(pm)) return false;
     syncHitDiceForPartyMember(pm);
     return pm.hp > 0 && pm.hp < pm.maxHp && (pm.hitDiceRemaining ?? 0) > 0;
   });
@@ -102,6 +119,7 @@ export function applyShortRest(run: RunState, rng: () => number): RestResult {
 
   const heroes: RestHeroResult[] = [];
   for (const pm of run.party) {
+    if (!canPartyMemberRest(pm)) continue;
     syncHitDiceForPartyMember(pm);
     const beforeHp = pm.hp;
     const maxSpend = Math.ceil((pm.hitDiceTotal ?? pm.level) / 2);
@@ -181,7 +199,8 @@ function rechargeOptionalUseHooks(target: unknown): boolean {
 
 export function applyLongRest(run: RunState): RestResult {
   ensureRunRestState(run);
-  const cost = run.party.length;
+  const livingParty = run.party.filter(canPartyMemberRest);
+  const cost = livingParty.length;
   if ((run.campSupplies ?? 0) < cost) {
     return { ok: false, message: `Long Rest requires ${cost} Camp Supplies.`, heroes: [] };
   }
@@ -191,7 +210,7 @@ export function applyLongRest(run: RunState): RestResult {
 
   let hooksRecharged = rechargeOptionalUseHooks(run);
   const heroes: RestHeroResult[] = [];
-  for (const pm of run.party) {
+  for (const pm of livingParty) {
     syncHitDiceForPartyMember(pm);
     const beforeHp = pm.hp;
     pm.hp = pm.maxHp;
