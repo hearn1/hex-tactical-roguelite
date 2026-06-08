@@ -1,4 +1,4 @@
-import type { CheckStat } from "../state/types.ts";
+import type { AbilityKey } from "./abilities.ts";
 import { ITEM_REGISTRY } from "./items.ts";
 import { POTION_REGISTRY } from "./potions.ts";
 
@@ -6,7 +6,7 @@ import { POTION_REGISTRY } from "./potions.ts";
  * Backgrounds are composite choices: one small stat bonus, one starter item or potion,
  * and one lightweight perk. Perks intentionally reuse existing run/combat levers.
  */
-export type BackgroundStat = CheckStat | "armor";
+export type BackgroundStat = AbilityKey | "armor";
 
 export type BackgroundPerk =
   | { type: "startCombatGuarded" }
@@ -41,7 +41,7 @@ export const BACKGROUND_REGISTRY: Record<string, BackgroundDef> = {
     id: "background.hedge_scholar",
     displayName: "Hedge Scholar",
     flavor: "Self-taught from borrowed books and long nights by the candle.",
-    statBonus: { stat: "spirit", amount: 1 },
+    statBonus: { stat: "int", amount: 1 },
     startingItemId: "item.apprentice_wand",
     perk: { type: "revealNodes", count: 2 },
   },
@@ -49,7 +49,7 @@ export const BACKGROUND_REGISTRY: Record<string, BackgroundDef> = {
     id: "background.caravan_guard",
     displayName: "Caravan Guard",
     flavor: "Years spent shielding wagons taught a steady arm and a hard stare.",
-    statBonus: { stat: "might", amount: 1 },
+    statBonus: { stat: "str", amount: 1 },
     startingPotionId: "potion.healing",
     startingPotionCount: 1,
     perk: { type: "startCombatGuarded" },
@@ -58,7 +58,7 @@ export const BACKGROUND_REGISTRY: Record<string, BackgroundDef> = {
     id: "background.cutpurse",
     displayName: "Cutpurse",
     flavor: "Quick fingers and quicker feet, honed in crowded market lanes.",
-    statBonus: { stat: "agility", amount: 1 },
+    statBonus: { stat: "dex", amount: 1 },
     startingItemId: "item.quickstep_buckle",
     perk: { type: "bonusGold", amount: 10 },
   },
@@ -74,7 +74,7 @@ export const BACKGROUND_REGISTRY: Record<string, BackgroundDef> = {
     id: "background.field_medic",
     displayName: "Field Medic",
     flavor: "Patched soldiers on the line and never travels without a remedy.",
-    statBonus: { stat: "spirit", amount: 1 },
+    statBonus: { stat: "wis", amount: 1 },
     startingPotionId: "potion.healing",
     startingPotionCount: 1,
     perk: { type: "xpMultiplier", value: 1.1 },
@@ -123,6 +123,16 @@ function describeStarter(def: BackgroundDef): string {
   return "None";
 }
 
+const BACKGROUND_STAT_LABELS: Record<BackgroundStat, string> = {
+  str: "Strength",
+  dex: "Dexterity",
+  con: "Constitution",
+  int: "Intelligence",
+  wis: "Wisdom",
+  cha: "Charisma",
+  armor: "Armor",
+};
+
 function statLabel(stat: BackgroundStat): string {
-  return stat.charAt(0).toUpperCase() + stat.slice(1);
+  return BACKGROUND_STAT_LABELS[stat] ?? stat;
 }

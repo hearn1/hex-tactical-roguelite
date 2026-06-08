@@ -109,7 +109,7 @@ describe("applyMetaUpgradesToFreshRun", () => {
     const run = makeRun();
     applyMetaUpgradesToFreshRun(run, meta);
     const guardian = run.party.find((p) => p.classId === "class.guardian")!;
-    expect(guardian.bonusStats.might).toBe(1);
+    expect(guardian.bonusStats.str).toBe(1);
   });
 });
 
@@ -164,8 +164,8 @@ describe("applyMetaUpgradesToFreshRun with duplicate classes", () => {
       makeMember("h2", "class.guardian"),
     ]);
     applyMetaUpgradesToFreshRun(run, meta);
-    expect(run.party[0].bonusStats.might).toBe(1);
-    expect(run.party[1].bonusStats.might).toBeUndefined();
+    expect(run.party[0].bonusStats.str).toBe(1);
+    expect(run.party[1].bonusStats.str).toBeUndefined();
   });
 
   it("applies a stat bonus to the player-assigned hero", () => {
@@ -175,8 +175,8 @@ describe("applyMetaUpgradesToFreshRun with duplicate classes", () => {
       makeMember("h2", "class.guardian"),
     ]);
     applyMetaUpgradesToFreshRun(run, meta, { "upgrade.veteran_guardian": "h2" });
-    expect(run.party[0].bonusStats.might).toBeUndefined();
-    expect(run.party[1].bonusStats.might).toBe(1);
+    expect(run.party[0].bonusStats.str).toBeUndefined();
+    expect(run.party[1].bonusStats.str).toBe(1);
   });
 
   it("applies a starting item to the player-assigned hero", () => {
@@ -198,6 +198,6 @@ describe("applyMetaUpgradesToFreshRun with duplicate classes", () => {
     ]);
     // "x9" is not in the party — should fall back to first matching guardian.
     applyMetaUpgradesToFreshRun(run, meta, { "upgrade.veteran_guardian": "x9" });
-    expect(run.party[0].bonusStats.might).toBe(1);
+    expect(run.party[0].bonusStats.str).toBe(1);
   });
 });

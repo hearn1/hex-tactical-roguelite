@@ -27,9 +27,12 @@ const STAT_LABELS: Record<(typeof STAT_KEYS)[number], string> = {
   maxHp: "Max HP",
   armor: "Armor",
   move: "Move",
-  might: "Might",
-  agility: "Agility",
-  spirit: "Spirit",
+  str: "STR",
+  dex: "DEX",
+  con: "CON",
+  int: "INT",
+  wis: "WIS",
+  cha: "CHA",
 };
 
 export function resetInventoryScreenState(): void {

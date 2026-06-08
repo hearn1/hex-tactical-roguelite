@@ -75,8 +75,9 @@ export function buildInspectPanelHtml(unit: UnitInstance, intent: string | null 
   const stats =
     `<div class="inspect-row"><b>HP</b> ${unit.hp}/${s.maxHp}` +
     ` &nbsp; <b>Armor</b> ${s.armor} &nbsp; <b>Move</b> ${s.move}</div>` +
-    `<div class="inspect-row"><b>Might</b> ${s.might} &nbsp; <b>Agility</b> ${s.agility}` +
-    ` &nbsp; <b>Spirit</b> ${s.spirit}</div>`;
+    `<div class="inspect-row"><b>STR</b> ${s.str} &nbsp; <b>DEX</b> ${s.dex}` +
+    ` &nbsp; <b>CON</b> ${s.con} &nbsp; <b>INT</b> ${s.int}` +
+    ` &nbsp; <b>WIS</b> ${s.wis} &nbsp; <b>CHA</b> ${s.cha}</div>`;
 
   const actionIds = def ? def.actionIds : [];
   const actionsBody = actionIds

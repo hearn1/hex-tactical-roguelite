@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import { getItemHooksForUnit, resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 import { resolveAction } from "./Action.ts";
@@ -14,7 +14,7 @@ function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: 
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     conditions: [],
     movePointsRemaining: 3,
@@ -184,14 +184,14 @@ describe("ItemHooks integration with resolveAction", () => {
       pos: { q: 0, r: 0 },
       team: "hero",
       equippedItemIds: { weapon: "item.runemark_blade", armor: null, trinket: null },
-      stats: { maxHp: 20, armor: 10, move: 3, might: 5, agility: 0, spirit: 0 },
+      stats: { maxHp: 20, armor: 10, move: 3, str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const target = makeUnit({
       instanceId: "t1",
       pos: { q: 1, r: 0 },
       team: "enemy",
       hp: 30,
-      stats: { maxHp: 30, armor: 10, move: 3, might: 0, agility: 0, spirit: 0 },
+      stats: { maxHp: 30, armor: 10, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeCombatState([attacker, target]);
 
@@ -212,14 +212,14 @@ describe("ItemHooks integration with resolveAction", () => {
       team: "hero",
       defId: "class.arcanist",
       equippedItemIds: { weapon: "item.emberglass_wand", armor: null, trinket: null },
-      stats: { maxHp: 12, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
+      stats: { maxHp: 12, armor: 11, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
     });
     const target = makeUnit({
       instanceId: "t1",
       pos: { q: 1, r: 0 },
       team: "enemy",
       hp: 30,
-      stats: { maxHp: 30, armor: 10, move: 3, might: 0, agility: 0, spirit: 0 },
+      stats: { maxHp: 30, armor: 10, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeCombatState([attacker, target]);
 
@@ -234,7 +234,7 @@ describe("ItemHooks integration with resolveAction", () => {
       pos: { q: 0, r: 0 },
       team: "enemy",
       defId: "enemy.goblin_skirmisher",
-      stats: { maxHp: 10, armor: 10, move: 3, might: 5, agility: 0, spirit: 0 },
+      stats: { maxHp: 10, armor: 10, move: 3, str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const target = makeUnit({
       instanceId: "t1",
@@ -242,7 +242,7 @@ describe("ItemHooks integration with resolveAction", () => {
       team: "hero",
       hp: 20,
       equippedItemIds: { weapon: null, armor: "item.ward_stitched_vest", trinket: null },
-      stats: { maxHp: 20, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 20, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeCombatState([attacker, target]);
 
@@ -268,7 +268,7 @@ describe("ItemHooks integration with resolveAction", () => {
       pos: { q: 1, r: 0 },
       team: "enemy",
       defId: "enemy.goblin_skirmisher",
-      stats: { maxHp: 10, armor: 10, move: 3, might: 5, agility: 0, spirit: 0 },
+      stats: { maxHp: 10, armor: 10, move: 3, str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
 
     const beforeHp = unit.hp;
@@ -302,14 +302,14 @@ describe("ItemHooks integration with resolveAction", () => {
       team: "hero",
       defId: "class.acolyte",
       equippedItemIds: { weapon: null, armor: null, trinket: "item.lantern_moth_pin" },
-      stats: { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 5 },
+      stats: { maxHp: 14, armor: 12, move: 3, str: 1, dex: 1, con: 0, int: 5, wis: 0, cha: 0 },
     });
     const target = makeUnit({
       instanceId: "t1",
       pos: { q: 1, r: 0 },
       team: "hero",
       hp: 10,
-      stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeCombatState([healer, target]);
 

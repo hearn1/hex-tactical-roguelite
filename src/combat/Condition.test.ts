@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import type { UnitInstance } from "../state/types.ts";
 import { applyCondition, processTurnStart } from "./Condition.ts";
 import { createRng } from "../core/rng.ts";
@@ -15,7 +15,7 @@ function makeUnit(overrides: Partial<UnitInstance> = {}): UnitInstance {
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 20, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 20, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 20,
     pos: { q: 0, r: 0 },
     conditions: [],
@@ -49,7 +49,7 @@ describe("Guarded", () => {
       displayName: "Attacker",
       team: "enemy",
       defId: "enemy.goblin_skirmisher",
-      stats: { maxHp: 10, armor: 10, move: 3, might: 5, agility: 0, spirit: 0 },
+      stats: { maxHp: 10, armor: 10, move: 3, str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const target = makeUnit({ instanceId: "tgt", displayName: "Target" });
     applyCondition(target, "guarded", 1);
@@ -73,11 +73,11 @@ describe("Weakened", () => {
       displayName: "Attacker",
       team: "enemy",
       defId: "enemy.goblin_skirmisher",
-      stats: { maxHp: 10, armor: 10, move: 3, might: 5, agility: 0, spirit: 0 },
+      stats: { maxHp: 10, armor: 10, move: 3, str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     applyCondition(attacker, "weakened", 1);
 
-    const target = makeUnit({ instanceId: "tgt", displayName: "Target", stats: { maxHp: 99, armor: 99, move: 3, might: 0, agility: 0, spirit: 0 } });
+    const target = makeUnit({ instanceId: "tgt", displayName: "Target", stats: { maxHp: 99, armor: 99, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
 
     const slash = ACTION_REGISTRY["action.slash"];
     const cs = makeCombatState([attacker, target]);
@@ -106,11 +106,11 @@ describe("Blessed", () => {
       displayName: "Attacker",
       team: "enemy",
       defId: "enemy.goblin_skirmisher",
-      stats: { maxHp: 10, armor: 10, move: 3, might: 5, agility: 0, spirit: 0 },
+      stats: { maxHp: 10, armor: 10, move: 3, str: 5, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
     });
     applyCondition(attacker, "blessed", 2);
 
-    const target = makeUnit({ instanceId: "tgt", displayName: "Target", stats: { maxHp: 99, armor: 99, move: 3, might: 0, agility: 0, spirit: 0 } });
+    const target = makeUnit({ instanceId: "tgt", displayName: "Target", stats: { maxHp: 99, armor: 99, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
 
     const slash = ACTION_REGISTRY["action.slash"];
     const cs = makeCombatState([attacker, target]);
@@ -125,7 +125,7 @@ describe("Slowed", () => {
   it("reduces next-turn movePointsRemaining by 1", () => {
     const unit = makeUnit({
       movePointsRemaining: 3,
-      stats: { maxHp: 20, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 20, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     applyCondition(unit, "slowed", 1);
 

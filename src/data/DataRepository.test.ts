@@ -31,7 +31,7 @@ describe("DataRepository", () => {
     const def = repo.getAction("action.slash");
     expect(def).toBeDefined();
     expect(def!.displayName).toBe("Slash");
-    expect(def!.effect).toEqual({ type: "damage", formula: "1d6 + might" });
+    expect(def!.effect).toEqual({ type: "damage", formula: "1d6 + str" });
   });
 
   it("getItem returns expected def", () => {
@@ -115,7 +115,7 @@ describe("DataRepository", () => {
     const def = repo.getBackground("background.caravan_guard");
     expect(def).toBeDefined();
     expect(def!.displayName).toBe("Caravan Guard");
-    expect(def!.statBonus).toEqual({ stat: "might", amount: 1 });
+    expect(def!.statBonus).toEqual({ stat: "str", amount: 1 });
     expect(def!.perk).toEqual({ type: "startCombatGuarded" });
   });
 
@@ -403,15 +403,15 @@ describe("DataRepository validation rejects broken references", () => {
     choice.effects = original;
   });
 
-  it("accepts stat_boost with legacy combat stat 'spirit'", () => {
+  it("accepts stat_boost with ability key stat 'wis'", () => {
     const repo = new DataRepository();
     repo.loadAll();
     const report = repo.validate();
     expect(report.valid).toBe(true);
-    // event.strange_shrine and others use stat_boost: spirit — validate must not reject them
+    // event.strange_shrine uses stat_boost: wis (was spirit before #141)
     const shrine = repo.getEvent("event.strange_shrine")!;
     const prayChoice = shrine.choices.find((c) => c.id === "event.strange_shrine.pray")!;
-    expect(prayChoice.effects[0]).toMatchObject({ type: "stat_boost", stat: "spirit" });
+    expect(prayChoice.effects[0]).toMatchObject({ type: "stat_boost", stat: "wis" });
   });
 
   it("rejects an invalid ability key in a check stat", () => {

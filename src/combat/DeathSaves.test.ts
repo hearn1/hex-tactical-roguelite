@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import type { UnitInstance, CombatState } from "../state/types.ts";
 import {
@@ -28,8 +28,9 @@ function makeHero(overrides: Partial<UnitInstance> = {}): UnitInstance {
     defId: "class.guardian",
     level: 1,
     xp: 0,
-    stats: { maxHp: 20, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 20, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 20,
+    pos: { q: 0, r: 0 },
     heroLifeState: "standing",
     conditions: [],
     movePointsRemaining: 3,
@@ -48,8 +49,9 @@ function makeEnemy(overrides: Partial<UnitInstance> = {}): UnitInstance {
     defId: "enemy.goblin_skirmisher",
     level: 1,
     xp: 0,
-    stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 },
+    stats: { maxHp: 8, armor: 12, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 8,
+    pos: { q: 1, r: 0 },
     conditions: [],
     movePointsRemaining: 4,
     hasActed: false,
@@ -70,8 +72,6 @@ function makeState(units: UnitInstance[]): CombatState {
     gridKeys: [],
     targetingActionId: null,
     perEncounterUses: {},
-    bossActionIndex: 0,
-    bossReinforcementSpawned: false,
     bossTelegraph: null,
     encounterId: "encounter.goblin_ambush",
   };
@@ -99,7 +99,7 @@ describe("predicate helpers", () => {
   it("isStandingHero is true for standing heroes and all enemies", () => {
     expect(isStandingHero(makeHero())).toBe(true);
     expect(isStandingHero(makeHero({ heroLifeState: "downed" }))).toBe(false);
-    // Enemies always map to "standing" — callers filter by team separately.
+    // Enemies always map to "standing" â€” callers filter by team separately.
     expect(isStandingHero(makeEnemy())).toBe(true);
   });
 
@@ -237,7 +237,7 @@ describe("clearDeathSavesOnHealing", () => {
 
 describe("resolveDeathSaveTurn", () => {
   it("nat 20 revives the hero at 1 HP", () => {
-    // createRng(seed) — find a seed that produces 20/20 on d20
+    // createRng(seed) â€” find a seed that produces 20/20 on d20
     // We'll mock by constructing a fixed rng that returns 19/20 (= nat20 on d20)
     const rng = () => 19 / 20; // Math.floor(19/20 * 20) + 1 = Math.floor(19) + 1 = 20
     const hero = makeHero({ heroLifeState: "downed", hp: 0, deathSaves: { successes: 0, failures: 0 } });
@@ -281,7 +281,7 @@ describe("resolveDeathSaveTurn", () => {
   });
 
   it(`${DEATH_SAVE_FAILURES_TO_DIE} failures kills the hero`, () => {
-    const rng = () => 0.1 / 20; // low roll → failure
+    const rng = () => 0.1 / 20; // low roll â†’ failure
     const hero = makeHero({
       heroLifeState: "downed",
       hp: 0,

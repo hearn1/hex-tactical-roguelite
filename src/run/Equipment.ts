@@ -8,7 +8,7 @@ import type { InventoryState } from "./Inventory.ts";
 export type EquipmentSlot = keyof PartyMember["equippedItemIds"];
 
 export const EQUIPMENT_SLOTS: EquipmentSlot[] = ["weapon", "armor", "trinket"];
-export const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "might", "agility", "spirit"];
+export const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "str", "dex", "con", "int", "wis", "cha"];
 
 export interface EquipBagItemResult {
   ok: boolean;
@@ -26,7 +26,7 @@ export interface EquipmentStatPreview {
 }
 
 function zeroStats(): UnitStats {
-  return { maxHp: 0, armor: 0, move: 0, might: 0, agility: 0, spirit: 0 };
+  return { maxHp: 0, armor: 0, move: 0, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
 }
 
 export function canEquipItemToSlot(itemId: string, slot: EquipmentSlot): boolean {
@@ -42,9 +42,12 @@ export function computePartyMemberStats(
     maxHp: partyMember.maxHp,
     armor: 0,
     move: 0,
-    might: 0,
-    agility: 0,
-    spirit: 0,
+    str: 0,
+    dex: 0,
+    con: 0,
+    int: 0,
+    wis: 0,
+    cha: 0,
   };
   const bonuses = zeroStats();
 
@@ -66,9 +69,12 @@ export function computePartyMemberStats(
     maxHp: base.maxHp + bonuses.maxHp,
     armor: base.armor + bonuses.armor,
     move: base.move + bonuses.move,
-    might: base.might + bonuses.might,
-    agility: base.agility + bonuses.agility,
-    spirit: base.spirit + bonuses.spirit,
+    str: base.str + bonuses.str,
+    dex: base.dex + bonuses.dex,
+    con: base.con + bonuses.con,
+    int: base.int + bonuses.int,
+    wis: base.wis + bonuses.wis,
+    cha: base.cha + bonuses.cha,
   };
 }
 

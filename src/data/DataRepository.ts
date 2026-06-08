@@ -226,9 +226,8 @@ export class DataRepository {
     const allEventIds = new Set(this.events.keys());
     const allPotionIds = new Set(this.potions.keys());
     const allBackgroundIds = new Set(this.backgrounds.keys());
-    const checkStats = new Set(["might", "agility", "spirit"]);
     const abilityKeys = new Set<string>(ABILITY_KEYS);
-    const statKeys = new Set(["maxHp", "armor", "move", "might", "agility", "spirit"]);
+    const statKeys = new Set(["maxHp", "armor", "move", "str", "dex", "con", "int", "wis", "cha"]);
     const eventTags = new Set(["risk", "social", "treasure", "heal", "train", "moral"]);
     const environmentThemeIds = new Set(Object.keys(ENVIRONMENT_THEMES));
     // Combat grid is a radius-3 hex disc; referenced by both enemy trait and encounter validation.
@@ -270,9 +269,9 @@ export class DataRepository {
       if (stats.maxHp <= 0) errors.push(`Class "${id}": maxHp must be > 0`);
       if (stats.armor < 0) errors.push(`Class "${id}": armor must be >= 0`);
       if (stats.move < 0 || stats.move > 10) errors.push(`Class "${id}": move out of range 0-10`);
-      if (stats.might < 0 || stats.might > 10) errors.push(`Class "${id}": might out of range 0-10`);
-      if (stats.agility < 0 || stats.agility > 10) errors.push(`Class "${id}": agility out of range 0-10`);
-      if (stats.spirit < 0 || stats.spirit > 10) errors.push(`Class "${id}": spirit out of range 0-10`);
+      for (const key of ["str", "dex", "con", "int", "wis", "cha"] as const) {
+        if (stats[key] < 0 || stats[key] > 10) errors.push(`Class "${id}": ${key} out of range 0-10`);
+      }
     }
 
     for (const [id, def] of this.enemies) {
@@ -285,9 +284,9 @@ export class DataRepository {
       if (stats.maxHp <= 0) errors.push(`Enemy "${id}": maxHp must be > 0`);
       if (stats.armor < 0) errors.push(`Enemy "${id}": armor must be >= 0`);
       if (stats.move < 0 || stats.move > 10) errors.push(`Enemy "${id}": move out of range 0-10`);
-      if (stats.might < 0 || stats.might > 10) errors.push(`Enemy "${id}": might out of range 0-10`);
-      if (stats.agility < 0 || stats.agility > 10) errors.push(`Enemy "${id}": agility out of range 0-10`);
-      if (stats.spirit < 0 || stats.spirit > 10) errors.push(`Enemy "${id}": spirit out of range 0-10`);
+      for (const key of ["str", "dex", "con", "int", "wis", "cha"] as const) {
+        if (stats[key] < 0 || stats[key] > 10) errors.push(`Enemy "${id}": ${key} out of range 0-10`);
+      }
 
       for (const trait of def.traits ?? []) {
         if (trait.id === "boss_action_rotation") {
@@ -533,8 +532,8 @@ export class DataRepository {
         errors.push(`${where}: item "${effect.itemId}" not found`);
       } else if (effect.type === "potion" && !allPotionIds.has(effect.potionId)) {
         errors.push(`${where}: potion "${effect.potionId}" not found`);
-      } else if (effect.type === "stat_boost" && !checkStats.has(effect.stat)) {
-        errors.push(`${where}: stat "${effect.stat}" is not a valid check stat`);
+      } else if (effect.type === "stat_boost" && !abilityKeys.has(effect.stat)) {
+        errors.push(`${where}: stat "${effect.stat}" is not a valid ability key`);
       } else if (effect.type === "check") {
         if (effect.check.dc <= 0) errors.push(`${where}: check DC must be > 0`);
         if (!abilityKeys.has(effect.check.stat)) {

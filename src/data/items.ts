@@ -4,9 +4,12 @@ const STAT_LABELS: Record<string, string> = {
   maxHp: "Max HP",
   armor: "Armor",
   move: "Move",
-  might: "Might",
-  agility: "Agility",
-  spirit: "Spirit",
+  str: "Strength",
+  dex: "Dexterity",
+  con: "Constitution",
+  int: "Intelligence",
+  wis: "Wisdom",
+  cha: "Charisma",
 };
 
 export type ItemHook =
@@ -45,7 +48,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Iron Sword",
     slot: "weapon",
     rarity: "common",
-    statBonuses: { might: 1 },
+    statBonuses: { str: 1 },
   },
   "item.wooden_shield": {
     id: "item.wooden_shield",
@@ -59,14 +62,14 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Apprentice Wand",
     slot: "weapon",
     rarity: "common",
-    statBonuses: { spirit: 1 },
+    statBonuses: { int: 1 },
   },
   "item.fine_dagger": {
     id: "item.fine_dagger",
     displayName: "Fine Dagger",
     slot: "weapon",
     rarity: "common",
-    statBonuses: { agility: 1 },
+    statBonuses: { dex: 1 },
   },
   "item.hunter_bow": {
     id: "item.hunter_bow",
@@ -87,7 +90,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Soldier Badge",
     slot: "trinket",
     rarity: "common",
-    statBonuses: { might: 1 },
+    statBonuses: { str: 1 },
   },
   "item.chain_vest": {
     id: "item.chain_vest",
@@ -114,7 +117,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Ember Staff",
     slot: "weapon",
     rarity: "uncommon",
-    statBonuses: { spirit: 1 },
+    statBonuses: { int: 1 },
   },
   "item.owl_feather": {
     id: "item.owl_feather",
@@ -127,7 +130,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Runed Robe",
     slot: "armor",
     rarity: "uncommon",
-    statBonuses: { spirit: 1, maxHp: 1 },
+    statBonuses: { int: 1, maxHp: 1 },
   },
   "item.runemark_blade": {
     id: "item.runemark_blade",
@@ -135,7 +138,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     slot: "weapon",
     rarity: "uncommon",
     requiresAttunement: true,
-    statBonuses: { might: 1 },
+    statBonuses: { str: 1 },
     flavorText: "A steel blade etched with ancient runes that flare on the first strike.",
     hook: { type: "oncePerCombatBonus", trigger: "firstMeleeAttack", effect: { kind: "bonusDamage", value: 1 } },
   },
@@ -145,7 +148,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     slot: "weapon",
     rarity: "uncommon",
     requiresAttunement: true,
-    statBonuses: { spirit: 1 },
+    statBonuses: { int: 1 },
     flavorText: "A wand of obsidian and glass, smoldering with captive flame.",
     hook: { type: "attackBonus", attackType: "spell", value: 1 },
   },
@@ -164,7 +167,7 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     displayName: "Moonwell Robe",
     slot: "armor",
     rarity: "uncommon",
-    statBonuses: { spirit: 1, maxHp: 1 },
+    statBonuses: { wis: 1, maxHp: 1 },
     flavorText: "Silvery fabric woven from moonlit well-threads, brimming with vitality.",
   },
   "item.hearthstone_charm": {

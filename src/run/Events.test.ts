@@ -255,18 +255,18 @@ describe("resolveCheckEffect", () => {
 });
 
 describe("applyStatBoost", () => {
-  it("applies +1 spirit to the chosen hero", () => {
+  it("applies +1 wis to the chosen hero", () => {
     const party = makeParty();
-    const msg = applyStatBoost(party[0], "spirit", 1);
-    expect(party[0].bonusStats.spirit).toBe(1);
+    const msg = applyStatBoost(party[0], "wis", 1);
+    expect(party[0].bonusStats.wis).toBe(1);
     expect(msg).toContain("+1");
   });
 
   it("accumulates multiple boosts", () => {
     const party = makeParty();
-    applyStatBoost(party[0], "spirit", 1);
-    applyStatBoost(party[0], "spirit", 1);
-    expect(party[0].bonusStats.spirit).toBe(2);
+    applyStatBoost(party[0], "wis", 1);
+    applyStatBoost(party[0], "wis", 1);
+    expect(party[0].bonusStats.wis).toBe(2);
   });
 });
 
@@ -329,8 +329,8 @@ describe("applyEffectList — every effect type", () => {
 
   it("buff pushes the modifier onto run.runModifiers", () => {
     const run = makeRun(makeParty());
-    applyEffectList([{ type: "buff", modifier: { kind: "global_stat", stat: "might", value: 1 } }], run, rng);
-    expect(run.runModifiers).toEqual([{ kind: "global_stat", stat: "might", value: 1 }]);
+    applyEffectList([{ type: "buff", modifier: { kind: "global_stat", stat: "str", value: 1 } }], run, rng);
+    expect(run.runModifiers).toEqual([{ kind: "global_stat", stat: "str", value: 1 }]);
   });
 
   it("noop changes nothing", () => {
@@ -400,7 +400,7 @@ describe("resolveEventChoice", () => {
   it("flags hero pick and applies nothing for stat_boost / check / xp:picked_hero", () => {
     const run = makeRun(makeParty());
     for (const effects of [
-      [{ type: "stat_boost", stat: "spirit", amount: 1 }] as const,
+      [{ type: "stat_boost", stat: "wis", amount: 1 }] as const,
       [{ type: "xp", amount: 5, target: "picked_hero" }] as const,
     ]) {
       const choice: EventChoice = { id: "c", label: "c", description: "", effects: [...effects] };
@@ -419,10 +419,10 @@ describe("resolveEventChoiceWithHero", () => {
   it("applies stat_boost to the chosen hero", () => {
     const party = makeParty();
     const run = makeRun(party);
-    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "stat_boost", stat: "spirit", amount: 1 }] };
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "stat_boost", stat: "wis", amount: 1 }] };
     resolveEventChoiceWithHero(choice, party[1], run, rng);
-    expect(party[1].bonusStats.spirit).toBe(1);
-    expect(party[0].bonusStats.spirit ?? 0).toBe(0);
+    expect(party[1].bonusStats.wis).toBe(1);
+    expect(party[0].bonusStats.wis ?? 0).toBe(0);
   });
 
   it("applies xp:picked_hero to the chosen hero only", () => {
@@ -581,8 +581,8 @@ describe("ability score integration", () => {
     const party = makeParty();
     party[0].abilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 };
     const run = makeRun(party);
-    applyStatBoost(party[0], "spirit", 1);
-    expect(party[0].bonusStats.spirit).toBe(1);
+    applyStatBoost(party[0], "wis", 1);
+    expect(party[0].bonusStats.wis).toBe(1);
     expect(party[0].abilityScores?.str).toBe(10);
     expect(party[0].abilityScores?.wis).toBe(10);
   });
@@ -591,16 +591,16 @@ describe("ability score integration", () => {
 describe("event content pack — check branches reward the attempting hero", () => {
   const faceRng = (face: number) => () => (face - 1) / 20;
 
-  it("Whispering Milestone success grants +1 Spirit to the hero who attempted", () => {
+  it("Whispering Milestone success grants +1 Wisdom to the hero who attempted", () => {
     const party = makeParty();
-    // Give Sable a high Wisdom so the check (now WIS DC 13) succeeds.
+    // Give Sable a high Wisdom so the check (WIS DC 13) succeeds.
     party[1].abilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 16, cha: 10 }; // +3 wis
     const run = makeRun(party);
     const choice = EVENT_REGISTRY["event.whispering_milestone"].choices[0];
-    // roll 12 + 3 = 15 >= DC 13 -> success; stat_boost still targets combat stat "spirit"
+    // roll 12 + 3 = 15 >= DC 13 -> success; stat_boost targets wis
     resolveEventChoiceWithHero(choice, party[1], run, faceRng(12));
-    expect(party[1].bonusStats.spirit).toBe(1);
-    expect(party[0].bonusStats.spirit ?? 0).toBe(0);
+    expect(party[1].bonusStats.wis).toBe(1);
+    expect(party[0].bonusStats.wis ?? 0).toBe(0);
   });
 
   it("Rain-Washed Cairn success grants XP to the reader on success", () => {

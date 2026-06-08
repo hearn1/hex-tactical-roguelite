@@ -55,7 +55,7 @@ describe("event content pack — end-to-end through the F24 screen (no per-event
     expect(after).toBe(before - 4);
   });
 
-  it("Whispering Milestone: a successful check grants the attempting hero +1 Spirit", () => {
+  it("Whispering Milestone: a successful check grants the attempting hero +1 Wisdom", () => {
     const { app, clickTestId } = mountApp();
     forceEvent("event.whispering_milestone");
     app.render();
@@ -65,8 +65,8 @@ describe("event content pack — end-to-end through the F24 screen (no per-event
     // Acolyte (hero_002) attempts the Wisdom check.
     clickTestId("check-hero-hero_002");
 
-    expect(gameState.run!.party[1].bonusStats.spirit).toBe(1);
-    expect(gameState.run!.party[0].bonusStats.spirit ?? 0).toBe(0);
+    expect(gameState.run!.party[1].bonusStats.wis).toBe(1);
+    expect(gameState.run!.party[0].bonusStats.wis ?? 0).toBe(0);
   });
 
   it("Ashen Star Shrine: the offering choice is gated by gold and spends it on a stat boost", () => {
@@ -75,18 +75,18 @@ describe("event content pack — end-to-end through the F24 screen (no per-event
     forceEvent("event.ashen_star_shrine");
     app.render();
 
-    const offer = root.querySelector('[data-testid="event-choice-offer-coin-for-might"]')!;
+    const offer = root.querySelector('[data-testid="event-choice-offer-coin-for-strength"]')!;
     expect(offer.getAttribute("data-disabled")).toBe("true");
     expect(offer.textContent).toContain("Requires 20 gold");
 
-    // Afford it, then commit: gold is spent and the chosen hero gains +1 Might.
+    // Afford it, then commit: gold is spent and the chosen hero gains +1 Strength.
     gameState.run!.gold = 25;
     app.render();
-    clickTestId("event-choice-offer-coin-for-might");
+    clickTestId("event-choice-offer-coin-for-strength");
     clickTestId("event-hero-hero_001");
 
     expect(gameState.run!.gold).toBe(5);
-    expect(gameState.run!.party[0].bonusStats.might).toBe(1);
+    expect(gameState.run!.party[0].bonusStats.str).toBe(1);
   });
 
   it("Old Drill Ring: 'Drill Together' grants party-wide XP with no hero pick", () => {

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import { resolveAction, validTargets } from "./Action.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
@@ -19,7 +19,7 @@ function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: 
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     conditions: [],
     movePointsRemaining: 3,
@@ -49,8 +49,8 @@ describe("level-up action upgrades in combat", () => {
   it("damageBonus adds flat damage on a hit (Pressing Strike)", () => {
     const seed = 2;
     // Hits in both runs: huge might + low armor means only a natural 1 could miss (seed avoids it).
-    const stats = { maxHp: 100, armor: 10, move: 3, might: 10, agility: 0, spirit: 0 };
-    const enemyStats = { maxHp: 100, armor: 5, move: 3, might: 0, agility: 0, spirit: 0 };
+    const stats = { maxHp: 100, armor: 10, move: 3, str: 10, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
+    const enemyStats = { maxHp: 100, armor: 5, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 };
 
     const baseA = makeUnit({ instanceId: "a", pos: { q: 0, r: 0 }, stats: { ...stats } });
     const baseT = makeUnit({ instanceId: "t", pos: { q: 1, r: 0 }, team: "enemy", hp: 100, stats: { ...enemyStats } });
@@ -75,8 +75,8 @@ describe("level-up action upgrades in combat", () => {
 
   it("healBonus adds flat healing (Warm Hands)", () => {
     const seed = 3;
-    const acoStats = { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 5 };
-    const allyStats = { maxHp: 100, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 };
+    const acoStats = { maxHp: 14, armor: 12, move: 3, str: 1, dex: 1, con: 0, int: 5, wis: 0, cha: 0 };
+    const allyStats = { maxHp: 100, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 };
 
     const baseA = makeUnit({ instanceId: "a", pos: { q: 0, r: 0 }, defId: "class.acolyte", stats: { ...acoStats } });
     const baseAlly = makeUnit({ instanceId: "b", pos: { q: 1, r: 0 }, hp: 10, stats: { ...allyStats } });
@@ -103,13 +103,13 @@ describe("level-up action upgrades in combat", () => {
       instanceId: "h1",
       pos: { q: 0, r: 0 },
       defId: "class.arcanist",
-      stats: { maxHp: 11, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
+      stats: { maxHp: 11, armor: 11, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
       actionUpgrades: { "action.fire_bolt": { rangeBonus: 1 } },
     });
-    const enemyAt5 = makeUnit({ instanceId: "e1", pos: { q: 0, r: 5 }, team: "enemy", stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 } });
+    const enemyAt5 = makeUnit({ instanceId: "e1", pos: { q: 0, r: 5 }, team: "enemy", stats: { maxHp: 8, armor: 12, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 } });
     const state = twoUnitState(arc, enemyAt5);
 
-    // Fire Bolt base range is 4 → distance 5 is out of reach without the upgrade.
+    // Fire Bolt base range is 4 â†’ distance 5 is out of reach without the upgrade.
     const without = validTargets(ACTION_REGISTRY["action.fire_bolt"], { ...arc, actionUpgrades: undefined }, state);
     expect(without.map((t) => t.instanceId)).not.toContain("e1");
 
@@ -122,7 +122,7 @@ describe("level-up action upgrades in combat", () => {
       instanceId: "a",
       pos: { q: 0, r: 0 },
       defId: "class.acolyte",
-      stats: { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 3 },
+      stats: { maxHp: 14, armor: 12, move: 3, str: 1, dex: 1, con: 0, int: 3, wis: 0, cha: 0 },
       actionUpgrades: { "action.bless": { conditionDurationBonus: 1 } },
     });
     const ally = makeUnit({ instanceId: "b", pos: { q: 1, r: 0 } });
@@ -134,8 +134,8 @@ describe("level-up action upgrades in combat", () => {
 
   it("first_heal_bonus passive adds extra HP once per combat (Field Prayer)", () => {
     const seed = 9;
-    const acoStats = { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 5 };
-    const allyStats = { maxHp: 100, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 };
+    const acoStats = { maxHp: 14, armor: 12, move: 3, str: 1, dex: 1, con: 0, int: 5, wis: 0, cha: 0 };
+    const allyStats = { maxHp: 100, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 };
 
     const baseA = makeUnit({ instanceId: "a", pos: { q: 0, r: 0 }, defId: "class.acolyte", stats: { ...acoStats } });
     const baseAlly = makeUnit({ instanceId: "b", pos: { q: 1, r: 0 }, hp: 10, stats: { ...allyStats } });

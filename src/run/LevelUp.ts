@@ -9,7 +9,7 @@ import {
 } from "../data/levelups.ts";
 import { ARCHETYPE_REGISTRY } from "../data/archetypes.ts";
 
-const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "might", "agility", "spirit"];
+const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "str", "dex", "con", "int", "wis", "cha"];
 
 /** True when a level falls inside the interactive choice band (levels 2–3 first pass). */
 export function isChoiceLevel(level: number): boolean {

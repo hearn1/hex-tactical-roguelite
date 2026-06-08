@@ -170,8 +170,8 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       {
         id: "acolyte.faithful_recovery",
         name: "Faithful Recovery",
-        description: "Permanent +1 Spirit and +2 max HP.",
-        upgrade: { kind: "stat", stats: { spirit: 1, maxHp: 2 } },
+        description: "Permanent +1 Wisdom and +2 max HP.",
+        upgrade: { kind: "stat", stats: { wis: 1, maxHp: 2 } },
       },
       {
         id: "acolyte.learn_shield_of_faith",
@@ -234,8 +234,8 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       {
         id: "arcanist.arcane_reserves",
         name: "Arcane Reserves",
-        description: "Permanent +1 Spirit and +1 max HP.",
-        upgrade: { kind: "stat", stats: { spirit: 1, maxHp: 1 } },
+        description: "Permanent +1 Intelligence and +1 max HP.",
+        upgrade: { kind: "stat", stats: { int: 1, maxHp: 1 } },
       },
       {
         id: "arcanist.learn_slow",
@@ -261,8 +261,8 @@ export const SHARED_FALLBACK_CHOICES: LevelUpOption[] = [
   {
     id: "shared.honed_reflexes",
     name: "Honed Reflexes",
-    description: "Permanent +1 Agility.",
-    upgrade: { kind: "stat", stats: { agility: 1 } },
+    description: "Permanent +1 Dexterity.",
+    upgrade: { kind: "stat", stats: { dex: 1 } },
   },
 ];
 

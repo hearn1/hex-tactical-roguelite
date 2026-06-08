@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+﻿import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
 import { takeEnemyTurn } from "./EnemyAI.ts";
 import { resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "./Action.ts";
@@ -15,7 +15,7 @@ function makeUnit(
     team: "hero",
     level: 1,
     xp: 0,
-    stats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     hp: 18,
     conditions: [],
     movePointsRemaining: 0,
@@ -51,7 +51,7 @@ function makeBoss(hp: number): UnitInstance {
     defId: "enemy.ogre_hexbreaker",
     team: "enemy",
     displayName: "Ogre Hexbreaker",
-    stats: { maxHp: 42, armor: 13, move: 3, might: 4, agility: 0, spirit: 1 },
+    stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 0, int: 1, wis: 0, cha: 0 },
     hp,
     movePointsRemaining: 3,
   });
@@ -72,7 +72,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
   it("winds up (telegraphs) on the enraged turn instead of acting", () => {
     const rng = createRng(7);
     const boss = makeBoss(20); // <= 50% of 42
-    const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian", hp: 50, stats: { maxHp: 50, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 } });
+    const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian", hp: 50, stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 } });
     const state = makeBossState([boss, hero]);
 
     const hpBefore = hero.hp;
@@ -98,7 +98,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       pos: { q: 1, r: 0 }, // adjacent to boss
       defId: "class.guardian",
       hp: 50,
-      stats: { maxHp: 50, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, hero]);
 
@@ -113,7 +113,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     expect(state.log.some((l) => l.text.includes("unleashes Ground Slam"))).toBe(true);
   });
 
-  it("only telegraphs the adjacent ring — non-adjacent heroes are unaffected", () => {
+  it("only telegraphs the adjacent ring â€” non-adjacent heroes are unaffected", () => {
     const rng = createRng(7);
     const boss = makeBoss(20);
     const far = makeUnit({
@@ -121,7 +121,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       pos: { q: 0, r: 3 }, // distance 3, not adjacent
       defId: "class.guardian",
       hp: 50,
-      stats: { maxHp: 50, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, far]);
 
@@ -142,7 +142,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       pos: { q: 1, r: 0 }, // adjacent
       defId: "class.guardian",
       hp: 50,
-      stats: { maxHp: 50, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, hero]);
 
@@ -164,7 +164,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
       hp: 50,
-      stats: { maxHp: 50, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
       conditions: [{ id: "guarded", remainingTurns: 1 }],
     });
     const state = makeBossState([boss, guarded]);
@@ -184,16 +184,16 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
       hp: 100,
-      stats: { maxHp: 100, armor: 10, move: 3, might: 20, agility: 1, spirit: 0 },
+      stats: { maxHp: 100, armor: 10, move: 3, str: 20, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, hero]);
 
-    // Hero smashes the boss below 50% → reinforcement spawns.
+    // Hero smashes the boss below 50% â†’ reinforcement spawns.
     resolveAction(ACTION_REGISTRY["action.slash"], hero, boss, state, rng);
     expect(getTraitTriggered(state, "boss:boss_reinforcement_at_hp_threshold")).toBe(true);
     const unitsAfterReinforce = state.units.length;
 
-    // Boss, now enraged, telegraphs then resolves — both systems coexist.
+    // Boss, now enraged, telegraphs then resolves â€” both systems coexist.
     takeEnemyTurn(boss, state, rng);
     expect(state.bossTelegraph).not.toBeNull();
     takeEnemyTurn(boss, state, rng);
@@ -209,7 +209,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       pos: { q: 1, r: 0 },
       defId: "class.guardian",
       hp: 1,
-      stats: { maxHp: 18, armor: 1, move: 3, might: 3, agility: 1, spirit: 0 },
+      stats: { maxHp: 18, armor: 1, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, fragile]);
 
@@ -219,7 +219,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     expect(fragile.hp).toBe(0);
     expect(fragile.heroLifeState).toBe("downed");
 
-    // Status stays active — a downed hero can still be saved.
+    // Status stays active â€” a downed hero can still be saved.
     checkVictoryDefeat(state);
     expect(state.status).toBe("active");
 
@@ -239,7 +239,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       defId: "enemy.goblin_skirmisher",
       team: "enemy",
       displayName: "Minion",
-      stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 },
+      stats: { maxHp: 8, armor: 12, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 8,
     });
     const state = makeBossState([boss, hero, minion]);
@@ -265,7 +265,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       defId: "enemy.goblin_skirmisher",
       team: "enemy",
       displayName: "Minion",
-      stats: { maxHp: 8, armor: 12, move: 4, might: 1, agility: 3, spirit: 0 },
+      stats: { maxHp: 8, armor: 12, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 },
       hp: 0,
     });
     const state = makeBossState([boss, hero, minion]);

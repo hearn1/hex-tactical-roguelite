@@ -13,7 +13,7 @@ const PET_OPTIONS: { id: string; name: string; desc: string; createModifier: () 
     id: "pet.owl_familiar",
     name: "Owl Familiar",
     desc: "First spell each combat gains +2 to hit.",
-    createModifier: () => ({ kind: "global_stat", stat: "spirit", value: 2 }),
+    createModifier: () => ({ kind: "global_stat", stat: "int", value: 2 }),
   },
   {
     id: "pet.pack_mule",
@@ -77,7 +77,7 @@ export class PetScreen {
     for (const pet of PET_OPTIONS) {
       const hasPet = run.runModifiers.some((m) => {
         if (pet.id === "pet.battle_hound") return m.kind === "first_hit_bonus_damage";
-        if (pet.id === "pet.owl_familiar") return m.kind === "global_stat" && m.stat === "spirit";
+        if (pet.id === "pet.owl_familiar") return m.kind === "global_stat" && m.stat === "int";
         if (pet.id === "pet.pack_mule") return m.kind === "gold_multiplier";
         return false;
       });

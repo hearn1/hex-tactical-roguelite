@@ -1,4 +1,4 @@
-import type { AbilityScores } from "../data/abilities.ts";
+import type { AbilityKey, AbilityScores } from "../data/abilities.ts";
 import type { CombatEnvironmentThemeId } from "../data/environmentThemes.ts";
 import type { NodeType } from "../data/nodes.ts";
 
@@ -36,17 +36,20 @@ export interface UnitStats {
   maxHp: number;
   armor: number;
   move: number;
-  might: number;
-  agility: number;
-  spirit: number;
+  str: number;
+  dex: number;
+  con: number;
+  int: number;
+  wis: number;
+  cha: number;
 }
 
 /**
- * The three stats that drive non-combat skill checks. A shared subset of {@link UnitStats}
- * so a `bonusStats` tweak (backgrounds, meta upgrades, events) is picked up by both combat
+ * Ability stats that drive non-combat skill checks. Maps to {@link AbilityKey} from the
+ * six DnD ability scores so that `bonusStats` tweaks are picked up by both combat
  * (`computeStats`) and the F23 check system without forking the stat model.
  */
-export type CheckStat = "might" | "agility" | "spirit";
+export type CheckStat = AbilityKey;
 
 export interface Condition {
   id: ConditionId;

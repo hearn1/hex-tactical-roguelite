@@ -41,10 +41,10 @@ export const UPGRADE_REGISTRY: Record<string, UpgradeDef> = {
   "upgrade.veteran_guardian": {
     id: "upgrade.veteran_guardian",
     displayName: "Veteran Guardian",
-    description: "Guardian starts with +1 Might.",
+    description: "Guardian starts with +1 Strength.",
     costRenownPerRank: [12],
     maxRank: 1,
-    effect: { type: "statBonus", stat: "might", classId: "class.guardian", amountPerRank: 1 },
+    effect: { type: "statBonus", stat: "str", classId: "class.guardian", amountPerRank: 1 },
   },
   "upgrade.apprentice_kit": {
     id: "upgrade.apprentice_kit",

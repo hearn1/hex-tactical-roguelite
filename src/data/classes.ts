@@ -24,7 +24,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
   "class.guardian": {
     id: "class.guardian",
     displayName: "Guardian",
-    baseStats: { maxHp: 18, armor: 14, move: 3, might: 3, agility: 1, spirit: 0 },
+    baseStats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 2, int: 0, wis: 0, cha: 1 },
     hitDieSize: 10,
     actionIds: ["action.slash", "action.shield_bash", "action.guard"],
     startingItems: ["item.iron_sword", "item.wooden_shield"],
@@ -33,7 +33,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
   "class.acolyte": {
     id: "class.acolyte",
     displayName: "Acolyte",
-    baseStats: { maxHp: 14, armor: 12, move: 3, might: 1, agility: 1, spirit: 3 },
+    baseStats: { maxHp: 14, armor: 12, move: 3, str: 1, dex: 1, con: 1, int: 0, wis: 3, cha: 1 },
     hitDieSize: 8,
     actionIds: ["action.mace_strike", "action.mend_wounds", "action.bless"],
     startingItems: ["item.padded_armor"],
@@ -43,7 +43,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
   "class.arcanist": {
     id: "class.arcanist",
     displayName: "Arcanist",
-    baseStats: { maxHp: 11, armor: 11, move: 3, might: 0, agility: 1, spirit: 4 },
+    baseStats: { maxHp: 11, armor: 11, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 1 },
     hitDieSize: 6,
     actionIds: ["action.fire_bolt", "action.frost_shard", "action.arcane_ward"],
     startingItems: ["item.apprentice_wand"],
@@ -53,8 +53,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
   "class.scout": {
     id: "class.scout",
     displayName: "Scout",
-    // Agility-based skirmisher (#119): squishier than the Guardian but the most mobile hero.
-    baseStats: { maxHp: 13, armor: 13, move: 4, might: 1, agility: 3, spirit: 0 },
+    baseStats: { maxHp: 13, armor: 13, move: 4, str: 1, dex: 3, con: 1, int: 0, wis: 0, cha: 1 },
     hitDieSize: 8,
     actionIds: ["action.precise_stab", "action.shortbow_shot", "action.cunning_step"],
     startingItems: ["item.fine_dagger"],

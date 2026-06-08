@@ -72,9 +72,9 @@ describe("equipment helpers", () => {
 
     expect(preview).not.toBeNull();
     expect(preview!.slot).toBe("trinket");
-    expect(preview!.current.might).toBe(4);
-    expect(preview!.next.might).toBe(5);
-    expect(preview!.diff.might).toBe(1);
+    expect(preview!.current.str).toBe(4);
+    expect(preview!.next.str).toBe(5);
+    expect(preview!.diff.str).toBe(1);
     expect(hero.equippedItemIds.trinket).toBeNull();
   });
 
@@ -131,6 +131,6 @@ describe("equipment helpers", () => {
 
     expect(stats.maxHp).toBe(20);
     expect(stats.armor).toBe(16);
-    expect(stats.might).toBe(4);
+    expect(stats.str).toBe(4);
   });
 });
