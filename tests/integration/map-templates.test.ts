@@ -1,5 +1,19 @@
 // @vitest-environment happy-dom
-import { describe, it, expect, afterEach } from "vitest";
+import { describe, it, expect, afterEach, vi } from "vitest";
+
+// Prevent Three.js geometry allocation on every app.render() during combat.
+// Each render creates a new CombatScreen → new CombatThreeRenderer(), which
+// allocates PlaneGeometry/SphereGeometry/etc. as class-field initializers
+// before assertWebGLAvailable() can throw. Across thousands of renders in a
+// full playthrough, this exhausts worker memory. The stub throws immediately
+// with no Three.js allocations, keeping the existing 2D canvas fallback path.
+vi.mock("../../src/render/combat3d/CombatThreeRenderer.ts", () => ({
+  CombatThreeRenderer: class {
+    constructor() {
+      throw new Error("WebGL unavailable (test stub)");
+    }
+  },
+}));
 import { mountApp, cleanup } from "./helpers/mountApp.ts";
 import { gameState, resetGameState } from "../../src/state/GameState.ts";
 import { autoPlayCombat, autoPlayMapNode, autoPlayReward, autoPlayNonCombatScreen } from "./helpers/autoPlay.ts";

@@ -3,11 +3,13 @@ import { ACTION_REGISTRY } from "../../../src/data/actions.ts";
 import { CLASS_REGISTRY } from "../../../src/data/classes.ts";
 import { ITEM_REGISTRY } from "../../../src/data/items.ts";
 import { validTargets, resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "../../../src/combat/Action.ts";
+import { isChargeExhausted } from "../../../src/combat/ActionBar.ts";
+import { heroLifeState, resolveDeathSaveTurn } from "../../../src/combat/DeathSaves.ts";
 import { takeEnemyTurn } from "../../../src/combat/EnemyAI.ts";
 import { processTurnStart } from "../../../src/combat/Condition.ts";
 import { availableNextNodes } from "../../../src/run/MapGraph.ts";
 import { NODE_REGISTRY } from "../../../src/data/nodes.ts";
-import { hexToPixel, hexKey, parseHexKey, distance } from "../../../src/core/hex.ts";
+import { hexKey, parseHexKey, distance } from "../../../src/core/hex.ts";
 import { reachableHexes } from "../../../src/combat/Movement.ts";
 import type { CombatState, UnitInstance } from "../../../src/state/types.ts";
 import type { App } from "../../../src/ui/App.ts";
@@ -29,6 +31,14 @@ function getActionIds(unit: UnitInstance): string[] {
   return [...classActions, ...grantedActions];
 }
 
+// Headless hero move: update position directly, mirroring handleMoveClick's state changes
+// without the DOM render and canvas-click overhead that causes worker OOM/hang in tests.
+function applyHeroMove(unit: UnitInstance, destKey: string, reachable: Map<string, number>): void {
+  const cost = reachable.get(destKey) ?? 1;
+  unit.pos = parseHexKey(destKey);
+  unit.movePointsRemaining -= cost;
+}
+
 function getActiveUnit(cs: CombatState): UnitInstance | null {
   const id = cs.turnQueue[cs.activeIndex];
   return cs.units.find((u) => u.instanceId === id) ?? null;
@@ -36,13 +46,61 @@ function getActiveUnit(cs: CombatState): UnitInstance | null {
 
 function advanceTurn(cs: CombatState): void {
   movedThisTurn.clear();
-  cs.activeIndex = (cs.activeIndex + 1) % cs.turnQueue.length;
-  if (cs.activeIndex === 0) cs.round++;
-  const active = getActiveUnit(cs);
-  if (active) {
+  // Mirror CombatScreen.advanceTurn: process death saves for downed heroes and skip
+  // past downed/stable heroes so the outer loop always lands on an actionable unit.
+  // Without this, downed heroes stay in the queue indefinitely, checkVictoryDefeat
+  // never sees canStillRecover=false, and the inner enemy loop never terminates.
+  const maxSkips = cs.turnQueue.length + 2;
+  for (let i = 0; i < maxSkips; i++) {
+    if (cs.turnQueue.length === 0) return;
+    cs.activeIndex = (cs.activeIndex + 1) % cs.turnQueue.length;
+    if (cs.activeIndex === 0) cs.round++;
+
+    const active = getActiveUnit(cs);
+    if (!active) return;
+
+    const ls = heroLifeState(active);
+
+    if (ls === "dead") {
+      removeDefeatedFromQueue(cs);
+      checkVictoryDefeat(cs);
+      if (cs.status !== "active") return;
+      continue;
+    }
+
+    if (ls === "downed") {
+      const result = resolveDeathSaveTurn(active, cs, gameState.rng);
+      if (result === "dead") {
+        removeDefeatedFromQueue(cs);
+        checkVictoryDefeat(cs);
+        if (cs.status !== "active") return;
+        continue;
+      }
+      if (result === "revived") {
+        active.movePointsRemaining = active.stats.move;
+        active.hasActed = false;
+        processTurnStart(active);
+        return;
+      }
+      // stable or still_downed: skip this unit's turn
+      if (result === "stable") {
+        checkVictoryDefeat(cs);
+        if (cs.status !== "active") return;
+      }
+      continue;
+    }
+
+    if (ls === "stable") {
+      checkVictoryDefeat(cs);
+      if (cs.status !== "active") return;
+      continue;
+    }
+
+    // Normal standing hero or enemy.
     active.movePointsRemaining = active.stats.move;
     active.hasActed = false;
     processTurnStart(active);
+    return;
   }
 }
 
@@ -55,12 +113,6 @@ function buildDiagnostics(cs: CombatState): string {
   lines.push("Last log entries:");
   lines.push(lastLog);
   return lines.join("\n");
-}
-
-function clickHexOnCanvas(canvas: HTMLCanvasElement, hex: { q: number; r: number }): void {
-  const { x, y } = hexToPixel(hex);
-  canvas.dispatchEvent(new MouseEvent("mousemove", { bubbles: true, clientX: x, clientY: y }));
-  canvas.dispatchEvent(new MouseEvent("click", { bubbles: true, clientX: x, clientY: y }));
 }
 
 const movedThisTurn = new Set<string>();
@@ -80,32 +132,27 @@ export function autoPlayCombat(app: App): void {
     if (!unit || unit.hp <= 0) { advanceTurn(cs); continue; }
 
     if (unit.team === "hero") {
-      app.render();
-      const root = document.getElementById("app")!;
-
-      const actionBtns = root.querySelectorAll<HTMLButtonElement>(".action-btn:not(.disabled)");
+      // Drive hero turns directly through state — no app.render() or DOM interaction.
+      // Rendering the full CombatScreen on every hero turn creates hundreds of DOM nodes
+      // per iteration; across a full playthrough this overwhelms the happy-dom worker.
       let acted = false;
       const enemiesExist = cs.units.some((u) => u.team !== unit.team && u.hp > 0);
 
-      for (const btn of actionBtns) {
-        if (btn.disabled) continue;
-        const actionId = cs.targetingActionId;
-        if (actionId) {
-          cs.targetingActionId = null;
+      if (!unit.hasActed) {
+        for (const actionId of getActionIds(unit)) {
+          if (isChargeExhausted(actionId, cs)) continue;
+          const actionDef = ACTION_REGISTRY[actionId];
+          if (!actionDef) continue;
+          if (enemiesExist && actionDef.targetType === "self") continue;
+          const targets = validTargets(actionDef, unit, cs);
+          if (targets.length === 0) continue;
+          const target = targets[Math.floor(gameState.rng() * targets.length)];
+          resolveAction(actionDef, unit, target, cs, gameState.rng);
+          checkVictoryDefeat(cs);
+          removeDefeatedFromQueue(cs);
+          acted = true;
+          break;
         }
-        btn.click();
-        const targetedId = cs.targetingActionId;
-        if (!targetedId) continue;
-        const actionDef = ACTION_REGISTRY[targetedId];
-        if (!actionDef) { cs.targetingActionId = null; continue; }
-        if (enemiesExist && actionDef.targetType === "self") { cs.targetingActionId = null; continue; }
-        const targets = validTargets(actionDef, unit, cs);
-        if (targets.length === 0) { cs.targetingActionId = null; continue; }
-        const target = targets[Math.floor(gameState.rng() * targets.length)];
-        const canvas = root.querySelector("canvas") as HTMLCanvasElement;
-        clickHexOnCanvas(canvas, target.pos);
-        acted = true;
-        break;
       }
 
       if (!acted && enemiesExist && unit.movePointsRemaining > 0 && !movedThisTurn.has(unit.instanceId)) {
@@ -125,28 +172,15 @@ export function autoPlayCombat(app: App): void {
             if (score < bestScore) { bestScore = score; bestKey = key; }
           }
           if (bestKey) {
-            const canvas = root.querySelector("canvas") as HTMLCanvasElement;
-            clickHexOnCanvas(canvas, parseHexKey(bestKey));
+            applyHeroMove(unit, bestKey, reachable);
             movedThisTurn.add(unit.instanceId);
             continue;
           }
         }
       }
 
-      checkVictoryDefeat(cs);
-      removeDefeatedFromQueue(cs);
       if (cs.status !== "active") break;
-
-      if (acted) {
-        advanceTurn(cs);
-      } else {
-        const endBtn = root.querySelector<HTMLButtonElement>("#end-turn-btn");
-        if (endBtn && !endBtn.disabled) {
-          endBtn.click();
-        } else {
-          advanceTurn(cs);
-        }
-      }
+      advanceTurn(cs);
     }
 
     if (cs.status !== "active") break;
