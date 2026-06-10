@@ -110,8 +110,31 @@ export function resolveTelegraphCadence(trait: TelegraphTrait): TelegraphCadence
 }
 
 /**
- * Checks whether trait data should wind up a boss telegraph this turn.
- * Only handles the wind-up phase; telegraph resolution is done by the caller (EnemyAI).
+ * Sets state.bossTelegraph and logs the warning. Shared by all cadence paths.
+ */
+function windUpTelegraph(unit: UnitInstance, state: CombatState, trait: TelegraphTrait): void {
+  const targetHexes = neighbors(unit.pos)
+    .map(hexKey)
+    .filter((key) => state.gridKeys.includes(key));
+  state.bossTelegraph = {
+    sourceId: unit.instanceId,
+    actionId: trait.actionId,
+    targetHexes,
+    setOnRound: state.round,
+  };
+  const warning =
+    trait.warningText ??
+    `winds up ${trait.actionId} — every adjacent hex will be struck next turn! Move clear!`;
+  state.log.push({
+    kind: "action",
+    text: `[T${state.round}] ${unit.displayName} ${warning}`,
+    round: state.round,
+  });
+}
+
+/**
+ * Handles non-rotation-integrated telegraph cadences (once_per_threshold, cooldown).
+ * For rotation_integrated the caller (executeBossTurn) controls wind-up timing.
  *
  * @returns true if a telegraph was wound up (boss should not take a normal action).
  */
@@ -124,33 +147,49 @@ export function handleEnemyStartTurnTraits(
   );
   if (!telegraphTrait) return false;
 
-  // Plumb the cadence field through (validates data); selection logic unchanged (#282).
   const cadence = resolveTelegraphCadence(telegraphTrait);
+  // Rotation-integrated is handled in executeBossTurn after the rotation action is pulled.
+  if (cadence.mode === "rotation_integrated") return false;
 
   const threshold = Math.floor(unit.stats.maxHp * telegraphTrait.thresholdHpPct);
   if (unit.hp > threshold) return false;
 
-  const targetHexes = neighbors(unit.pos)
-    .map(hexKey)
-    .filter((key) => state.gridKeys.includes(key));
-  state.bossTelegraph = {
-    sourceId: unit.instanceId,
-    actionId: telegraphTrait.actionId,
-    targetHexes,
-    setOnRound: state.round,
-  };
-  // A once_per_threshold telegraph fires a single time per combat; record it as consumed.
   if (cadence.mode === "once_per_threshold") {
+    if (getTraitTriggered(state, `${unit.instanceId}:boss_ground_slam_telegraph`)) return false;
+    windUpTelegraph(unit, state, telegraphTrait);
     markTraitTriggered(state, `${unit.instanceId}:boss_ground_slam_telegraph`);
+    return true;
   }
-  const warning =
-    telegraphTrait.warningText ??
-    `winds up ${telegraphTrait.actionId} — every adjacent hex will be struck next turn! Move clear!`;
-  state.log.push({
-    kind: "action",
-    text: `[T${state.round}] ${unit.displayName} ${warning}`,
-    round: state.round,
-  });
+
+  // cooldown
+  const lastResolved = getTelegraphLastResolvedRound(state, unit, telegraphTrait.id);
+  if (lastResolved !== undefined && state.round - lastResolved < cadence.cooldownTurns) return false;
+  windUpTelegraph(unit, state, telegraphTrait);
+  return true;
+}
+
+/**
+ * For rotation_integrated cadence: wind up if the pulled rotation slot matches the
+ * telegraph action and HP is at or below the threshold.
+ */
+export function maybeWindUpRotationTelegraph(
+  unit: UnitInstance,
+  state: CombatState,
+  rotationActionId: string,
+): boolean {
+  const telegraphTrait = getEnemyTraits(unit).find(
+    (t): t is TelegraphTrait => t.id === "boss_ground_slam_telegraph",
+  );
+  if (!telegraphTrait) return false;
+
+  const cadence = resolveTelegraphCadence(telegraphTrait);
+  if (cadence.mode !== "rotation_integrated") return false;
+
+  const threshold = Math.floor(unit.stats.maxHp * telegraphTrait.thresholdHpPct);
+  if (unit.hp > threshold) return false;
+  if (rotationActionId !== telegraphTrait.actionId) return false;
+
+  windUpTelegraph(unit, state, telegraphTrait);
   return true;
 }
 
