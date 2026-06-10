@@ -303,6 +303,38 @@ describe("AoE aftermath routing (#271)", () => {
       const reinforcements = state.units.filter((u) => u.instanceId === "boss_0_reinforcement_1");
       expect(reinforcements.length).toBe(1);
     });
+
+    it("AoE does not duplicate boss threshold reinforcement on subsequent attack (#271)", () => {
+      const rng = () => 0.99;
+      const caster = makeAoeUnit({
+        instanceId: "caster",
+        pos: { q: 0, r: 0 },
+        defId: "class.guardian",
+        stats: { maxHp: 20, armor: 12, move: 3, str: 20, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      });
+      const boss = makeAoeUnit({
+        instanceId: "boss_0",
+        pos: { q: 1, r: 0 },
+        defId: "enemy.ogre_hexbreaker",
+        team: "enemy",
+        displayName: "Ogre Hexbreaker",
+        hp: 22,
+        stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 2, int: 0, wis: 0, cha: 0 },
+      });
+      const state = makeAoeState([caster, boss]);
+
+      // First hit: Fireball crosses the threshold.
+      resolveAction(ACTION_REGISTRY["action.fireball"], caster, boss, state, rng);
+      expect(state.units.filter((u) => u.instanceId.startsWith("boss_0_reinforcement")).length).toBe(1);
+      const countAfterFirst = state.units.length;
+
+      // Second hit: slash the boss again (reuse caster as melee attacker).
+      caster.hasActed = false;
+      resolveAction(ACTION_REGISTRY["action.slash"], caster, boss, state, rng, true);
+
+      expect(state.units.length).toBe(countAfterFirst);
+      expect(state.units.filter((u) => u.instanceId.startsWith("boss_0_reinforcement")).length).toBe(1);
+    });
   });
 
   describe("aoe_around_caster (Cleave) routing", () => {
@@ -372,6 +404,124 @@ describe("AoE aftermath routing (#271)", () => {
       expect(result.amount).toBeGreaterThan(0);
       expect(result.shouldCheckCombatEnd).toBe(true);
     });
+  });
+});
+
+describe("Line aftermath routing (#285)", () => {
+  it("line damage killing the first elite triggers Rally exactly once for surviving enemies (#285)", () => {
+    const rng = () => 0.99;
+    const hero = makeUnit({
+      instanceId: "hero",
+      pos: { q: 0, r: 0 },
+      stats: { maxHp: 20, armor: 12, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const e1 = makeUnit({ instanceId: "e1", pos: { q: 1, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+    const e2 = makeUnit({ instanceId: "e2", pos: { q: 2, r: 0 }, team: "enemy", hp: 25, stats: { maxHp: 25, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+    const e3 = makeUnit({ instanceId: "e3", pos: { q: 3, r: 0 }, team: "enemy", hp: 25, stats: { maxHp: 25, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+    const state: CombatState = {
+      round: 1,
+      activeIndex: 0,
+      turnQueue: ["hero", "e1", "e2", "e3"],
+      units: [hero, e1, e2, e3],
+      log: [],
+      status: "active",
+      gridKeys: hexesWithinRange({ q: 0, r: 0 }, 5).map(hexKey),
+      targetingActionId: null,
+      perEncounterUses: {},
+      encounterId: "encounter.broken_banner_elite",
+      traitState: { actionRotationIndex: {}, triggered: {} },
+    };
+
+    const result = resolveAction(ACTION_REGISTRY["action.lightning_bolt"], hero, e1, state, rng);
+
+    expect(e1.hp).toBe(0);
+    expect(getTraitTriggered(state, "encounter:elite_rally_on_first_death")).toBe(true);
+    expect(state.log.filter((l) => l.text.includes("Rally")).length).toBe(1);
+    expect(e2.conditions.filter((c) => c.id === "rallied").length).toBe(1);
+    expect(e3.conditions.filter((c) => c.id === "rallied").length).toBe(1);
+    expect(result.shouldCheckCombatEnd).toBe(true);
+  });
+
+  it("line damage crossing a boss HP threshold spawns reinforcement exactly once (#285)", () => {
+    const rng = () => 0.99;
+    const hero = makeUnit({
+      instanceId: "hero",
+      pos: { q: 0, r: 0 },
+      stats: { maxHp: 20, armor: 12, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const boss = makeUnit({
+      instanceId: "boss_0",
+      pos: { q: 1, r: 0 },
+      defId: "enemy.ogre_hexbreaker",
+      team: "enemy",
+      displayName: "Ogre Hexbreaker",
+      hp: 25,
+      stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 2, int: 0, wis: 0, cha: 0 },
+    });
+    const state: CombatState = {
+      round: 1,
+      activeIndex: 0,
+      turnQueue: ["hero", "boss_0"],
+      units: [hero, boss],
+      log: [],
+      status: "active",
+      gridKeys: hexesWithinRange({ q: 0, r: 0 }, 5).map(hexKey),
+      targetingActionId: null,
+      perEncounterUses: {},
+      traitState: { actionRotationIndex: {}, triggered: {} },
+    };
+
+    const result = resolveAction(ACTION_REGISTRY["action.lightning_bolt"], hero, boss, state, rng);
+
+    expect(boss.hp).toBeGreaterThan(0);
+    expect(boss.hp).toBeLessThanOrEqual(21);
+    const reinforcements = state.units.filter((u) => u.instanceId.startsWith("boss_0_reinforcement"));
+    expect(reinforcements.length).toBe(1);
+    expect(result.shouldCheckCombatEnd).toBe(false);
+  });
+
+  it("line damage does not duplicate boss threshold reinforcement on subsequent attack (#285)", () => {
+    const rng = () => 0.99;
+    const hero = makeUnit({
+      instanceId: "hero",
+      pos: { q: 0, r: 0 },
+      stats: { maxHp: 20, armor: 12, move: 3, str: 20, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const boss = makeUnit({
+      instanceId: "boss_0",
+      pos: { q: 1, r: 0 },
+      defId: "enemy.ogre_hexbreaker",
+      team: "enemy",
+      displayName: "Ogre Hexbreaker",
+      hp: 25,
+      stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 2, int: 0, wis: 0, cha: 0 },
+    });
+    const state: CombatState = {
+      round: 1,
+      activeIndex: 0,
+      turnQueue: ["hero", "boss_0"],
+      units: [hero, boss],
+      log: [],
+      status: "active",
+      gridKeys: hexesWithinRange({ q: 0, r: 0 }, 5).map(hexKey),
+      targetingActionId: null,
+      perEncounterUses: {},
+      traitState: { actionRotationIndex: {}, triggered: {} },
+    };
+
+    // First hit: Lightning Bolt crosses the threshold.
+    resolveAction(ACTION_REGISTRY["action.lightning_bolt"], hero, boss, state, rng);
+    expect(state.units.filter((u) => u.instanceId.startsWith("boss_0_reinforcement")).length).toBe(1);
+    const countAfterFirst = state.units.length;
+
+    // Second hit: Slash on the same boss.
+    boss.hp = 1; // Boss was at 1 after Lightning Bolt; ensure consistency.
+    hero.hasActed = false;
+    resolveAction(ACTION_REGISTRY["action.slash"], hero, boss, state, rng, true);
+
+    expect(boss.hp).toBe(0);
+    expect(state.units.length).toBe(countAfterFirst);
+    expect(state.units.filter((u) => u.instanceId.startsWith("boss_0_reinforcement")).length).toBe(1);
   });
 });
 
