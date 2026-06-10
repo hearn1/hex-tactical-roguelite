@@ -50,6 +50,26 @@ export function advanceRotationIndex(
   ts.actionRotationIndex[key] = (ts.actionRotationIndex[key] ?? 0) + 1;
 }
 
+export function getTelegraphLastResolvedRound(
+  state: CombatState,
+  unit: UnitInstance,
+  traitId: string,
+): number | undefined {
+  const key = `${unit.instanceId}:${traitId}`;
+  return state.traitState?.telegraphLastResolvedRound?.[key];
+}
+
+export function setTelegraphLastResolvedRound(
+  state: CombatState,
+  unit: UnitInstance,
+  traitId: string,
+  round: number,
+): void {
+  const ts = ensureTraitState(state);
+  if (!ts.telegraphLastResolvedRound) ts.telegraphLastResolvedRound = {};
+  ts.telegraphLastResolvedRound[`${unit.instanceId}:${traitId}`] = round;
+}
+
 /**
  * Returns the next action ID from the boss_action_rotation trait and advances the index.
  * Returns null if the unit has no rotation trait (fall back to actionIds[0]).
@@ -105,7 +125,7 @@ export function handleEnemyStartTurnTraits(
   if (!telegraphTrait) return false;
 
   // Plumb the cadence field through (validates data); selection logic unchanged (#282).
-  resolveTelegraphCadence(telegraphTrait);
+  const cadence = resolveTelegraphCadence(telegraphTrait);
 
   const threshold = Math.floor(unit.stats.maxHp * telegraphTrait.thresholdHpPct);
   if (unit.hp > threshold) return false;
@@ -119,6 +139,10 @@ export function handleEnemyStartTurnTraits(
     targetHexes,
     setOnRound: state.round,
   };
+  // A once_per_threshold telegraph fires a single time per combat; record it as consumed.
+  if (cadence.mode === "once_per_threshold") {
+    markTraitTriggered(state, `${unit.instanceId}:boss_ground_slam_telegraph`);
+  }
   const warning =
     telegraphTrait.warningText ??
     `winds up ${telegraphTrait.actionId} — every adjacent hex will be struck next turn! Move clear!`;

@@ -10,7 +10,7 @@ import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../da
 import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
 import { heroLifeState, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
-import { checkEnemyThresholdTraits } from "./Traits.ts";
+import { checkEnemyThresholdTraits, setTelegraphLastResolvedRound } from "./Traits.ts";
 import { resolvePostDamageAftermath } from "./PostDamage.ts";
 import type { PostDamageCategory, PostDamageCause } from "./PostDamage.ts";
 import { coverArmorBonusForTarget } from "./Terrain.ts";
@@ -904,6 +904,7 @@ export function resolveBossTelegraph(
       text: `[T${round}] ${displayName} crashes down — the heroes cleared the area, no one is hit.`,
       round,
     });
+    setTelegraphLastResolvedRound(state, boss, "boss_ground_slam_telegraph", round);
     state.bossTelegraph = null;
     return;
   }
@@ -955,6 +956,7 @@ export function resolveBossTelegraph(
     }
   }
 
+  setTelegraphLastResolvedRound(state, boss, "boss_ground_slam_telegraph", round);
   state.bossTelegraph = null;
 }
 
