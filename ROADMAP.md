@@ -157,3 +157,73 @@ Each act ends with a boss or boss-like gate encounter before Act 4's final encou
 ### Testing Policy
 
 Automated tests are added as implementation tasks land — each child task that introduces engine logic or data structures carries its own test coverage requirement. Manual testing is acceptable for UI-heavy steps and must be documented at task close.
+
+---
+
+## Side Quest Readiness
+
+Side quests are a **major planned pillar** of the campaign and must not be foreclosed by early implementation decisions. No side quest runtime behavior is implemented yet, but the following hooks must be preserved.
+
+### Quest Flag Hooks
+
+- The campaign state model must support an extensible set of named boolean flags (e.g., `rescued_merchant`, `found_noble_badge`).
+- Flags are set by completing optional nodes or making choices in event nodes.
+- Flags may be read by later nodes within the same act or by nodes in subsequent acts to unlock content or alter dialogue.
+- No cross-act consequence logic is implemented yet — the flag storage structure is all that is required initially.
+
+### Act-Specific Side Route Hooks
+
+Each act already defines placeholder side quest hooks in `CAMPAIGN_ARC.md` and `ACT_IDENTITIES.md`. When the act map layout is implemented:
+
+- Each act's map graph must support at least one **optional node slot** per act that can be wired to a side quest node without restructuring the graph.
+- Optional nodes are skippable — their absence never blocks act completion.
+- The act completion condition is always the boss encounter, regardless of optional node state.
+
+### Cross-Act Consequence Hooks
+
+Some side quests have narrative or mechanical payoffs in a later act (e.g., a relic found in Act 3 weakens the Act 4 boss). These are not implemented yet, but the design must allow:
+
+- A flag set in Act N to be readable in Act N+1 through N+4.
+- A flag to gate an alternate encounter variant, an item reward, or a stat modifier on a later boss.
+- No specific cross-act consequences are defined in this task.
+
+---
+
+## Alternate Act Layouts
+
+Acts are ordered and each act has a canonical map layout. Future work may add alternate layouts for any act without changing campaign completion logic.
+
+### Layout Variants
+
+- An act layout is a specific map graph for that act: node count, node types, branching structure, and boss node placement.
+- The first implementation uses one canonical layout per act.
+- Future layouts may offer a longer route (more encounters, more rewards), a shorter route (fewer nodes, faster boss access), or a side-quest-heavy route (more optional nodes, richer branching).
+- Alternate layouts are selected at act entry — the player sees route options before committing.
+
+### Implementation Constraint
+
+- Act layouts must be data-defined, not hardcoded per-act in engine logic.
+- Adding a new layout for an existing act requires only a new data entry, not an engine change.
+- The canonical layout for each act is defined in `ACT_IDENTITIES.md`.
+
+---
+
+## Future Act Expansion or Shortening
+
+The first campaign is 4 acts. The act count is not fixed in the engine.
+
+### Expansion Path
+
+- A fifth or sixth act can be added by appending a new act definition to the campaign configuration.
+- No engine change is required. The campaign runner reads the act list and executes them in order.
+- Candidate Act 5 direction: an epilogue or high-difficulty gauntlet act for players who want a harder run option.
+- Candidate Act 6 direction: an alternate finale with a different antagonist, unlocked by specific campaign flags.
+
+### Shortening Path
+
+- A 3-act campaign (for a shorter run mode or difficulty adjustment) is achieved by removing Act 2 or Act 3 from the configuration.
+- XP scaling should be adjusted via configuration when act count changes, not by modifying act data.
+
+### Guard
+
+The hardcoded assumption to avoid: any engine logic that checks `if actIndex === 4` or `if actIndex === lastAct` with a literal. Campaign completion is triggered by finishing the last act in the configured list, however long that list is.
