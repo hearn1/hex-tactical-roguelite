@@ -10,6 +10,10 @@ export type EnemyTraitDef =
       actionId: string;
       thresholdHpPct: number;
       targetPattern: "adjacent";
+      cadence?: {
+        mode: "once_per_threshold" | "cooldown" | "rotation_integrated";
+        cooldownTurns?: number; // required only when mode === "cooldown"
+      };
       warningText?: string;
     }
   | {
