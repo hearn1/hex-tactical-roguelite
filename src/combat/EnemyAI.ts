@@ -6,7 +6,7 @@ import { reachableHexes, findPath, toMovementResult } from "./Movement.ts";
 import type { MovementResult } from "./Movement.ts";
 import { resolveAction, validTargets, resolveBossTelegraph } from "./Action.ts";
 import { isTargetableByEnemies, isStandingHero } from "./DeathSaves.ts";
-import { getBossRotationActionId, handleEnemyStartTurnTraits } from "./Traits.ts";
+import { getBossRotationActionId, handleEnemyStartTurnTraits, maybeWindUpRotationTelegraph } from "./Traits.ts";
 import { movementCostForHex, applyHazardsForMovementPath } from "./Terrain.ts";
 
 /** Flat bonus damage the ambusher adds when it strikes an exposed or wounded hero. */
@@ -146,10 +146,13 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
     resolveBossTelegraph(unit, state, rng);
     return;
   }
-  // Wind up a new telegraph if traits trigger it.
+  // Handle non-rotation-integrated telegraph cadences (once_per_threshold, cooldown).
   if (handleEnemyStartTurnTraits(unit, state)) return;
 
   const actionId = getBossRotationActionId(unit, state) ?? ENEMY_REGISTRY[unit.defId]?.actionIds[0];
+
+  // For rotation_integrated: wind up if this rotation slot matches the telegraph action.
+  if (maybeWindUpRotationTelegraph(unit, state, actionId)) return;
 
   const action = ACTION_REGISTRY[actionId];
   if (!action) return;

@@ -6,6 +6,7 @@ import {
   getTraitTriggered,
   getTelegraphLastResolvedRound,
   handleEnemyStartTurnTraits,
+  maybeWindUpRotationTelegraph,
 } from "./Traits.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
@@ -62,6 +63,11 @@ function makeBoss(hp: number): UnitInstance {
   });
 }
 
+/** Advance the boss rotation index to the ground_slam slot (index 2 in [roar, massive_swing, ground_slam]). */
+function advanceRotationToSlam(state: CombatState): void {
+  state.traitState!.actionRotationIndex!["boss:boss_action_rotation"] = 2;
+}
+
 describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
   it("does not telegraph while above 50% HP (uses normal rotation)", () => {
     const rng = createRng(7);
@@ -79,6 +85,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     const boss = makeBoss(20); // <= 50% of 42
     const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian", hp: 50, stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 } });
     const state = makeBossState([boss, hero]);
+    advanceRotationToSlam(state);
 
     const hpBefore = hero.hp;
     takeEnemyTurn(boss, state, rng);
@@ -106,6 +113,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, hero]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     expect(state.bossTelegraph).not.toBeNull();
@@ -129,6 +137,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, far]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     expect(state.bossTelegraph!.targetHexes).not.toContain(hexKey(far.pos));
@@ -150,6 +159,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, hero]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     // Hero repositions clear of the telegraphed ring before resolution.
@@ -173,6 +183,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       conditions: [{ id: "guarded", remainingTurns: 1 }],
     });
     const state = makeBossState([boss, guarded]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     takeEnemyTurn(boss, state, rng); // resolve
@@ -198,7 +209,8 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     expect(getTraitTriggered(state, "boss:boss_reinforcement_at_hp_threshold")).toBe(true);
     const unitsAfterReinforce = state.units.length;
 
-    // Boss, now enraged, telegraphs then resolves â€” both systems coexist.
+    // Boss, now enraged, telegraphs then resolves — both systems coexist.
+    advanceRotationToSlam(state);
     takeEnemyTurn(boss, state, rng);
     expect(state.bossTelegraph).not.toBeNull();
     takeEnemyTurn(boss, state, rng);
@@ -217,6 +229,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       stats: { maxHp: 18, armor: 1, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, fragile]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     takeEnemyTurn(boss, state, rng); // resolve, downs the hero
@@ -248,6 +261,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       hp: 8,
     });
     const state = makeBossState([boss, hero, minion]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng);
     expect(state.bossTelegraph).not.toBeNull();
@@ -274,6 +288,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       hp: 0,
     });
     const state = makeBossState([boss, hero, minion]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng);
     expect(state.bossTelegraph).not.toBeNull();
@@ -333,6 +348,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       stats: { maxHp: 18, armor: 1, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, fragile]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     takeEnemyTurn(boss, state, rng); // resolve — downs the hero
@@ -356,6 +372,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, hero]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     expect(getTelegraphLastResolvedRound(state, boss, "boss_ground_slam_telegraph")).toBeUndefined();
@@ -374,6 +391,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       defId: "class.guardian",
     });
     const state = makeBossState([boss, safe]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     takeEnemyTurn(boss, state, rng); // resolve — nobody hit
@@ -410,7 +428,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian" });
     const state = makeBossState([boss, hero]);
 
-    const woundUp = handleEnemyStartTurnTraits(boss, state);
+    const woundUp = maybeWindUpRotationTelegraph(boss, state, "action.ground_slam");
 
     expect(woundUp).toBe(true);
     expect(getTraitTriggered(state, "boss:boss_ground_slam_telegraph")).toBe(false);
@@ -427,6 +445,7 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
     });
     const state = makeBossState([boss, safe]);
+    advanceRotationToSlam(state);
 
     takeEnemyTurn(boss, state, rng); // wind up
     expect(state.bossTelegraph).not.toBeNull();
@@ -434,5 +453,80 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
 
     expect(state.bossTelegraph).toBeNull();
     expect(safe.hp).toBe(18);
+  });
+
+  it("interleaves normal rotation actions between telegraph wind-ups below 50% HP (#282)", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20); // <= 50%
+    const hero = makeUnit({
+      instanceId: "hero_0",
+      pos: { q: 1, r: 0 },
+      defId: "class.guardian",
+      hp: 50,
+      stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const state = makeBossState([boss, hero]);
+
+    // Cycle through rotation + resolve: roar, massive_swing, wind-up, resolve, roar, massive_swing
+    takeEnemyTurn(boss, state, rng); // roar (idx 0)
+    takeEnemyTurn(boss, state, rng); // massive_swing (idx 1)
+    takeEnemyTurn(boss, state, rng); // ground_slam — wind-up (idx 2)
+    takeEnemyTurn(boss, state, rng); // resolve
+    takeEnemyTurn(boss, state, rng); // roar (idx 0)
+    takeEnemyTurn(boss, state, rng); // massive_swing (idx 1)
+
+    const texts = state.log.map((l) => l.text);
+    const nonTelegraph = texts.filter(
+      (t) => t.includes("uses Roar") || t.includes("uses Massive Swing"),
+    );
+    expect(nonTelegraph.length).toBeGreaterThanOrEqual(2);
+
+    // Verify no back-to-back wind-up log entries.
+    const windUpIndices: number[] = [];
+    texts.forEach((t, i) => { if (t.includes("winds up Ground Slam")) windUpIndices.push(i); });
+    for (let i = 1; i < windUpIndices.length; i++) {
+      expect(windUpIndices[i] - windUpIndices[i - 1]).toBeGreaterThan(1);
+    }
+  });
+
+  it("once_per_threshold telegraph winds up exactly once below threshold (#282)", () => {
+    const ogre = ENEMY_REGISTRY["enemy.ogre_hexbreaker"]!;
+    const trait = (ogre.traits ?? []).find(
+      (t): t is Extract<typeof t, { id: "boss_ground_slam_telegraph" }> =>
+        t.id === "boss_ground_slam_telegraph",
+    )!;
+    const originalCadence = trait.cadence;
+    trait.cadence = { mode: "once_per_threshold" };
+    try {
+      const rng = createRng(7);
+      const boss = makeBoss(20);
+      const hero = makeUnit({
+        instanceId: "hero_0",
+        pos: { q: 1, r: 0 },
+        defId: "class.guardian",
+        hp: 50,
+        stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      });
+      const state = makeBossState([boss, hero]);
+
+      // First turn below threshold — wind up exactly once.
+      takeEnemyTurn(boss, state, rng);
+      expect(state.bossTelegraph).not.toBeNull();
+      expect(getTraitTriggered(state, "boss:boss_ground_slam_telegraph")).toBe(true);
+      const firstWindUpCount = state.log.filter((l) => l.text.includes("winds up Ground Slam")).length;
+      expect(firstWindUpCount).toBe(1);
+
+      // Subsequent turns: no more wind-ups.
+      const logLenBefore = state.log.length;
+      takeEnemyTurn(boss, state, rng); // resolve
+      takeEnemyTurn(boss, state, rng); // normal rotation action
+      takeEnemyTurn(boss, state, rng); // normal rotation action
+      const newWindUps = state.log.slice(logLenBefore).filter(
+        (l) => l.text.includes("winds up Ground Slam"),
+      );
+      expect(newWindUps.length).toBe(0);
+    } finally {
+      trait.cadence = originalCadence;
+    }
   });
 });
