@@ -26,7 +26,7 @@ const EMPTY_BONUS: ActionUpgradeBonus = {};
 function actionElement(id: string): ActionElement {
   if (id.includes("fire")) return "fire";
   if (id.includes("frost") || id.includes("ice")) return "frost";
-  if (id.includes("arcane") || id.includes("bless") || id.includes("ward")) return "arcane";
+  if (id.includes("arcane") || id.includes("bless") || id.includes("ward") || id.includes("counter")) return "arcane";
   if (id.includes("heal") || id.includes("mend")) return "heal";
   if (id.includes("dark") || id.includes("roar")) return "dark";
   return "physical";
@@ -165,6 +165,33 @@ export function resolveAction(
     });
     attacker.hasActed = true;
     return { amount: 0, isCrit: false, kind: "heal", actionElement: "heal" };
+  }
+
+  // ── counterTelegraph (Counterspell) ──
+  if (action.effect.type === "counterTelegraph") {
+    const range = effectiveRange(action, attacker);
+    const telegraphMatches = state.bossTelegraph && state.bossTelegraph.sourceId === target.instanceId;
+    if (telegraphMatches && distance(attacker.pos, target.pos) <= range) {
+      const telegraphAction = ACTION_REGISTRY[state.bossTelegraph.actionId];
+      const actionName = telegraphAction?.displayName ?? "telegraphed action";
+      state.bossTelegraph = null;
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} Counterspells ${target.displayName}'s ${actionName} — the windup fizzles.`,
+        round,
+      });
+      attacker.hasActed = true;
+      return { amount: 0, isCrit: false, kind: "heal", actionElement: el };
+    }
+    // No telegraph to counter (or out of range) — fall back to applying the counterspelled condition.
+    applyCondition(target, "counterspelled" as ConditionId, 1);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — no telegraph to counter.`,
+      round,
+    });
+    attacker.hasActed = true;
+    return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
   }
 
   // ── lineDamage (Lightning Bolt) ──

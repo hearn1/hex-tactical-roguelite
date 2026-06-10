@@ -11,7 +11,7 @@ import {
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
-import { hexesWithinRange, hexKey, neighbors } from "../core/hex.ts";
+import { hexesWithinRange, hexKey, neighbors, distance } from "../core/hex.ts";
 
 function makeUnit(
   overrides: Partial<UnitInstance> & { instanceId: string; pos: Hex; defId: string },
@@ -528,5 +528,93 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     } finally {
       trait.cadence = originalCadence;
     }
+  });
+});
+
+describe("Counterspell vs boss telegraph (#283)", () => {
+  it("clears the telegraph when hero is in range", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20);
+    const hero = makeUnit({
+      instanceId: "hero_0",
+      pos: { q: 1, r: 0 },
+      defId: "class.arcanist",
+      team: "hero",
+      displayName: "Arcanist",
+      stats: { maxHp: 18, armor: 12, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
+      hp: 18,
+      movePointsRemaining: 3,
+    });
+    const state = makeBossState([boss, hero]);
+    advanceRotationToSlam(state);
+
+    // Boss winds up
+    takeEnemyTurn(boss, state, rng);
+    expect(state.bossTelegraph).not.toBeNull();
+    expect(state.bossTelegraph!.sourceId).toBe(boss.instanceId);
+
+    // Hero counterspells the boss (within range 4)
+    const result = resolveAction(ACTION_REGISTRY["action.counterspell"], hero, boss, state, rng);
+
+    expect(state.bossTelegraph).toBeNull();
+    expect(state.log.some((l) => l.text.includes("Counterspells") && l.text.includes("windup fizzles"))).toBe(true);
+    expect(result.kind).toBe("heal");
+  });
+
+  it("applies counterspelled condition when no telegraph is active", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(42);
+    const hero = makeUnit({
+      instanceId: "hero_0",
+      pos: { q: 1, r: 0 },
+      defId: "class.arcanist",
+      team: "hero",
+      displayName: "Arcanist",
+      stats: { maxHp: 18, armor: 12, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
+      hp: 18,
+      movePointsRemaining: 3,
+    });
+    const state = makeBossState([boss, hero]);
+
+    expect(state.bossTelegraph).toBeNull();
+
+    const result = resolveAction(ACTION_REGISTRY["action.counterspell"], hero, boss, state, rng);
+
+    expect(state.bossTelegraph).toBeNull();
+    expect(boss.conditions.some((c) => c.id === "counterspelled")).toBe(true);
+    expect(state.log.some((l) => l.text.includes("no telegraph to counter"))).toBe(true);
+    expect(result.kind).toBe("damage");
+  });
+
+  it("does not clear the telegraph when hero is out of range", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20);
+    const hero = makeUnit({
+      instanceId: "hero_0",
+      pos: { q: 5, r: 5 },
+      defId: "class.arcanist",
+      team: "hero",
+      displayName: "Arcanist",
+      stats: { maxHp: 18, armor: 12, move: 3, str: 0, dex: 1, con: 0, int: 4, wis: 0, cha: 0 },
+      hp: 18,
+      movePointsRemaining: 3,
+    });
+    const state = makeBossState([boss, hero]);
+    advanceRotationToSlam(state);
+
+    // Boss winds up
+    takeEnemyTurn(boss, state, rng);
+    expect(state.bossTelegraph).not.toBeNull();
+
+    // Hero is out of range (5,5 vs 0,0 = distance 10), > range 4
+    expect(distance(hero.pos, boss.pos)).toBeGreaterThan(ACTION_REGISTRY["action.counterspell"].range);
+    const result = resolveAction(ACTION_REGISTRY["action.counterspell"], hero, boss, state, rng);
+
+    // Telegraph should NOT be cleared
+    expect(state.bossTelegraph).not.toBeNull();
+    // Fallback condition applied instead
+    expect(boss.conditions.some((c) => c.id === "counterspelled")).toBe(true);
+    expect(state.log.some((l) => l.text.includes("no telegraph to counter"))).toBe(true);
+    expect(result.kind).toBe("damage");
   });
 });
