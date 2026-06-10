@@ -306,6 +306,162 @@ const LONG_NODES: NodeDef[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Placeholder map templates for Acts 2–4.
+// These are intentionally minimal (start → combat → boss) and use existing
+// encounter IDs as stubs. Full node graphs will be authored in later tasks.
+// ---------------------------------------------------------------------------
+
+const ACT_2_NODES: NodeDef[] = [
+  {
+    id: "node.act2_start",
+    type: "start",
+    title: "The Iron Gate",
+    description: "The party reaches the fortified pass.",
+    layer: 0,
+    nextNodeIds: ["node.act2_combat_a"],
+  },
+  {
+    id: "node.act2_combat_a",
+    type: "combat",
+    title: "Pass Defenders",
+    description: "The warlord's vanguard holds the gate.",
+    layer: 1,
+    encounterId: "encounter.road_ambush",
+    encounterPoolId: "pool.act_2_combat",
+    nextNodeIds: ["node.act2_boss"],
+  },
+  {
+    id: "node.act2_boss",
+    type: "boss",
+    title: "The Warlord's Keep",
+    description: "The ogre warlord and necromancer lieutenant await.",
+    layer: 2,
+    encounterId: "encounter.boss_ogre_hexbreaker",
+    nextNodeIds: [],
+  },
+];
+
+const ACT_2_ALT_NODES: NodeDef[] = [
+  {
+    id: "node.act2_alt_start",
+    type: "start",
+    title: "The Deserter's Trail",
+    description: "A hidden path offered by an ogre deserter.",
+    layer: 0,
+    nextNodeIds: ["node.act2_alt_boss"],
+  },
+  {
+    id: "node.act2_alt_boss",
+    type: "boss",
+    title: "The Warlord's Keep (Alternate Route)",
+    description: "The deserter's path reaches the same final confrontation.",
+    layer: 1,
+    encounterId: "encounter.boss_ogre_hexbreaker",
+    nextNodeIds: [],
+  },
+];
+
+const ACT_3_NODES: NodeDef[] = [
+  {
+    id: "node.act3_start",
+    type: "start",
+    title: "The Scarred Reach",
+    description: "The cult's territory stretches across ruined land.",
+    layer: 0,
+    nextNodeIds: ["node.act3_combat_a"],
+  },
+  {
+    id: "node.act3_combat_a",
+    type: "combat",
+    title: "Cult Vanguard",
+    description: "Cultist cells guard the approach to the sanctum.",
+    layer: 1,
+    encounterId: "encounter.cult_ritual",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_boss"],
+  },
+  {
+    id: "node.act3_boss",
+    type: "boss",
+    title: "The Ashen Sanctum",
+    description: "Three cult commanders and the high priest await inside.",
+    layer: 2,
+    encounterId: "encounter.boss_ogre_hexbreaker",
+    nextNodeIds: [],
+  },
+];
+
+const ACT_3_ALT_NODES: NodeDef[] = [
+  {
+    id: "node.act3_alt_start",
+    type: "start",
+    title: "The Prisoner's Road",
+    description: "A rescue route through the cult's holding pens.",
+    layer: 0,
+    nextNodeIds: ["node.act3_alt_boss"],
+  },
+  {
+    id: "node.act3_alt_boss",
+    type: "boss",
+    title: "The Ashen Sanctum (Rescue Route)",
+    description: "The prisoner route converges on the same sanctum.",
+    layer: 1,
+    encounterId: "encounter.boss_ogre_hexbreaker",
+    nextNodeIds: [],
+  },
+];
+
+const ACT_4_NODES: NodeDef[] = [
+  {
+    id: "node.act4_start",
+    type: "start",
+    title: "The Ascending Spire",
+    description: "The draconid arcane lord's sanctum towers ahead.",
+    layer: 0,
+    nextNodeIds: ["node.act4_combat_a"],
+  },
+  {
+    id: "node.act4_combat_a",
+    type: "combat",
+    title: "Sanctum Guardians",
+    description: "Draconid soldiers and arcane constructs hold the outer ring.",
+    layer: 1,
+    encounterId: "encounter.road_ambush",
+    encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_boss"],
+  },
+  {
+    id: "node.act4_boss",
+    type: "boss",
+    title: "The Arcane Lord's Chamber",
+    description: "The draconid arcane lord and elite bodyguards await.",
+    layer: 2,
+    encounterId: "encounter.boss_ogre_hexbreaker",
+    nextNodeIds: [],
+  },
+];
+
+const ACT_4_ALT_NODES: NodeDef[] = [
+  {
+    id: "node.act4_alt_start",
+    type: "start",
+    title: "The Planar Anchor",
+    description: "A destabilized rift node offers a riskier path through the sanctum.",
+    layer: 0,
+    nextNodeIds: ["node.act4_alt_boss"],
+  },
+  {
+    id: "node.act4_alt_boss",
+    type: "boss",
+    title: "The Arcane Lord's Chamber (Anchor Route)",
+    description: "The planar anchor path emerges at the same final chamber.",
+    layer: 1,
+    encounterId: "encounter.boss_ogre_hexbreaker",
+    nextNodeIds: [],
+  },
+];
+
 export const MAP_TEMPLATES: Record<string, MapTemplate> = {
   short: {
     id: "short",
@@ -320,6 +476,48 @@ export const MAP_TEMPLATES: Record<string, MapTemplate> = {
     startNodeId: "node.long_start",
     bossNodeId: "node.long_boss",
     nodes: LONG_NODES,
+  },
+  act_2_map: {
+    id: "act_2_map",
+    name: "The Iron Wall (Placeholder)",
+    startNodeId: "node.act2_start",
+    bossNodeId: "node.act2_boss",
+    nodes: ACT_2_NODES,
+  },
+  act_2_map_deserter_route: {
+    id: "act_2_map_deserter_route",
+    name: "The Iron Wall — Deserter Route (Placeholder)",
+    startNodeId: "node.act2_alt_start",
+    bossNodeId: "node.act2_alt_boss",
+    nodes: ACT_2_ALT_NODES,
+  },
+  act_3_map: {
+    id: "act_3_map",
+    name: "The Ashen Choir (Placeholder)",
+    startNodeId: "node.act3_start",
+    bossNodeId: "node.act3_boss",
+    nodes: ACT_3_NODES,
+  },
+  act_3_map_prisoner_rescue: {
+    id: "act_3_map_prisoner_rescue",
+    name: "The Ashen Choir — Prisoner Rescue (Placeholder)",
+    startNodeId: "node.act3_alt_start",
+    bossNodeId: "node.act3_alt_boss",
+    nodes: ACT_3_ALT_NODES,
+  },
+  act_4_map: {
+    id: "act_4_map",
+    name: "The Ascending Dark (Placeholder)",
+    startNodeId: "node.act4_start",
+    bossNodeId: "node.act4_boss",
+    nodes: ACT_4_NODES,
+  },
+  act_4_map_planar_anchor: {
+    id: "act_4_map_planar_anchor",
+    name: "The Ascending Dark — Planar Anchor (Placeholder)",
+    startNodeId: "node.act4_alt_start",
+    bossNodeId: "node.act4_alt_boss",
+    nodes: ACT_4_ALT_NODES,
   },
 };
 
