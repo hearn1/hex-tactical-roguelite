@@ -33,6 +33,26 @@ describe("Action", () => {
       expect(target.hp).toBe(0);
     });
 
+    it("killing a single-target enemy sets shouldCheckCombatEnd on ActionResult (#270)", () => {
+      // Use a guaranteed-hit seed with a high-str attacker vs low-HP target.
+      const rng = createRng(1);
+      const attacker = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, stats: { maxHp: 100, armor: 10, move: 3, str: 10, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const target = makeUnit({ instanceId: "t1", pos: { q: 1, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "t1"], units: [attacker, target], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null, perEncounterUses: {}, traitState: { actionRotationIndex: {}, triggered: {} } };
+      const result = resolveAction(ACTION_REGISTRY["action.slash"], attacker, target, state, rng);
+      expect(target.hp).toBe(0);
+      expect(result.shouldCheckCombatEnd).toBe(true);
+    });
+
+    it("single-target enemy kill produces exactly one defeat log entry (#270)", () => {
+      const rng = createRng(1);
+      const attacker = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, stats: { maxHp: 100, armor: 10, move: 3, str: 10, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const target = makeUnit({ instanceId: "t1", pos: { q: 1, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const state: CombatState = { round: 1, activeIndex: 0, turnQueue: ["a1", "t1"], units: [attacker, target], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null, perEncounterUses: {}, traitState: { actionRotationIndex: {}, triggered: {} } };
+      resolveAction(ACTION_REGISTRY["action.slash"], attacker, target, state, rng);
+      expect(state.log.filter((e) => e.kind === "defeat").length).toBe(1);
+    });
+
     it("natural 20 always hits and damage doubled", () => {
       const rng = createRng(999);
       const attacker = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, stats: { maxHp: 100, armor: 10, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });

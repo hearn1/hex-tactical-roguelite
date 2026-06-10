@@ -84,6 +84,7 @@ export interface ActionResult {
   isCrit: boolean;
   kind: "damage" | "heal" | "miss";
   actionElement?: ActionElement;
+  shouldCheckCombatEnd?: boolean;
 }
 
 export interface ActionUpgradeBonus {
