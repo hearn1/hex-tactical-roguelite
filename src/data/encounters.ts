@@ -328,6 +328,28 @@ export const ENCOUNTER_POOLS: Record<string, string[]> = {
     "encounter.scuttling_horde",
     "encounter.shadowed_defile",
   ],
+  // Placeholder act pools. Reuse existing encounters until act-specific content lands.
+  "pool.act_2_combat": [
+    "encounter.bandit_toll",
+    "encounter.old_graveyard",
+    "encounter.wolf_pack",
+    "encounter.long_toll_of_bones",
+    "encounter.long_gatehouse",
+  ],
+  "pool.act_3_combat": [
+    "encounter.cult_ritual",
+    "encounter.long_cult_vanguard",
+    "encounter.warded_circle",
+    "encounter.long_ashen_lookout",
+    "encounter.shadowed_defile",
+  ],
+  "pool.act_4_combat": [
+    "encounter.road_ambush",
+    "encounter.bandit_toll",
+    "encounter.cult_ritual",
+    "encounter.long_hexscar_patrol",
+    "encounter.shadowed_defile",
+  ],
 };
 
 /**

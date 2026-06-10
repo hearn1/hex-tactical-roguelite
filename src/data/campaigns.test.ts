@@ -2,11 +2,15 @@ import { describe, it, expect } from "vitest";
 import {
   DEFAULT_CAMPAIGN,
   CAMPAIGN_REGISTRY,
+  STORY_BEAT_REGISTRY,
   getActDefinition,
   selectActMapTemplate,
   selectActEncounterPool,
   selectActRewardPool,
 } from "./campaigns.ts";
+import { MAP_TEMPLATES } from "./nodes.ts";
+import { ENCOUNTER_POOLS } from "./encounters.ts";
+import { ACT_REWARD_POOLS, REWARD_REGISTRY } from "./rewards.ts";
 import { createCampaignState } from "../state/CampaignState.ts";
 import { createInventory } from "../run/Inventory.ts";
 import type { PartyMember } from "../state/RunState.ts";
@@ -202,5 +206,104 @@ describe("createCampaignState", () => {
     const state = createCampaignState("campaign.verdant_dark", 9999, "hard", [], createInventory());
     expect(state.seed).toBe(9999);
     expect(state.difficulty).toBe("hard");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Registry resolution tests (issue #312)
+// ---------------------------------------------------------------------------
+
+describe("map template registry — all act references resolve", () => {
+  it("every mapPool templateId in DEFAULT_CAMPAIGN exists in MAP_TEMPLATES", () => {
+    for (const act of DEFAULT_CAMPAIGN.acts) {
+      for (const templateId of act.mapPool.templateIds) {
+        expect(MAP_TEMPLATES[templateId], `Missing map template "${templateId}" for act "${act.id}"`).toBeDefined();
+      }
+    }
+  });
+
+  it("every alternateLayoutId in DEFAULT_CAMPAIGN exists in MAP_TEMPLATES", () => {
+    for (const act of DEFAULT_CAMPAIGN.acts) {
+      for (const layoutId of act.alternateLayoutIds ?? []) {
+        expect(MAP_TEMPLATES[layoutId], `Missing alternate layout template "${layoutId}" for act "${act.id}"`).toBeDefined();
+      }
+    }
+  });
+
+  it("each placeholder act template has a valid startNodeId and bossNodeId", () => {
+    const actTemplateIds = ["act_2_map", "act_3_map", "act_4_map",
+      "act_2_map_deserter_route", "act_3_map_prisoner_rescue", "act_4_map_planar_anchor"];
+    for (const templateId of actTemplateIds) {
+      const template = MAP_TEMPLATES[templateId];
+      expect(template, `Template "${templateId}" missing`).toBeDefined();
+      const nodeIds = new Set(template.nodes.map((n) => n.id));
+      expect(nodeIds.has(template.startNodeId), `"${templateId}" startNodeId not in nodes`).toBe(true);
+      expect(nodeIds.has(template.bossNodeId), `"${templateId}" bossNodeId not in nodes`).toBe(true);
+    }
+  });
+});
+
+describe("encounter pool registry — all act references resolve", () => {
+  it("every encounterPool poolId in DEFAULT_CAMPAIGN exists in ENCOUNTER_POOLS", () => {
+    for (const act of DEFAULT_CAMPAIGN.acts) {
+      const poolId = act.encounterPool.poolId;
+      expect(ENCOUNTER_POOLS[poolId], `Missing encounter pool "${poolId}" for act "${act.id}"`).toBeDefined();
+    }
+  });
+
+  it("every encounter in act pool IDs exists in ENCOUNTER_REGISTRY", async () => {
+    const { ENCOUNTER_REGISTRY } = await import("./encounters.ts");
+    const actPoolIds = ["pool.act_2_combat", "pool.act_3_combat", "pool.act_4_combat"];
+    for (const poolId of actPoolIds) {
+      for (const encId of ENCOUNTER_POOLS[poolId]) {
+        expect(ENCOUNTER_REGISTRY[encId], `Encounter "${encId}" in pool "${poolId}" not found`).toBeDefined();
+      }
+    }
+  });
+});
+
+describe("reward pool registry — all act references resolve", () => {
+  it("every rewardPool poolId in DEFAULT_CAMPAIGN exists in ACT_REWARD_POOLS", () => {
+    for (const act of DEFAULT_CAMPAIGN.acts) {
+      const poolId = act.rewardPool.poolId;
+      expect(ACT_REWARD_POOLS[poolId], `Missing act reward pool "${poolId}" for act "${act.id}"`).toBeDefined();
+    }
+  });
+
+  it("fallback pool 'pool.basic_rewards' exists in ACT_REWARD_POOLS", () => {
+    expect(ACT_REWARD_POOLS["pool.basic_rewards"]).toBeDefined();
+  });
+
+  it("every reward tier referenced in ACT_REWARD_POOLS exists in REWARD_REGISTRY", () => {
+    for (const [poolId, tiers] of Object.entries(ACT_REWARD_POOLS)) {
+      for (const tierId of tiers) {
+        expect(REWARD_REGISTRY[tierId], `Reward tier "${tierId}" in pool "${poolId}" not found in REWARD_REGISTRY`).toBeDefined();
+      }
+    }
+  });
+});
+
+describe("story beat registry — all act beats resolve", () => {
+  it("STORY_BEAT_REGISTRY contains every beat from DEFAULT_CAMPAIGN", () => {
+    for (const act of DEFAULT_CAMPAIGN.acts) {
+      for (const beat of act.storyBeats) {
+        expect(STORY_BEAT_REGISTRY[beat.id], `Story beat "${beat.id}" not in STORY_BEAT_REGISTRY`).toBeDefined();
+      }
+    }
+  });
+
+  it("each registry entry matches the source beat definition", () => {
+    for (const act of DEFAULT_CAMPAIGN.acts) {
+      for (const beat of act.storyBeats) {
+        const entry = STORY_BEAT_REGISTRY[beat.id];
+        expect(entry.id).toBe(beat.id);
+        expect(entry.description).toBe(beat.description);
+      }
+    }
+  });
+
+  it("total beat count matches sum across all acts", () => {
+    const expected = DEFAULT_CAMPAIGN.acts.reduce((sum, a) => sum + a.storyBeats.length, 0);
+    expect(Object.keys(STORY_BEAT_REGISTRY).length).toBe(expected);
   });
 });

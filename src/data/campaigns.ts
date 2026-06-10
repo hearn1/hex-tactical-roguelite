@@ -128,6 +128,17 @@ export const CAMPAIGN_REGISTRY: Record<string, CampaignDefinition> = {
 };
 
 /**
+ * Flat registry of all story beats across all campaigns, keyed by beat id.
+ * Derived from CAMPAIGN_REGISTRY so it stays in sync automatically as campaigns
+ * and acts are edited. Consumed by the future event/cutscene system.
+ */
+export const STORY_BEAT_REGISTRY: Record<string, ActStoryBeat> = Object.fromEntries(
+  Object.values(CAMPAIGN_REGISTRY).flatMap((c) =>
+    c.acts.flatMap((a) => a.storyBeats.map((b) => [b.id, b])),
+  ),
+);
+
+/**
  * Returns the act definition for the given 1-indexed act number, or `undefined` if the
  * campaign has no such act (e.g. missing data). Callers must handle `undefined` gracefully.
  */

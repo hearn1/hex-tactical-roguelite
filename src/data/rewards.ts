@@ -5,6 +5,20 @@ export interface RewardPoolDef {
   extraItemChance?: number;
 }
 
+/**
+ * Act-level reward pool registry. Maps act pool IDs (used by CampaignDefinition) to the
+ * ordered list of RewardPoolDef IDs to draw from. The first entry is used as the default;
+ * future reward selection logic will use RNG to pick a tier from this list.
+ * All referenced pool IDs must exist in REWARD_REGISTRY.
+ */
+export const ACT_REWARD_POOLS: Record<string, string[]> = {
+  "pool.act_1_rewards": ["reward.basic", "reward.uncommon"],
+  "pool.act_2_rewards": ["reward.basic", "reward.uncommon"],
+  "pool.act_3_rewards": ["reward.uncommon"],
+  "pool.act_4_rewards": ["reward.uncommon"],
+  "pool.basic_rewards": ["reward.basic"],
+};
+
 export const REWARD_REGISTRY: Record<string, RewardPoolDef> = {
   "reward.basic": {
     id: "reward.basic",
