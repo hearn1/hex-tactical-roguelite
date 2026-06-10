@@ -177,6 +177,7 @@ describe("toMovementResult", () => {
     expect(result.stoppedByHazard).toBe(true);
     expect(result.unitDropped).toBe(true);
     expect(result.finalPosition).toEqual({ q: 1, r: 0 }); // stopped on the killing hazard hex
+    expect(result.pathTaken).toEqual(path);
   });
 
   it("no-op move (null hazard result) reports a completed move with empty path", () => {

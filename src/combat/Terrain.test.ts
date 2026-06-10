@@ -260,3 +260,94 @@ describe("applyHazardsForMovementPath", () => {
     expect(result.stoppedEarly).toBe(false);
   });
 });
+
+// ── Regression: hazard movement interruption (#286) ────────────────────────
+
+describe("applyHazardsForMovementPath — regression (#286)", () => {
+  it("hero downed by hazard stops on hazard tile", () => {
+    const state = makeState({ "1,0": "hazard" });
+    const hero = makeUnit({ instanceId: "hero1", pos: { q: 0, r: 0 }, hp: HAZARD_DAMAGE, team: "hero" });
+    state.units.push(hero);
+
+    const result = applyHazardsForMovementPath(hero, state, [{ q: 1, r: 0 }, { q: 2, r: 0 }]);
+
+    expect(hero.hp).toBe(0);
+    expect(hero.pos).toEqual({ q: 1, r: 0 });
+    expect(result.shouldStopCaller).toBe(true);
+    expect(result.stoppedEarly).toBe(true);
+    expect(result.stoppedAtHex).toEqual({ q: 1, r: 0 });
+    expect(result.damageApplied).toBe(true);
+    expect(result.postDamageResults.length).toBe(1);
+    expect(result.postDamageResults[0].newlyDroppedToZero).toBe(true);
+    expect(result.postDamageResults[0].shouldStopCaller).toBe(true);
+    expect(result.postDamageResults[0].targetDowned).toBe(true);
+    expect(result.postDamageResults[0].targetDead).toBe(false);
+  });
+
+  it("enemy killed by hazard stops on hazard tile with full aftermath", () => {
+    const state = makeState({ "1,0": "hazard", "2,0": "hazard" });
+    const enemy = makeUnit({ instanceId: "e1", pos: { q: 0, r: 0 }, hp: HAZARD_DAMAGE, team: "enemy" });
+    state.units.push(enemy);
+
+    const result = applyHazardsForMovementPath(enemy, state, [{ q: 1, r: 0 }, { q: 2, r: 0 }]);
+
+    expect(enemy.hp).toBe(0);
+    expect(enemy.pos).toEqual({ q: 1, r: 0 });
+    expect(result.shouldStopCaller).toBe(true);
+    expect(result.stoppedEarly).toBe(true);
+    expect(result.stoppedAtHex).toEqual({ q: 1, r: 0 });
+    expect(result.damageApplied).toBe(true);
+    expect(result.postDamageResults.length).toBe(1);
+    expect(result.postDamageResults[0].newlyDroppedToZero).toBe(true);
+    expect(result.postDamageResults[0].targetDefeated).toBe(true);
+    expect(result.postDamageResults[0].shouldStopCaller).toBe(true);
+    const hazardEntryLogs = state.log.filter((e) => e.text.includes("enters hazard"));
+    expect(hazardEntryLogs.length).toBe(1);
+  });
+
+  it("lethal hazard path returns all HazardPathResult fields correctly", () => {
+    const state = makeState({ "1,0": "hazard", "2,0": "hazard" });
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: HAZARD_DAMAGE, team: "enemy" });
+    state.units.push(unit);
+
+    const result = applyHazardsForMovementPath(unit, state, [{ q: 1, r: 0 }, { q: 2, r: 0 }]);
+
+    expect(result.damageApplied).toBe(true);
+    expect(result.stoppedEarly).toBe(true);
+    expect(result.stoppedAtHex).toEqual({ q: 1, r: 0 });
+    expect(result.shouldStopCaller).toBe(true);
+    expect(result.postDamageResults.length).toBe(1);
+    expect(result.postDamageResults[0].newlyDroppedToZero).toBe(true);
+    expect(result.postDamageResults[0].shouldStopCaller).toBe(true);
+  });
+
+  it("nonlethal hazard path returns all HazardPathResult fields correctly", () => {
+    const state = makeState({ "1,0": "hazard" });
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: HAZARD_DAMAGE + 10, team: "enemy" });
+    state.units.push(unit);
+
+    const result = applyHazardsForMovementPath(unit, state, [{ q: 1, r: 0 }, { q: 2, r: 0 }]);
+
+    expect(result.damageApplied).toBe(true);
+    expect(result.stoppedEarly).toBe(false);
+    expect(result.stoppedAtHex).toBeUndefined();
+    expect(result.shouldStopCaller).toBe(false);
+    expect(result.postDamageResults.length).toBe(1);
+    expect(result.postDamageResults[0].newlyDroppedToZero).toBe(false);
+    expect(result.postDamageResults[0].shouldStopCaller).toBe(false);
+  });
+
+  it("unique hazard hex entered twice applies damage once with single log entry", () => {
+    const state = makeState({ "1,0": "hazard" });
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: 18, team: "enemy" });
+    state.units.push(unit);
+
+    const result = applyHazardsForMovementPath(unit, state, [{ q: 1, r: 0 }, { q: 0, r: 1 }, { q: 1, r: 0 }]);
+
+    expect(unit.hp).toBe(18 - HAZARD_DAMAGE);
+    expect(result.damageApplied).toBe(true);
+    expect(result.postDamageResults.length).toBe(1);
+    const hazardEntryLogs = state.log.filter((e) => e.text.includes("enters hazard"));
+    expect(hazardEntryLogs.length).toBe(1);
+  });
+});
