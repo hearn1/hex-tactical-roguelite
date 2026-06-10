@@ -316,4 +316,47 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     expect(defeatState.status).toBe("defeat");
     expect(defeatState.bossTelegraph).toBeNull();
   });
+
+  it("lethal telegraph blow logs the hero downed exactly once and clears telegraph (#272)", () => {
+    const rng = createRng(1);
+    const boss = makeBoss(20);
+    const fragile = makeUnit({
+      instanceId: "hero_0",
+      pos: { q: 1, r: 0 },
+      defId: "class.guardian",
+      hp: 1,
+      stats: { maxHp: 18, armor: 1, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const state = makeBossState([boss, fragile]);
+
+    takeEnemyTurn(boss, state, rng); // wind up
+    takeEnemyTurn(boss, state, rng); // resolve — downs the hero
+
+    expect(fragile.hp).toBe(0);
+    expect(fragile.heroLifeState).toBe("downed");
+    expect(state.bossTelegraph).toBeNull();
+    // Exactly one "Downed" log entry for this hero.
+    const downedLogs = state.log.filter((l) => l.kind === "defeat" && l.text.includes("Downed") && l.text.includes(fragile.displayName));
+    expect(downedLogs.length).toBe(1);
+  });
+
+  it("telegraph cleared when nobody is hit — no one standing in area (#272)", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20);
+    const safe = makeUnit({
+      instanceId: "hero_safe",
+      pos: { q: 0, r: 3 }, // out of adjacent ring
+      defId: "class.guardian",
+      hp: 18,
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const state = makeBossState([boss, safe]);
+
+    takeEnemyTurn(boss, state, rng); // wind up
+    expect(state.bossTelegraph).not.toBeNull();
+    takeEnemyTurn(boss, state, rng); // resolve — nobody hit
+
+    expect(state.bossTelegraph).toBeNull();
+    expect(safe.hp).toBe(18);
+  });
 });

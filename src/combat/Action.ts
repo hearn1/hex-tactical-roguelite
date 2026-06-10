@@ -9,7 +9,7 @@ import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../data/levelups.ts";
 import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
-import { heroLifeState, handleUnitDroppedToZero, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
+import { heroLifeState, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
 import { checkEnemyThresholdTraits } from "./Traits.ts";
 import { resolvePostDamageAftermath } from "./PostDamage.ts";
 import type { PostDamageCategory, PostDamageCause } from "./PostDamage.ts";
@@ -702,6 +702,7 @@ export function resolveAction(
   }
 
   // Vindicator Retributive Strike reaction: when a Vindicator is hit by melee, strike back.
+  let retribAftermath: import("./PostDamage.ts").PostDamageResult | null = null;
   if (target.team === "hero" && !target.reactionUsedThisTurn && target.passives?.includes("archetype_passive.vindicator_below_50_attack")) {
     const isMelee = distance(attacker.pos, target.pos) <= 1;
     if (isMelee && attacker.hp > 0) {
@@ -715,6 +716,7 @@ export function resolveAction(
         const retribCrit = retribD20 >= getCritFloor(target);
         const retribHit = retribD20 !== 1 && (retribCrit || retribTotal >= attacker.stats.armor);
         if (retribHit) {
+          const retribPreviousHp = attacker.hp;
           let retribDmg = retribResult.total;
           if (retribCrit) retribDmg *= 2;
           attacker.hp = Math.max(0, attacker.hp - retribDmg);
@@ -723,9 +725,14 @@ export function resolveAction(
             text: `[T${round}] ${target.displayName}'s Retributive Strike hits ${attacker.displayName} for ${retribDmg} damage!`,
             round,
           });
-          if (attacker.hp <= 0) {
-            handleUnitDroppedToZero(attacker, state);
-          }
+          retribAftermath = resolvePostDamageAftermath({
+            state,
+            targetUnitId: attacker.instanceId,
+            sourceUnitId: target.instanceId,
+            cause: "retaliation",
+            category: "weapon",
+            previousHp: retribPreviousHp,
+          });
         } else {
           state.log.push({
             kind: "action",
@@ -749,7 +756,14 @@ export function resolveAction(
   });
 
   if (!skipHasActed) attacker.hasActed = true;
-  return { amount: dealt, isCrit, kind: "damage", actionElement: el, shouldCheckCombatEnd: aftermath.shouldCheckCombatEnd };
+  return {
+    amount: dealt,
+    isCrit,
+    kind: "damage",
+    actionElement: el,
+    shouldCheckCombatEnd: aftermath.shouldCheckCombatEnd || (retribAftermath?.shouldCheckCombatEnd ?? false),
+    shouldStopCaller: retribAftermath?.shouldStopCaller ?? false,
+  };
 }
 
 function resolvePrimaryPlusAdjacent(
@@ -921,20 +935,33 @@ export function resolveBossTelegraph(
       round,
     });
 
-    if (hero.hp > 0) {
+    const aftermath = resolvePostDamageAftermath({
+      state,
+      targetUnitId: hero.instanceId,
+      sourceUnitId: boss.instanceId,
+      cause: "boss_telegraph",
+      category: "weapon",
+      previousHp: beforeHp,
+      damageAmount: dealt,
+    });
+
+    if (aftermath.targetStillValid) {
       applyCondition(hero, "slowed", 1);
       state.log.push({
         kind: "action",
         text: `[T${round}] ${hero.displayName} is Slowed by the impact.`,
         round,
       });
-    } else {
-      handleUnitDroppedToZero(hero, state);
     }
   }
 
   state.bossTelegraph = null;
 }
+
+// Future direct damage sources — call resolvePostDamageAftermath with an appropriate cause:
+//   item / potion direct damage  → cause: "item"
+//   trait direct damage          → cause: "trait"
+// Item-granted actions already route via resolveAction; item hooks must NOT call the helper directly.
 
 export function checkVictoryDefeat(state: CombatState): void {
   const enemiesAlive = state.units.filter((u) => u.team === "enemy" && u.hp > 0);

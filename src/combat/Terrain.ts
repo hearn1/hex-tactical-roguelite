@@ -1,7 +1,8 @@
 import type { CombatState, UnitInstance, Hex, TerrainType } from "../state/types.ts";
 import type { ActionDef } from "../data/actions.ts";
 import { hexKey, distance } from "../core/hex.ts";
-import { handleUnitDroppedToZero } from "./DeathSaves.ts";
+import { resolvePostDamageAftermath } from "./PostDamage.ts";
+import type { PostDamageResult } from "./PostDamage.ts";
 
 export const DIFFICULT_TERRAIN_COST = 2;
 export const NORMAL_TERRAIN_COST = 1;
@@ -54,46 +55,78 @@ export function isHazardHex(
   return getTerrainType(state, hexOrKey) === "hazard";
 }
 
+export interface HazardPathResult {
+  state: CombatState;
+  damageApplied: boolean;
+  stoppedEarly: boolean;
+  stoppedAtHex?: Hex;
+  postDamageResults: PostDamageResult[];
+  shouldStopCaller: boolean;
+}
+
 /**
  * Applies hazard damage when a unit enters a hazard hex.
- * Logs the damage and defeat (if fatal). Does NOT call checkVictoryDefeat — the caller must.
- * Returns true if damage was applied.
+ * Logs the damage and routes aftermath through resolvePostDamageAftermath.
+ * Does NOT call checkVictoryDefeat — the caller must.
+ * Returns false if the hex is not a hazard, otherwise returns the PostDamageResult.
  */
 export function applyHazardOnEntry(
   unit: UnitInstance,
   state: CombatState,
   hex: Hex,
-): boolean {
+): PostDamageResult | false {
   if (!isHazardHex(state, hex)) return false;
+  const previousHp = unit.hp;
   unit.hp = Math.max(0, unit.hp - HAZARD_DAMAGE);
+  const dealt = previousHp - unit.hp;
   state.log.push({
     kind: "action",
     text: `[T${state.round}] ${unit.displayName} enters hazard at (${hex.q}, ${hex.r}) — ${HAZARD_DAMAGE} damage! ${unit.displayName}: ${unit.hp}/${unit.stats.maxHp} HP.`,
     round: state.round,
   });
-  if (unit.hp <= 0) {
-    handleUnitDroppedToZero(unit, state);
-  }
-  return true;
+  return resolvePostDamageAftermath({
+    state,
+    targetUnitId: unit.instanceId,
+    cause: "hazard",
+    category: "hazard",
+    previousHp,
+    damageAmount: dealt,
+  });
 }
 
 /**
  * Applies hazard damage for each new hazard hex the unit enters along a movement path.
  * The path should not include the starting hex. Each unique hazard hex triggers at most once.
- * Stops early if the unit is defeated (hp <= 0).
+ * Stops early if the unit is downed/defeated; sets unit.pos to the stopping hex in that case.
  */
 export function applyHazardsForMovementPath(
   unit: UnitInstance,
   state: CombatState,
   path: Hex[],
-): void {
+): HazardPathResult {
   const entered = new Set<string>();
+  const postDamageResults: PostDamageResult[] = [];
+  let damageApplied = false;
+  let stoppedEarly = false;
+  let stoppedAtHex: Hex | undefined;
+
   for (const hex of path) {
     const key = hexKey(hex);
     if (isHazardHex(state, hex) && !entered.has(key)) {
       entered.add(key);
-      applyHazardOnEntry(unit, state, hex);
-      if (unit.hp <= 0) break;
+      const result = applyHazardOnEntry(unit, state, hex);
+      if (result !== false) {
+        postDamageResults.push(result);
+        damageApplied = true;
+        if (result.shouldStopCaller) {
+          stoppedEarly = true;
+          stoppedAtHex = hex;
+          unit.pos = { ...hex };
+          break;
+        }
+      }
     }
   }
+
+  return { state, damageApplied, stoppedEarly, stoppedAtHex, postDamageResults, shouldStopCaller: stoppedEarly };
 }

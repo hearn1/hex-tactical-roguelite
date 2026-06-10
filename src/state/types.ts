@@ -85,6 +85,8 @@ export interface ActionResult {
   kind: "damage" | "heal" | "miss";
   actionElement?: ActionElement;
   shouldCheckCombatEnd?: boolean;
+  /** True when retaliation from the target killed the original attacker; caller should stop follow-up. */
+  shouldStopCaller?: boolean;
 }
 
 export interface ActionUpgradeBonus {
