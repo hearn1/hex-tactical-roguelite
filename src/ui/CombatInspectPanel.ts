@@ -40,7 +40,7 @@ const CONDITION_DESCRIPTIONS: Record<ConditionId, string> = {
   armored: "Extra Armor.",
   sanctuary: "Next attack against it is negated.",
   hasted: "Extra movement.",
-  counterspelled: "Next spell is cancelled.",
+  counterspelled: "Cancels a boss's telegraphed action.",
 };
 
 export function aiBehaviorHint(aiTag: EnemyDef["aiTag"]): string {

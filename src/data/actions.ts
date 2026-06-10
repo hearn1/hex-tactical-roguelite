@@ -30,7 +30,8 @@ export interface ActionDef {
     | { type: "heal"; formula: string; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "applyCondition"; conditionId: string; duration: number; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "removeConditions" }
-    | { type: "lineDamage"; formula: string; lineRange: number };
+    | { type: "lineDamage"; formula: string; lineRange: number }
+    | { type: "counterTelegraph" };
 }
 
 export const ACTION_REGISTRY: Record<string, ActionDef> = {
@@ -495,11 +496,11 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.counterspell": {
     id: "action.counterspell",
     displayName: "Counterspell",
-    description: "Cancel an enemy's telegraphed or queued action.",
+    description: "Cancel a boss's telegraphed action, or apply Counterspelled (1 turn) if no telegraph is active.",
     source: "class",
     targetType: "enemy",
     range: 4,
     charges: 1,
-    effect: { type: "applyCondition", conditionId: "counterspelled", duration: 1 },
+    effect: { type: "counterTelegraph" },
   },
 };
