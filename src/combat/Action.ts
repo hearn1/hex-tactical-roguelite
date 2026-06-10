@@ -10,7 +10,9 @@ import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../da
 import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
 import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
 import { heroLifeState, handleUnitDroppedToZero, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
-import { checkEnemyThresholdTraits, checkEncounterDeathTraits } from "./Traits.ts";
+import { checkEnemyThresholdTraits } from "./Traits.ts";
+import { resolvePostDamageAftermath } from "./PostDamage.ts";
+import type { PostDamageCategory } from "./PostDamage.ts";
 import { coverArmorBonusForTarget } from "./Terrain.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
@@ -718,15 +720,19 @@ export function resolveAction(
     }
   }
 
-  checkEnemyThresholdTraits(target, state);
-
-  if (target.hp <= 0) {
-    handleUnitDroppedToZero(target, state);
-    checkEncounterDeathTraits(target, state);
-  }
+  const category: PostDamageCategory = itemAttackType === "spell" ? "spell" : "weapon";
+  const aftermath = resolvePostDamageAftermath({
+    state,
+    targetUnitId: target.instanceId,
+    sourceUnitId: attacker.instanceId,
+    actionId: action.id,
+    cause: "single_target",
+    category,
+    previousHp: beforeHp,
+  });
 
   if (!skipHasActed) attacker.hasActed = true;
-  return { amount: dealt, isCrit, kind: "damage", actionElement: el };
+  return { amount: dealt, isCrit, kind: "damage", actionElement: el, shouldCheckCombatEnd: aftermath.shouldCheckCombatEnd };
 }
 
 function resolvePrimaryPlusAdjacent(
