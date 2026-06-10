@@ -529,6 +529,50 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
       trait.cadence = originalCadence;
     }
   });
+
+  it("cooldown cadence gates re-wind until enough rounds pass (#288)", () => {
+    const ogre = ENEMY_REGISTRY["enemy.ogre_hexbreaker"]!;
+    const trait = (ogre.traits ?? []).find(
+      (t): t is Extract<typeof t, { id: "boss_ground_slam_telegraph" }> =>
+        t.id === "boss_ground_slam_telegraph",
+    )!;
+    const originalCadence = trait.cadence;
+    trait.cadence = { mode: "cooldown", cooldownTurns: 2 };
+    try {
+      const rng = createRng(7);
+      const boss = makeBoss(20);
+      const hero = makeUnit({
+        instanceId: "hero_0",
+        pos: { q: 1, r: 0 },
+        defId: "class.guardian",
+        hp: 50,
+        stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      });
+      const state = makeBossState([boss, hero]);
+      state.round = 1;
+
+      // Round 1: below threshold, no lastResolved → wind up
+      expect(handleEnemyStartTurnTraits(boss, state)).toBe(true);
+      expect(state.bossTelegraph).not.toBeNull();
+
+      // Resolve via takeEnemyTurn — sets telegraphLastResolvedRound to round 1
+      takeEnemyTurn(boss, state, rng);
+      expect(state.bossTelegraph).toBeNull();
+      expect(getTelegraphLastResolvedRound(state, boss, "boss_ground_slam_telegraph")).toBe(1);
+
+      // Round 2: cooldown not elapsed (2-1 < 2) → no wind-up
+      state.round = 2;
+      expect(handleEnemyStartTurnTraits(boss, state)).toBe(false);
+      expect(state.bossTelegraph).toBeNull();
+
+      // Round 3: cooldown elapsed (3-1 >= 2) → wind up again
+      state.round = 3;
+      expect(handleEnemyStartTurnTraits(boss, state)).toBe(true);
+      expect(state.bossTelegraph).not.toBeNull();
+    } finally {
+      trait.cadence = originalCadence;
+    }
+  });
 });
 
 describe("Counterspell vs boss telegraph (#283)", () => {
