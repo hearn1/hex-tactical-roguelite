@@ -148,6 +148,7 @@ describe("resolvePostDamageAftermath — hero downed", () => {
     expect(result.targetDefeated).toBe(false);
     expect(result.targetStillValid).toBe(false);
     expect(result.shouldStopCaller).toBe(true);
+    expect(result.shouldCheckCombatEnd).toBe(true);
     expect(hero.heroLifeState).toBe("downed");
     expect(state.log.some((e) => e.kind === "defeat")).toBe(true);
   });
