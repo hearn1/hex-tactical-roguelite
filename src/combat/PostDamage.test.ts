@@ -170,7 +170,7 @@ describe("resolvePostDamageAftermath — boss threshold", () => {
     expect(result.triggeredBossThreshold).toBe(true);
     expect(result.triggeredReinforcements).toBe(true);
     expect(result.spawnedReinforcementIds.length).toBeGreaterThan(0);
-    expect(state.units.some((u) => u.instanceId === "enemy_reinforcement")).toBe(true);
+    expect(state.units.some((u) => u.instanceId === "boss_0_reinforcement_1")).toBe(true);
   });
 });
 

@@ -300,7 +300,7 @@ describe("AoE aftermath routing (#271)", () => {
       resolveAction(ACTION_REGISTRY["action.fireball"], caster, boss, state, rng);
 
       // Threshold triggers once; a reinforcement unit is added.
-      const reinforcements = state.units.filter((u) => u.instanceId === "enemy_reinforcement");
+      const reinforcements = state.units.filter((u) => u.instanceId === "boss_0_reinforcement_1");
       expect(reinforcements.length).toBe(1);
     });
   });

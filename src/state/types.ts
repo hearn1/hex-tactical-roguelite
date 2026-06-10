@@ -231,4 +231,6 @@ export interface CombatState {
   modifierDamageBonus?: number;
   /** Per-hex terrain overlay keyed by hexKey (e.g. "0,0"). Normal tiles are omitted; missing key = "normal". */
   terrain?: Record<string, TerrainType>;
+  /** Monotonic counter for generating unique reinforcement instance IDs. */
+  reinforcementCounter?: number;
 }
