@@ -205,6 +205,11 @@ export interface CombatTraitState {
    * traits or `encounter:${traitId}` for encounter traits.
    */
   triggered?: Record<string, true>;
+  /**
+   * Round on which a telegraph last resolved, keyed as `${unitInstanceId}:${traitId}`.
+   * Used by `cooldown`-mode telegraph cadence gating (#282).
+   */
+  telegraphLastResolvedRound?: Record<string, number>;
 }
 
 export interface CombatState {

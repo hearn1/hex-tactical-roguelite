@@ -2,8 +2,13 @@
 import { createRng } from "../core/rng.ts";
 import { takeEnemyTurn } from "./EnemyAI.ts";
 import { resolveAction, checkVictoryDefeat, removeDefeatedFromQueue } from "./Action.ts";
-import { getTraitTriggered } from "./Traits.ts";
+import {
+  getTraitTriggered,
+  getTelegraphLastResolvedRound,
+  handleEnemyStartTurnTraits,
+} from "./Traits.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
+import { ENEMY_REGISTRY } from "../data/enemies.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 import { hexesWithinRange, hexKey, neighbors } from "../core/hex.ts";
 
@@ -338,6 +343,77 @@ describe("Boss telegraphed Ground Slam (F28 / #59)", () => {
     // Exactly one "Downed" log entry for this hero.
     const downedLogs = state.log.filter((l) => l.kind === "defeat" && l.text.includes("Downed") && l.text.includes(fragile.displayName));
     expect(downedLogs.length).toBe(1);
+  });
+
+  it("records the last-resolved round so cooldown cadence can be gated (#281)", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20);
+    const hero = makeUnit({
+      instanceId: "hero_0",
+      pos: { q: 1, r: 0 },
+      defId: "class.guardian",
+      hp: 50,
+      stats: { maxHp: 50, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const state = makeBossState([boss, hero]);
+
+    takeEnemyTurn(boss, state, rng); // wind up
+    expect(getTelegraphLastResolvedRound(state, boss, "boss_ground_slam_telegraph")).toBeUndefined();
+
+    takeEnemyTurn(boss, state, rng); // resolve
+
+    expect(getTelegraphLastResolvedRound(state, boss, "boss_ground_slam_telegraph")).toBe(state.round);
+  });
+
+  it("records the last-resolved round even when nobody is hit (#281)", () => {
+    const rng = createRng(7);
+    const boss = makeBoss(20);
+    const safe = makeUnit({
+      instanceId: "hero_safe",
+      pos: { q: 0, r: 3 }, // out of adjacent ring
+      defId: "class.guardian",
+    });
+    const state = makeBossState([boss, safe]);
+
+    takeEnemyTurn(boss, state, rng); // wind up
+    takeEnemyTurn(boss, state, rng); // resolve — nobody hit
+
+    expect(getTelegraphLastResolvedRound(state, boss, "boss_ground_slam_telegraph")).toBe(state.round);
+  });
+
+  it("marks a once_per_threshold telegraph as consumed on wind-up (#281)", () => {
+    const ogre = ENEMY_REGISTRY["enemy.ogre_hexbreaker"]!;
+    const trait = (ogre.traits ?? []).find(
+      (t): t is Extract<typeof t, { id: "boss_ground_slam_telegraph" }> =>
+        t.id === "boss_ground_slam_telegraph",
+    )!;
+    const originalCadence = trait.cadence;
+    trait.cadence = { mode: "once_per_threshold" };
+    try {
+      const boss = makeBoss(20); // <= 50% threshold
+      const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian" });
+      const state = makeBossState([boss, hero]);
+
+      expect(getTraitTriggered(state, "boss:boss_ground_slam_telegraph")).toBe(false);
+
+      const woundUp = handleEnemyStartTurnTraits(boss, state);
+
+      expect(woundUp).toBe(true);
+      expect(getTraitTriggered(state, "boss:boss_ground_slam_telegraph")).toBe(true);
+    } finally {
+      trait.cadence = originalCadence;
+    }
+  });
+
+  it("does not mark consumed for a rotation_integrated telegraph on wind-up (#281)", () => {
+    const boss = makeBoss(20);
+    const hero = makeUnit({ instanceId: "hero_0", pos: { q: 1, r: 0 }, defId: "class.guardian" });
+    const state = makeBossState([boss, hero]);
+
+    const woundUp = handleEnemyStartTurnTraits(boss, state);
+
+    expect(woundUp).toBe(true);
+    expect(getTraitTriggered(state, "boss:boss_ground_slam_telegraph")).toBe(false);
   });
 
   it("telegraph cleared when nobody is hit — no one standing in area (#272)", () => {
