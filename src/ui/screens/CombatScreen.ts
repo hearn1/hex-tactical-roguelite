@@ -1192,14 +1192,16 @@ export class CombatScreen {
       return;
     }
 
-    if (text === "Defeat" && gameState.run) {
-      const run = gameState.run;
-      appendAdventureLogOnce(run, "run_end:lost", {
-        kind: "run_end",
-        text: "Run ended in defeat.",
-        runStatus: "lost",
-      });
-      run.runStatus = "lost";
+    if (text === "Defeat") {
+      if (gameState.run) {
+        const run = gameState.run;
+        appendAdventureLogOnce(run, "run_end:lost", {
+          kind: "run_end",
+          text: "Run ended in defeat.",
+          runStatus: "lost",
+        });
+        run.runStatus = "lost";
+      }
       gameState.screen = "run_summary";
       this.app.render();
       return;
