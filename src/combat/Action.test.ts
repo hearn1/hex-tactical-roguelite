@@ -1,8 +1,11 @@
 ﻿import { describe, it, expect } from "vitest";
 import { createRng } from "../core/rng.ts";
-import { resolveAction, validTargets, checkVictoryDefeat } from "./Action.ts";
+import { resolveAction, validTargets, checkVictoryDefeat, RALLY_DURATION } from "./Action.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
+import { hexesWithinRange, hexKey } from "../core/hex.ts";
+import { getTraitTriggered } from "./Traits.ts";
+import { heroLifeState } from "./DeathSaves.ts";
 
 function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: Hex }): UnitInstance {
   return {
@@ -213,6 +216,161 @@ describe("Action", () => {
       // Heal should succeed and not mention cover.
       expect(ally.hp).toBeGreaterThan(before);
       expect(state.log.some((e) => e.text.includes("cover"))).toBe(false);
+    });
+  });
+});
+
+describe("AoE aftermath routing (#271)", () => {
+  function makeAoeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: Hex }): UnitInstance {
+    return {
+      defId: "class.guardian",
+      displayName: overrides.instanceId,
+      team: "hero",
+      level: 1,
+      xp: 0,
+      stats: { maxHp: 20, armor: 12, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      hp: 20,
+      conditions: [],
+      movePointsRemaining: 3,
+      hasActed: false,
+      equippedItemIds: { weapon: null, armor: null, trinket: null },
+      bonusStats: {},
+      ...overrides,
+    };
+  }
+
+  function makeAoeState(units: UnitInstance[], overrides: Partial<CombatState> = {}): CombatState {
+    const grid = hexesWithinRange({ q: 0, r: 0 }, 5);
+    return {
+      round: 1,
+      activeIndex: 0,
+      turnQueue: units.map((u) => u.instanceId),
+      units,
+      log: [],
+      status: "active",
+      gridKeys: grid.map(hexKey),
+      targetingActionId: null,
+      perEncounterUses: {},
+      traitState: { actionRotationIndex: {}, triggered: {} },
+      ...overrides,
+    };
+  }
+
+  describe("aoe_radius (Fireball) routing", () => {
+    it("multi-kill AoE produces exactly 2 defeat log entries with no duplicates (#271)", () => {
+      const rng = () => 0.99; // d20=20 (crit), damage maxed
+      const caster = makeAoeUnit({
+        instanceId: "caster",
+        pos: { q: 0, r: 0 },
+        defId: "class.arcanist",
+        stats: { maxHp: 12, armor: 11, move: 3, str: 0, dex: 0, con: 0, int: 20, wis: 0, cha: 0 },
+      });
+      const e1 = makeAoeUnit({ instanceId: "e1", pos: { q: 1, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const e2 = makeAoeUnit({ instanceId: "e2", pos: { q: 2, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const state = makeAoeState([caster, e1, e2]);
+
+      const result = resolveAction(ACTION_REGISTRY["action.fireball"], caster, e1, state, rng);
+
+      expect(e1.hp).toBe(0);
+      expect(e2.hp).toBe(0);
+      expect(state.log.filter((l) => l.kind === "defeat").length).toBe(2);
+      expect(result.shouldCheckCombatEnd).toBe(true);
+    });
+
+    it("AoE crossing a boss HP threshold spawns reinforcement exactly once (#271)", () => {
+      const rng = () => 0.99;
+      const caster = makeAoeUnit({
+        instanceId: "caster",
+        pos: { q: 0, r: 0 },
+        defId: "class.arcanist",
+        stats: { maxHp: 12, armor: 11, move: 3, str: 0, dex: 0, con: 0, int: 20, wis: 0, cha: 0 },
+      });
+      // Ogre Hexbreaker: maxHp 42, threshold at 50% = 21. Set HP just above threshold.
+      const boss = makeAoeUnit({
+        instanceId: "boss_0",
+        pos: { q: 1, r: 0 },
+        defId: "enemy.ogre_hexbreaker",
+        team: "enemy",
+        displayName: "Ogre Hexbreaker",
+        hp: 22,
+        stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 2, int: 0, wis: 0, cha: 0 },
+      });
+      const state = makeAoeState([caster, boss]);
+
+      resolveAction(ACTION_REGISTRY["action.fireball"], caster, boss, state, rng);
+
+      // Threshold triggers once; a reinforcement unit is added.
+      const reinforcements = state.units.filter((u) => u.instanceId === "enemy_reinforcement");
+      expect(reinforcements.length).toBe(1);
+    });
+  });
+
+  describe("aoe_around_caster (Cleave) routing", () => {
+    it("AoE killing the first elite triggers Rally exactly once for surviving enemies (#271)", () => {
+      const rng = () => 0.99; // guaranteed crit
+      const hero = makeAoeUnit({
+        instanceId: "hero",
+        pos: { q: 0, r: 0 },
+        stats: { maxHp: 20, armor: 12, move: 3, str: 20, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      });
+      const e1 = makeAoeUnit({ instanceId: "e1", pos: { q: 1, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 20, armor: 1, move: 3, str: 1, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const e2 = makeAoeUnit({ instanceId: "e2", pos: { q: 0, r: 1 }, team: "enemy", hp: 1, stats: { maxHp: 20, armor: 1, move: 3, str: 1, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      // Survivor outside Cleave range (range 1) — still receives Rally.
+      const e3 = makeAoeUnit({ instanceId: "e3", pos: { q: 3, r: 0 }, team: "enemy", hp: 20, stats: { maxHp: 20, armor: 12, move: 3, str: 1, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const state = makeAoeState([hero, e1, e2, e3], { encounterId: "encounter.broken_banner_elite" });
+
+      resolveAction(ACTION_REGISTRY["action.cleave"], hero, e1, state, rng);
+
+      expect(e1.hp).toBe(0);
+      expect(e2.hp).toBe(0);
+      expect(getTraitTriggered(state, "encounter:elite_rally_on_first_death")).toBe(true);
+      // Rally log fires exactly once, not once per dead elite.
+      expect(state.log.filter((l) => l.text.includes("Rally")).length).toBe(1);
+      // Survivor gets rallied exactly once.
+      expect(e3.conditions.filter((c) => c.id === "rallied").length).toBe(1);
+      expect(e3.conditions.some((c) => c.id === "rallied" && c.remainingTurns === RALLY_DURATION)).toBe(true);
+    });
+  });
+
+  describe("primary_plus_adjacent (Ground Slam) routing", () => {
+    it("Ground Slam downing primary + adjacent hero both transition correctly; caller gets real data (#271)", () => {
+      const rng = () => 0.99; // guaranteed crit
+      const enemy = makeAoeUnit({
+        instanceId: "enemy",
+        pos: { q: 0, r: 0 },
+        defId: "enemy.ogre_hexbreaker",
+        team: "enemy",
+        displayName: "Ogre Hexbreaker",
+        stats: { maxHp: 42, armor: 13, move: 3, str: 4, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+        hp: 42,
+      });
+      // Primary target: hero adjacent to enemy (distance 1).
+      const hero1 = makeAoeUnit({
+        instanceId: "hero1",
+        pos: { q: 1, r: 0 },
+        hp: 1,
+        heroLifeState: "standing",
+        stats: { maxHp: 20, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      });
+      // Adjacent hero: also within distance 1 of enemy, not the primary target.
+      const hero2 = makeAoeUnit({
+        instanceId: "hero2",
+        pos: { q: 0, r: 1 },
+        hp: 1,
+        heroLifeState: "standing",
+        stats: { maxHp: 20, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+      });
+      const state = makeAoeState([enemy, hero1, hero2]);
+
+      const result = resolveAction(ACTION_REGISTRY["action.ground_slam"], enemy, hero1, state, rng);
+
+      expect(hero1.hp).toBe(0);
+      expect(hero2.hp).toBe(0);
+      expect(heroLifeState(hero1)).toBe("downed");
+      expect(heroLifeState(hero2)).toBe("downed");
+      // Caller receives real damage amount and shouldCheckCombatEnd signal.
+      expect(result.amount).toBeGreaterThan(0);
+      expect(result.shouldCheckCombatEnd).toBe(true);
     });
   });
 });

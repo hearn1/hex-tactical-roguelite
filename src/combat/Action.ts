@@ -12,7 +12,7 @@ import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getC
 import { heroLifeState, handleUnitDroppedToZero, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
 import { checkEnemyThresholdTraits } from "./Traits.ts";
 import { resolvePostDamageAftermath } from "./PostDamage.ts";
-import type { PostDamageCategory } from "./PostDamage.ts";
+import type { PostDamageCategory, PostDamageCause } from "./PostDamage.ts";
 import { coverArmorBonusForTarget } from "./Terrain.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
@@ -181,6 +181,7 @@ export function resolveAction(
     const isAutoMiss = d20 === 1;
     let totalDmg = 0;
     let hitCount = 0;
+    const lineHits: { targetUnitId: string; previousHp: number; damageAmount: number }[] = [];
     for (const u of affected) {
       const hit = !isAutoMiss && (isCrit || (d20 + atkMod + prof) >= u.stats.armor);
       if (hit) {
@@ -194,11 +195,10 @@ export function resolveAction(
         }
         const beforeHp = u.hp;
         u.hp = Math.max(0, u.hp - dmg);
-        totalDmg += beforeHp - u.hp;
+        const dealt = beforeHp - u.hp;
+        totalDmg += dealt;
         hitCount++;
-        if (u.hp <= 0) {
-          handleUnitDroppedToZero(u, state);
-        }
+        lineHits.push({ targetUnitId: u.instanceId, previousHp: beforeHp, damageAmount: dealt });
       }
     }
     state.log.push({
@@ -207,7 +207,13 @@ export function resolveAction(
       round,
     });
     attacker.hasActed = true;
-    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el };
+    const lineCategory: PostDamageCategory = (atkStat === "int" || atkStat === "wis" || atkStat === "cha") ? "spell" : "weapon";
+    let lineShouldCheckCombatEnd = false;
+    for (const h of lineHits) {
+      const ar = resolvePostDamageAftermath({ state, targetUnitId: h.targetUnitId, sourceUnitId: attacker.instanceId, actionId: action.id, cause: "line", category: lineCategory, previousHp: h.previousHp, damageAmount: h.damageAmount });
+      if (ar.shouldCheckCombatEnd) lineShouldCheckCombatEnd = true;
+    }
+    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el, shouldCheckCombatEnd: lineShouldCheckCombatEnd };
   }
 
   if (action.effect.type === "applyCondition") {
@@ -418,6 +424,7 @@ export function resolveAction(
     const isAutoMiss = d20 === 1;
     let totalDmg = 0;
     let hitCount = 0;
+    const aoeAroundHits: { targetUnitId: string; previousHp: number; damageAmount: number }[] = [];
     for (const u of affected) {
       const hit = !isAutoMiss && (isCrit || (d20 + atkMod + prof) >= u.stats.armor);
       if (hit) {
@@ -431,11 +438,10 @@ export function resolveAction(
         }
         const beforeHp = u.hp;
         u.hp = Math.max(0, u.hp - dmg);
-        totalDmg += beforeHp - u.hp;
+        const dealt = beforeHp - u.hp;
+        totalDmg += dealt;
         hitCount++;
-        if (u.hp <= 0) {
-          handleUnitDroppedToZero(u, state);
-        }
+        aoeAroundHits.push({ targetUnitId: u.instanceId, previousHp: beforeHp, damageAmount: dealt });
       }
     }
     state.log.push({
@@ -444,7 +450,13 @@ export function resolveAction(
       round,
     });
     if (!skipHasActed) attacker.hasActed = true;
-    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el };
+    const aoeAroundCategory: PostDamageCategory = (atkStat === "int" || atkStat === "wis" || atkStat === "cha") ? "spell" : "weapon";
+    let aoeAroundShouldCheckCombatEnd = false;
+    for (const h of aoeAroundHits) {
+      const ar = resolvePostDamageAftermath({ state, targetUnitId: h.targetUnitId, sourceUnitId: attacker.instanceId, actionId: action.id, cause: "aoe", category: aoeAroundCategory, previousHp: h.previousHp, damageAmount: h.damageAmount });
+      if (ar.shouldCheckCombatEnd) aoeAroundShouldCheckCombatEnd = true;
+    }
+    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el, shouldCheckCombatEnd: aoeAroundShouldCheckCombatEnd };
   }
 
   if (action.effect.type === "damage" && action.effect.targetMode === "aoe_radius") {
@@ -471,6 +483,7 @@ export function resolveAction(
     const isAutoMiss = d20 === 1;
     let totalDmg = 0;
     let hitCount = 0;
+    const aoeRadiusHits: { targetUnitId: string; previousHp: number; damageAmount: number }[] = [];
     for (const u of affected) {
       const hit = !isAutoMiss && (isCrit || (d20 + atkMod + prof) >= u.stats.armor);
       if (hit) {
@@ -480,11 +493,10 @@ export function resolveAction(
         if (isCrit) dmg *= 2;
         const beforeHp = u.hp;
         u.hp = Math.max(0, u.hp - dmg);
-        totalDmg += beforeHp - u.hp;
+        const dealt = beforeHp - u.hp;
+        totalDmg += dealt;
         hitCount++;
-        if (u.hp <= 0) {
-          handleUnitDroppedToZero(u, state);
-        }
+        aoeRadiusHits.push({ targetUnitId: u.instanceId, previousHp: beforeHp, damageAmount: dealt });
       }
     }
     state.log.push({
@@ -493,12 +505,17 @@ export function resolveAction(
       round,
     });
     if (!skipHasActed) attacker.hasActed = true;
-    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el };
+    const aoeRadiusCategory: PostDamageCategory = (atkStat === "int" || atkStat === "wis" || atkStat === "cha") ? "spell" : "weapon";
+    let aoeRadiusShouldCheckCombatEnd = false;
+    for (const h of aoeRadiusHits) {
+      const ar = resolvePostDamageAftermath({ state, targetUnitId: h.targetUnitId, sourceUnitId: attacker.instanceId, actionId: action.id, cause: "aoe", category: aoeRadiusCategory, previousHp: h.previousHp, damageAmount: h.damageAmount });
+      if (ar.shouldCheckCombatEnd) aoeRadiusShouldCheckCombatEnd = true;
+    }
+    return { amount: totalDmg, isCrit, kind: "damage", actionElement: el, shouldCheckCombatEnd: aoeRadiusShouldCheckCombatEnd };
   }
 
   if (action.effect.type === "damage" && action.effect.targetMode === "primary_plus_adjacent") {
-    resolvePrimaryPlusAdjacent(action, attacker, target, state, rng, skipHasActed);
-    return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
+    return resolvePrimaryPlusAdjacent(action, attacker, target, state, rng, skipHasActed);
   }
 
   const attackStat = action.accuracyStat ?? "str";
@@ -742,18 +759,24 @@ function resolvePrimaryPlusAdjacent(
   state: CombatState,
   rng: () => number,
   skipHasActed?: boolean,
-): void {
+): ActionResult {
   const round = state.round;
+  const el = actionElement(action.id);
   const attackStat = action.accuracyStat ?? "str";
   const stat = attacker.stats[attackStat];
   const proficiency = 2 + Math.floor((attacker.level - 1) / 3);
   const dmgFormula = (action.effect as { formula: string }).formula;
+  const category: PostDamageCategory = (attackStat === "int" || attackStat === "wis" || attackStat === "cha") ? "spell" : "weapon";
 
   const d20 = Math.floor(rng() * 20) + 1;
   const attackTotal = d20 + stat + proficiency;
   const isCrit = d20 === 20;
   const isAutoMiss = d20 === 1;
   const hit = !isAutoMiss && (isCrit || attackTotal >= target.stats.armor);
+
+  // Collect all hits: apply HP mutations for every affected unit first, then call aftermath.
+  const hitEntries: { targetUnitId: string; previousHp: number; damageAmount: number; cause: PostDamageCause }[] = [];
+  let totalDmg = 0;
 
   if (hit) {
     const formula = rewriteFormula(dmgFormula, attacker);
@@ -767,14 +790,13 @@ function resolvePrimaryPlusAdjacent(
     const beforeHp = target.hp;
     target.hp = Math.max(0, target.hp - damage);
     const dealt = beforeHp - target.hp;
+    totalDmg += dealt;
     state.log.push({
       kind: "action",
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — d20=${d20} +${stat}+${proficiency}=${attackTotal} vs ${target.stats.armor} → hit, ${dealt} dmg.`,
       round,
     });
-    if (target.hp <= 0) {
-      handleUnitDroppedToZero(target, state);
-    }
+    hitEntries.push({ targetUnitId: target.instanceId, previousHp: beforeHp, damageAmount: dealt, cause: "single_target" });
   } else {
     state.log.push({
       kind: "action",
@@ -804,16 +826,13 @@ function resolvePrimaryPlusAdjacent(
       const before = hero.hp;
       hero.hp = Math.max(0, hero.hp - dmg);
       const dealt = before - hero.hp;
+      totalDmg += dealt;
       state.log.push({
         kind: "action",
         text: `[T${round}] Ground Slam hits ${hero.displayName} — ${dealt} dmg.`,
         round,
       });
-      if (hero.hp <= 0) {
-        if (hero.hp <= 0) {
-          handleUnitDroppedToZero(hero, state);
-        }
-      }
+      hitEntries.push({ targetUnitId: hero.instanceId, previousHp: before, damageAmount: dealt, cause: "adjacent" });
     } else {
       state.log.push({
         kind: "action",
@@ -823,8 +842,14 @@ function resolvePrimaryPlusAdjacent(
     }
   }
 
-  checkEnemyThresholdTraits(target, state);
+  let shouldCheckCombatEnd = false;
+  for (const h of hitEntries) {
+    const ar = resolvePostDamageAftermath({ state, targetUnitId: h.targetUnitId, sourceUnitId: attacker.instanceId, actionId: action.id, cause: h.cause, category, previousHp: h.previousHp, damageAmount: h.damageAmount });
+    if (ar.shouldCheckCombatEnd) shouldCheckCombatEnd = true;
+  }
+
   if (!skipHasActed) attacker.hasActed = true;
+  return { amount: totalDmg, isCrit, kind: "damage", actionElement: el, shouldCheckCombatEnd };
 }
 
 
