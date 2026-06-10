@@ -165,7 +165,7 @@ describe("applyHazardOnEntry", () => {
     const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: 10 });
     state.units.push(unit);
     const applied = applyHazardOnEntry(unit, state, { q: 1, r: 0 });
-    expect(applied).toBe(true);
+    expect(applied).not.toBe(false);
     expect(unit.hp).toBe(10 - HAZARD_DAMAGE);
     expect(state.log.some((e) => e.kind === "action")).toBe(true);
   });
@@ -236,5 +236,27 @@ describe("applyHazardsForMovementPath", () => {
     state.units.push(unit);
     applyHazardsForMovementPath(unit, state, [{ q: 1, r: 0 }]);
     expect(unit.hp).toBe(10); // No damage because the path only contains the destination.
+  });
+
+  it("fatal hazard returns shouldStopCaller=true and stoppedAtHex set to the killing hex (#272)", () => {
+    const state = makeState({ "1,0": "hazard", "2,0": "hazard" });
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: HAZARD_DAMAGE, team: "enemy" });
+    state.units.push(unit);
+    const result = applyHazardsForMovementPath(unit, state, [{ q: 1, r: 0 }, { q: 2, r: 0 }]);
+    expect(result.shouldStopCaller).toBe(true);
+    expect(result.stoppedEarly).toBe(true);
+    expect(result.stoppedAtHex).toEqual({ q: 1, r: 0 });
+    // Unit pos updated to the hazard hex where it stopped.
+    expect(unit.pos).toEqual({ q: 1, r: 0 });
+  });
+
+  it("non-fatal hazard returns shouldStopCaller=false (#272)", () => {
+    const state = makeState({ "1,0": "hazard" });
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: HAZARD_DAMAGE + 5 });
+    state.units.push(unit);
+    const result = applyHazardsForMovementPath(unit, state, [{ q: 1, r: 0 }, { q: 2, r: 0 }]);
+    expect(result.shouldStopCaller).toBe(false);
+    expect(result.damageApplied).toBe(true);
+    expect(result.stoppedEarly).toBe(false);
   });
 });

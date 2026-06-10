@@ -606,8 +606,8 @@ export class CombatScreen {
     // Apply hazard damage for each hazard hex entered along the movement path.
     const path = findPath(from, hex, occ, new Set(cs.gridKeys), cost + 1, costFn);
     if (path && path.length > 0) {
-      applyHazardsForMovementPath(unit, cs, path);
-      if (unit.hp <= 0) {
+      const hazardResult = applyHazardsForMovementPath(unit, cs, path);
+      if (hazardResult.shouldStopCaller) {
         checkVictoryDefeat(cs);
         removeDefeatedFromQueue(cs);
       }

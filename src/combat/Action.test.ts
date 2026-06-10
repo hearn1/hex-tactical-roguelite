@@ -374,3 +374,80 @@ describe("AoE aftermath routing (#271)", () => {
     });
   });
 });
+
+describe("Retaliation aftermath routing (#272)", () => {
+  function makeRetribState(attacker: UnitInstance, target: UnitInstance): CombatState {
+    return {
+      round: 1,
+      activeIndex: 0,
+      turnQueue: [attacker.instanceId, target.instanceId],
+      units: [attacker, target],
+      log: [],
+      status: "active",
+      gridKeys: ["0,0", "1,0"],
+      targetingActionId: null,
+      perEncounterUses: {},
+      traitState: { actionRotationIndex: {}, triggered: {} },
+    };
+  }
+
+  it("retaliation that kills the enemy sets shouldStopCaller=true and logs defeat once (#272)", () => {
+    // Enemy (attacker) at 1 HP hits the Vindicator (target) in melee.
+    // Retributive Strike will hit back and kill the enemy.
+    const rng = () => 0.99; // d20=20 → guaranteed crit, max damage
+    const enemy = makeUnit({
+      instanceId: "enemy",
+      pos: { q: 0, r: 0 },
+      team: "enemy",
+      hp: 1,
+      stats: { maxHp: 10, armor: 1, move: 3, str: 1, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const vindicator = makeUnit({
+      instanceId: "hero",
+      pos: { q: 1, r: 0 },
+      hp: 20,
+      stats: { maxHp: 20, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      passives: ["archetype_passive.vindicator_below_50_attack"],
+    });
+    const state = makeRetribState(enemy, vindicator);
+    const result = resolveAction(ACTION_REGISTRY["action.slash"], enemy, vindicator, state, rng);
+
+    expect(enemy.hp).toBe(0);
+    expect(result.shouldStopCaller).toBe(true);
+    expect(result.shouldCheckCombatEnd).toBe(true);
+    // Defeat logged exactly once for the enemy.
+    expect(state.log.filter((e) => e.kind === "defeat").length).toBe(1);
+  });
+
+  it("retaliation that misses leaves shouldStopCaller false (#272)", () => {
+    // d20=1 → auto-miss on retaliation
+    let callCount = 0;
+    const rng = () => {
+      callCount++;
+      // First few calls are for the main attack (d20 hit roll, damage roll).
+      // Return 0.99 for the main attack to guarantee a hit, then 0.0 for the retrib d20 (auto-miss).
+      if (callCount <= 3) return 0.99;
+      return 0.0; // retrib d20 = 1 (auto-miss)
+    };
+    const enemy = makeUnit({
+      instanceId: "enemy",
+      pos: { q: 0, r: 0 },
+      team: "enemy",
+      hp: 10,
+      stats: { maxHp: 10, armor: 1, move: 3, str: 1, dex: 0, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const vindicator = makeUnit({
+      instanceId: "hero",
+      pos: { q: 1, r: 0 },
+      hp: 20,
+      stats: { maxHp: 20, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      passives: ["archetype_passive.vindicator_below_50_attack"],
+    });
+    const state = makeRetribState(enemy, vindicator);
+    const result = resolveAction(ACTION_REGISTRY["action.slash"], enemy, vindicator, state, rng);
+
+    // Enemy survived; shouldStopCaller must be false.
+    expect(result.shouldStopCaller).toBeFalsy();
+    expect(state.log.some((e) => e.text.includes("Retributive Strike misses"))).toBe(true);
+  });
+});

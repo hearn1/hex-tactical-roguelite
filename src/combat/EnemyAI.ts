@@ -8,6 +8,15 @@ import { isTargetableByEnemies, isStandingHero } from "./DeathSaves.ts";
 import { getBossRotationActionId, handleEnemyStartTurnTraits } from "./Traits.ts";
 import { movementCostForHex, applyHazardsForMovementPath } from "./Terrain.ts";
 
+interface MovementResolutionResult {
+  moved: boolean;
+  from: import("../state/types.ts").Hex;
+  to: import("../state/types.ts").Hex;
+  stoppedAtHex?: import("../state/types.ts").Hex;
+  unitStillActive: boolean;
+  shouldStopCaller: boolean;
+}
+
 /** Flat bonus damage the ambusher adds when it strikes an exposed or wounded hero. */
 const AMBUSH_BURST_BONUS = 3;
 /** Distance the ambusher edges toward the party while waiting for an opening. */
@@ -55,7 +64,8 @@ function moveToward(
   unit: UnitInstance,
   target: Hex,
   state: CombatState,
-): void {
+): MovementResolutionResult {
+  const from = { ...unit.pos };
   const occ = buildOccupied(unit, state);
   const gridKeys = new Set(state.gridKeys);
   const costFn = (h: Hex) => movementCostForHex(state, h);
@@ -73,22 +83,30 @@ function moveToward(
     }
   }
 
-  if (bestKey !== null) {
-    const cost = reachable.get(bestKey) ?? 0;
-    const dest = parseHexKey(bestKey);
-    const from = { ...unit.pos };
-    unit.pos = dest;
-    unit.movePointsRemaining -= cost;
-    state.log.push({
-      kind: "move",
-      text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
-      round: state.round,
-    });
-    const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
-    if (path && path.length > 0) {
-      applyHazardsForMovementPath(unit, state, path);
+  if (bestKey === null) {
+    return { moved: false, from, to: from, unitStillActive: unit.hp > 0, shouldStopCaller: false };
+  }
+
+  const cost = reachable.get(bestKey) ?? 0;
+  const dest = parseHexKey(bestKey);
+  unit.pos = dest;
+  unit.movePointsRemaining -= cost;
+  state.log.push({
+    kind: "move",
+    text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
+    round: state.round,
+  });
+  const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
+  let stoppedAtHex: Hex | undefined;
+  let shouldStopCaller = false;
+  if (path && path.length > 0) {
+    const hazardResult = applyHazardsForMovementPath(unit, state, path);
+    if (hazardResult.shouldStopCaller) {
+      stoppedAtHex = hazardResult.stoppedAtHex;
+      shouldStopCaller = true;
     }
   }
+  return { moved: true, from, to: { ...unit.pos }, stoppedAtHex, unitStillActive: !shouldStopCaller, shouldStopCaller };
 }
 
 function moveToPreferredRange(
@@ -96,9 +114,12 @@ function moveToPreferredRange(
   target: Hex,
   preferredRange: number,
   state: CombatState,
-): void {
+): MovementResolutionResult {
+  const from = { ...unit.pos };
   const curDist = distance(unit.pos, target);
-  if (curDist === preferredRange) return;
+  if (curDist === preferredRange) {
+    return { moved: false, from, to: from, unitStillActive: unit.hp > 0, shouldStopCaller: false };
+  }
 
   const occ = buildOccupied(unit, state);
   const gridKeys = new Set(state.gridKeys);
@@ -117,22 +138,30 @@ function moveToPreferredRange(
     }
   }
 
-  if (bestKey !== null) {
-    const cost = reachable.get(bestKey) ?? 0;
-    const dest = parseHexKey(bestKey);
-    const from = { ...unit.pos };
-    unit.pos = dest;
-    unit.movePointsRemaining -= cost;
-    state.log.push({
-      kind: "move",
-      text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
-      round: state.round,
-    });
-    const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
-    if (path && path.length > 0) {
-      applyHazardsForMovementPath(unit, state, path);
+  if (bestKey === null) {
+    return { moved: false, from, to: from, unitStillActive: unit.hp > 0, shouldStopCaller: false };
+  }
+
+  const cost = reachable.get(bestKey) ?? 0;
+  const dest = parseHexKey(bestKey);
+  unit.pos = dest;
+  unit.movePointsRemaining -= cost;
+  state.log.push({
+    kind: "move",
+    text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
+    round: state.round,
+  });
+  const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
+  let stoppedAtHex: Hex | undefined;
+  let shouldStopCaller = false;
+  if (path && path.length > 0) {
+    const hazardResult = applyHazardsForMovementPath(unit, state, path);
+    if (hazardResult.shouldStopCaller) {
+      stoppedAtHex = hazardResult.stoppedAtHex;
+      shouldStopCaller = true;
     }
   }
+  return { moved: true, from, to: { ...unit.pos }, stoppedAtHex, unitStillActive: !shouldStopCaller, shouldStopCaller };
 }
 
 function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => number): void {
@@ -165,7 +194,8 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
       resolveAction(action, unit, adjTarget, state, rng);
       return;
     }
-    moveToward(unit, pickTarget(unit, state)?.pos ?? { q: 0, r: 0 }, state);
+    const mr1 = moveToward(unit, pickTarget(unit, state)?.pos ?? { q: 0, r: 0 }, state);
+    if (!mr1.unitStillActive) return;
     const newAdj = pickAdjacentTarget(unit, state);
     if (newAdj) {
       resolveAction(action, unit, newAdj, state, rng);
@@ -182,7 +212,8 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
           return;
         }
       }
-      moveToward(unit, target.pos, state);
+      const mr2 = moveToward(unit, target.pos, state);
+      if (!mr2.unitStillActive) return;
       if (distance(unit.pos, target.pos) <= fallbackAction.range) {
         const targets = validTargets(fallbackAction, unit, state);
         if (targets.length > 0) {
@@ -204,7 +235,8 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
       return;
     }
   }
-  moveToward(unit, target.pos, state);
+  const mr3 = moveToward(unit, target.pos, state);
+  if (!mr3.unitStillActive) return;
   if (distance(unit.pos, target.pos) <= action.range) {
     const targets = validTargets(action, unit, state);
     if (targets.length > 0) {
@@ -259,7 +291,8 @@ function executeAmbusherTurn(unit: UnitInstance, state: CombatState, rng: () => 
   if (prime.length > 0) {
     const target = prime[0];
     if (distance(unit.pos, target.pos) > action.range) {
-      moveToward(unit, target.pos, state);
+      const mr = moveToward(unit, target.pos, state);
+      if (!mr.unitStillActive) return;
     }
     if (distance(unit.pos, target.pos) <= action.range) {
       const targets = validTargets(action, unit, state);
@@ -289,7 +322,7 @@ function executeAmbusherTurn(unit: UnitInstance, state: CombatState, rng: () => 
 
   // Otherwise hold back near the party, waiting for a target to become vulnerable.
   const nearest = [...heroes].sort((a, b) => distance(unit.pos, a.pos) - distance(unit.pos, b.pos))[0];
-  moveToPreferredRange(unit, nearest.pos, AMBUSH_HOLD_RANGE, state);
+  moveToPreferredRange(unit, nearest.pos, AMBUSH_HOLD_RANGE, state); // no post-move attack; unit still active check not needed
 }
 
 export function takeEnemyTurn(
@@ -329,7 +362,8 @@ export function takeEnemyTurn(
         return;
       }
     }
-    moveToward(unit, target.pos, state);
+    const bruteMove = moveToward(unit, target.pos, state);
+    if (!bruteMove.unitStillActive) return;
     if (distance(unit.pos, target.pos) <= action.range) {
       const targets = validTargets(action, unit, state);
       if (targets.length > 0) {
@@ -339,7 +373,8 @@ export function takeEnemyTurn(
   } else {
     const curDist = distance(unit.pos, target.pos);
     if (curDist !== action.range) {
-      moveToPreferredRange(unit, target.pos, action.range, state);
+      const rangeMove = moveToPreferredRange(unit, target.pos, action.range, state);
+      if (!rangeMove.unitStillActive) return;
     }
     if (distance(unit.pos, target.pos) <= action.range) {
       const targets = validTargets(action, unit, state);

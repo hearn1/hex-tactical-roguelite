@@ -171,3 +171,39 @@ describe("EnemyAI ambusher", () => {
     expect(state.log.some((l) => l.text.includes("Ambush!"))).toBe(true);
   });
 });
+
+describe("EnemyAI hazard movement (#272)", () => {
+  it("enemy that dies on a fatal hazard mid-move does not attempt a post-move attack", () => {
+    const rng = createRng(42);
+    // Wolf (brute) at q=0. Hero at q=4. Hazard at q=1 that kills the wolf with 1 HP.
+    const wolf = makeUnit({
+      instanceId: "wolf",
+      pos: { q: 0, r: 0 },
+      defId: "enemy.wolf",
+      team: "enemy",
+      displayName: "Wolf",
+      stats: { maxHp: 10, armor: 12, move: 5, str: 2, dex: 2, con: 0, int: 0, wis: 0, cha: 0 },
+      hp: 1, // will die to HAZARD_DAMAGE on entry
+      movePointsRemaining: 5,
+    });
+    const hero = makeUnit({
+      instanceId: "hero",
+      pos: { q: 4, r: 0 },
+      defId: "class.guardian",
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const heroHpBefore = hero.hp;
+    const state = {
+      ...makeState([wolf, hero]),
+      terrain: { "1,0": "hazard" as const },
+    };
+    takeEnemyTurn(wolf, state, rng);
+
+    // Wolf is dead from hazard.
+    expect(wolf.hp).toBe(0);
+    // Wolf stopped at the hazard hex, not the intended destination.
+    expect(wolf.pos).toEqual({ q: 1, r: 0 });
+    // Hero was never attacked.
+    expect(hero.hp).toBe(heroHpBefore);
+  });
+});
