@@ -69,6 +69,26 @@ export function getBossRotationActionId(
   return actionId;
 }
 
+type TelegraphTrait = Extract<EnemyTraitDef, { id: "boss_ground_slam_telegraph" }>;
+
+export type TelegraphCadence = NonNullable<TelegraphTrait["cadence"]>;
+
+/**
+ * Resolves the telegraph cadence declared on a trait, applying the safe default
+ * (`once_per_threshold`) when none is declared. Pure so it can be unit-tested.
+ *
+ * @throws if `mode === "cooldown"` is declared without a positive `cooldownTurns`.
+ */
+export function resolveTelegraphCadence(trait: TelegraphTrait): TelegraphCadence {
+  const cadence = trait.cadence ?? { mode: "once_per_threshold" };
+  if (cadence.mode === "cooldown" && !(typeof cadence.cooldownTurns === "number" && cadence.cooldownTurns > 0)) {
+    throw new Error(
+      `Telegraph trait "${trait.id}" declares cadence mode "cooldown" but no positive cooldownTurns.`,
+    );
+  }
+  return cadence;
+}
+
 /**
  * Checks whether trait data should wind up a boss telegraph this turn.
  * Only handles the wind-up phase; telegraph resolution is done by the caller (EnemyAI).
@@ -80,10 +100,12 @@ export function handleEnemyStartTurnTraits(
   state: CombatState,
 ): boolean {
   const telegraphTrait = getEnemyTraits(unit).find(
-    (t): t is Extract<EnemyTraitDef, { id: "boss_ground_slam_telegraph" }> =>
-      t.id === "boss_ground_slam_telegraph",
+    (t): t is TelegraphTrait => t.id === "boss_ground_slam_telegraph",
   );
   if (!telegraphTrait) return false;
+
+  // Plumb the cadence field through (validates data); selection logic unchanged (#282).
+  resolveTelegraphCadence(telegraphTrait);
 
   const threshold = Math.floor(unit.stats.maxHp * telegraphTrait.thresholdHpPct);
   if (unit.hp > threshold) return false;

@@ -69,6 +69,7 @@ export const ENEMY_REGISTRY: Record<string, EnemyDef> = {
         actionId: "action.ground_slam",
         thresholdHpPct: 0.5,
         targetPattern: "adjacent",
+        cadence: { mode: "rotation_integrated" },
         warningText:
           "winds up Ground Slam — every adjacent hex will be struck next turn! Move clear!",
       },
