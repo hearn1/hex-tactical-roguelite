@@ -207,3 +207,85 @@ describe("EnemyAI hazard movement (#272)", () => {
     expect(hero.hp).toBe(heroHpBefore);
   });
 });
+
+describe("EnemyAI hazard movement regression (#287)", () => {
+  it("lethal hazard during enemy movement keeps turn state stable and prevents post-move attack", () => {
+    const rng = createRng(42);
+    const wolf = makeUnit({
+      instanceId: "wolf", pos: { q: 0, r: 0 }, defId: "enemy.wolf",
+      team: "enemy", displayName: "Wolf",
+      stats: { maxHp: 10, armor: 12, move: 5, str: 2, dex: 2, con: 0, int: 0, wis: 0, cha: 0 },
+      hp: 1, movePointsRemaining: 5,
+    });
+    const hero = makeUnit({
+      instanceId: "hero", pos: { q: 4, r: 0 }, defId: "class.guardian",
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+    });
+    const heroHpBefore = hero.hp;
+    const state = {
+      ...makeState([wolf, hero]),
+      terrain: { "1,0": "hazard" as const },
+    };
+
+    expect(() => takeEnemyTurn(wolf, state, rng)).not.toThrow();
+    expect(wolf.hp).toBe(0);
+    expect(wolf.pos).toEqual({ q: 1, r: 0 });
+    expect(hero.hp).toBe(heroHpBefore);
+    // Turn queue and activeIndex remain valid.
+    expect(state.turnQueue).toEqual(["wolf", "hero"]);
+    expect(state.activeIndex).toBe(0);
+    expect(state.units.length).toBe(2);
+  });
+
+  it("nonlethal hazard during brute movement still allows normal AI action", () => {
+    const rng = createRng(42);
+    const wolf = makeUnit({
+      instanceId: "wolf", pos: { q: 0, r: 0 }, defId: "enemy.wolf",
+      team: "enemy", displayName: "Wolf",
+      stats: { maxHp: 10, armor: 12, move: 5, str: 2, dex: 2, con: 0, int: 0, wis: 0, cha: 0 },
+      hp: 10, movePointsRemaining: 5,
+    });
+    const hero = makeUnit({
+      instanceId: "hero", pos: { q: 2, r: 0 }, defId: "class.guardian",
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      hp: 18,
+    });
+    const state = {
+      ...makeState([wolf, hero]),
+      terrain: { "1,0": "hazard" as const },
+    };
+
+    takeEnemyTurn(wolf, state, rng);
+
+    expect(wolf.hp).toBe(8);
+    expect(wolf.pos).toEqual({ q: 1, r: 0 });
+    expect(wolf.hasActed).toBe(true);
+    expect(state.log.some((l) => l.kind === "action")).toBe(true);
+  });
+
+  it("skirmisher with nonlethal hazard on movement path still completes its turn", () => {
+    const rng = createRng(42);
+    const goblin = makeUnit({
+      instanceId: "gob", pos: { q: 0, r: 0 }, defId: "enemy.goblin_skirmisher",
+      team: "enemy", displayName: "Goblin",
+      stats: { maxHp: 8, armor: 12, move: 4, str: 1, dex: 3, con: 0, int: 0, wis: 0, cha: 0 },
+      hp: 8, movePointsRemaining: 4,
+    });
+    const hero = makeUnit({
+      instanceId: "hero", pos: { q: 2, r: 0 }, defId: "class.guardian",
+      stats: { maxHp: 18, armor: 14, move: 3, str: 3, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+      hp: 18,
+    });
+    const state = {
+      ...makeState([goblin, hero]),
+      terrain: { "1,0": "hazard" as const },
+    };
+
+    takeEnemyTurn(goblin, state, rng);
+
+    expect(goblin.hp).toBe(6);
+    expect(goblin.pos).toEqual({ q: 1, r: 0 });
+    expect(goblin.hasActed).toBe(true);
+    expect(state.log.some((l) => l.kind === "action")).toBe(true);
+  });
+});
