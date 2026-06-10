@@ -108,6 +108,12 @@ export function handleEnemyStartTurnTraits(
   return true;
 }
 
+export interface ThresholdTraitResult {
+  triggeredBossThreshold: boolean;
+  triggeredReinforcements: boolean;
+  spawnedReinforcementIds: string[];
+}
+
 /**
  * Checks boss_reinforcement_at_hp_threshold traits after a unit takes damage.
  * Spawns reinforcements using ENEMY_REGISTRY stats (not hardcoded values).
@@ -115,7 +121,13 @@ export function handleEnemyStartTurnTraits(
 export function checkEnemyThresholdTraits(
   damagedUnit: UnitInstance,
   state: CombatState,
-): void {
+): ThresholdTraitResult {
+  const result: ThresholdTraitResult = {
+    triggeredBossThreshold: false,
+    triggeredReinforcements: false,
+    spawnedReinforcementIds: [],
+  };
+
   for (const trait of getEnemyTraits(damagedUnit)) {
     if (trait.id !== "boss_reinforcement_at_hp_threshold") continue;
 
@@ -125,6 +137,7 @@ export function checkEnemyThresholdTraits(
     const threshold = Math.floor(damagedUnit.stats.maxHp * trait.thresholdHpPct);
     if (damagedUnit.hp > threshold) continue;
 
+    result.triggeredBossThreshold = true;
     markTraitTriggered(state, triggeredKey);
 
     const occupied = new Set(state.units.filter((u) => u.hp > 0).map((u) => hexKey(u.pos)));
@@ -173,7 +186,17 @@ export function checkEnemyThresholdTraits(
       text: `[T${state.round}] ${trait.logText ?? `${damagedUnit.displayName} calls reinforcement — a ${def.displayName} joins!`}`,
       round: state.round,
     });
+
+    result.triggeredReinforcements = true;
+    result.spawnedReinforcementIds.push(reinforcement.instanceId);
   }
+
+  return result;
+}
+
+export interface EncounterDeathTraitResult {
+  triggeredEncounterDeathTraits: boolean;
+  triggeredEliteRally: boolean;
 }
 
 /**
@@ -183,8 +206,13 @@ export function checkEnemyThresholdTraits(
 export function checkEncounterDeathTraits(
   fallenUnit: UnitInstance,
   state: CombatState,
-): void {
-  if (fallenUnit.team !== "enemy") return;
+): EncounterDeathTraitResult {
+  const result: EncounterDeathTraitResult = {
+    triggeredEncounterDeathTraits: false,
+    triggeredEliteRally: false,
+  };
+
+  if (fallenUnit.team !== "enemy") return result;
 
   for (const trait of getEncounterTraits(state)) {
     if (trait.id !== "elite_rally_on_first_death") continue;
@@ -206,5 +234,10 @@ export function checkEncounterDeathTraits(
       text: `[T${state.round}] ${fallenUnit.displayName} falls — ${logText} (+${bonus} to hit for ${trait.duration} turns)`,
       round: state.round,
     });
+
+    result.triggeredEncounterDeathTraits = true;
+    result.triggeredEliteRally = true;
   }
+
+  return result;
 }
