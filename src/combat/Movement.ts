@@ -1,5 +1,43 @@
 import { neighbors, hexKey, parseHexKey } from "../core/hex.ts";
-import type { Hex } from "../state/types.ts";
+import type { Hex, UnitInstance } from "../state/types.ts";
+import type { HazardPathResult } from "./Terrain.ts";
+
+/**
+ * Shared outcome shape for every movement entry point (enemy AI moves and player clicks),
+ * so callers distinguish a completed move from a hazard-interrupted one through one type.
+ */
+export interface MovementResult {
+  /** Unit reached its intended destination without interruption. */
+  completed: boolean;
+  /** Movement was cut short because a hazard downed / killed / invalidated the unit. */
+  stoppedByHazard: boolean;
+  /** The moving unit was downed or defeated during this movement. */
+  unitDropped: boolean;
+  /** Where the unit actually ended up (the hazard tile if interrupted, else the destination). */
+  finalPosition: Hex;
+  /** Hexes traversed, excluding the starting hex. */
+  pathTaken: Hex[];
+}
+
+/**
+ * Builds a {@link MovementResult} from the unit's post-move position, the traversed path,
+ * and the hazard-layer result (null when no path hazards were evaluated). Keeps
+ * {@link HazardPathResult} an internal detail of the terrain layer.
+ */
+export function toMovementResult(
+  unit: UnitInstance,
+  path: Hex[],
+  hazardResult: HazardPathResult | null,
+): MovementResult {
+  const stopped = hazardResult?.stoppedEarly ?? false;
+  return {
+    completed: !stopped,
+    stoppedByHazard: stopped,
+    unitDropped: stopped,
+    finalPosition: { ...unit.pos },
+    pathTaken: path,
+  };
+}
 
 export function reachableHexes(
   start: Hex,

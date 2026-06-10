@@ -5,7 +5,7 @@ import { syncPartyFromCombat } from "../../state/GameState.ts";
 import type { BossTelegraph, CombatState, UnitInstance, Hex, ActionElement } from "../../state/types.ts";
 import { distance, hexKey, parseHexKey, pixelToHex, hexEquals } from "../../core/hex.ts";
 import { renderHexOutline, fillHex } from "../HexRenderer.ts";
-import { reachableHexes, findPath } from "../../combat/Movement.ts";
+import { reachableHexes, findPath, toMovementResult } from "../../combat/Movement.ts";
 import { movementCostForHex, applyHazardsForMovementPath, getTerrainType } from "../../combat/Terrain.ts";
 import { ACTION_REGISTRY } from "../../data/actions.ts";
 import type { ActionDef } from "../../data/actions.ts";
@@ -604,13 +604,12 @@ export class CombatScreen {
     });
 
     // Apply hazard damage for each hazard hex entered along the movement path.
-    const path = findPath(from, hex, occ, new Set(cs.gridKeys), cost + 1, costFn);
-    if (path && path.length > 0) {
-      const hazardResult = applyHazardsForMovementPath(unit, cs, path);
-      if (hazardResult.shouldStopCaller) {
-        checkVictoryDefeat(cs);
-        removeDefeatedFromQueue(cs);
-      }
+    const path = findPath(from, hex, occ, new Set(cs.gridKeys), cost + 1, costFn) ?? [];
+    const hazardResult = path.length > 0 ? applyHazardsForMovementPath(unit, cs, path) : null;
+    const result = toMovementResult(unit, path, hazardResult);
+    if (result.stoppedByHazard) {
+      checkVictoryDefeat(cs);
+      removeDefeatedFromQueue(cs);
     }
 
     this.drawCanvas();
