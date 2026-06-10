@@ -2,20 +2,12 @@ import type { UnitInstance, CombatState, Hex } from "../state/types.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import { ENEMY_REGISTRY } from "../data/enemies.ts";
 import { distance, hexKey, parseHexKey } from "../core/hex.ts";
-import { reachableHexes, findPath } from "./Movement.ts";
+import { reachableHexes, findPath, toMovementResult } from "./Movement.ts";
+import type { MovementResult } from "./Movement.ts";
 import { resolveAction, validTargets, resolveBossTelegraph } from "./Action.ts";
 import { isTargetableByEnemies, isStandingHero } from "./DeathSaves.ts";
 import { getBossRotationActionId, handleEnemyStartTurnTraits } from "./Traits.ts";
 import { movementCostForHex, applyHazardsForMovementPath } from "./Terrain.ts";
-
-interface MovementResolutionResult {
-  moved: boolean;
-  from: import("../state/types.ts").Hex;
-  to: import("../state/types.ts").Hex;
-  stoppedAtHex?: import("../state/types.ts").Hex;
-  unitStillActive: boolean;
-  shouldStopCaller: boolean;
-}
 
 /** Flat bonus damage the ambusher adds when it strikes an exposed or wounded hero. */
 const AMBUSH_BURST_BONUS = 3;
@@ -64,8 +56,7 @@ function moveToward(
   unit: UnitInstance,
   target: Hex,
   state: CombatState,
-): MovementResolutionResult {
-  const from = { ...unit.pos };
+): MovementResult {
   const occ = buildOccupied(unit, state);
   const gridKeys = new Set(state.gridKeys);
   const costFn = (h: Hex) => movementCostForHex(state, h);
@@ -84,9 +75,10 @@ function moveToward(
   }
 
   if (bestKey === null) {
-    return { moved: false, from, to: from, unitStillActive: unit.hp > 0, shouldStopCaller: false };
+    return toMovementResult(unit, [], null);
   }
 
+  const from = { ...unit.pos };
   const cost = reachable.get(bestKey) ?? 0;
   const dest = parseHexKey(bestKey);
   unit.pos = dest;
@@ -96,17 +88,9 @@ function moveToward(
     text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
     round: state.round,
   });
-  const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
-  let stoppedAtHex: Hex | undefined;
-  let shouldStopCaller = false;
-  if (path && path.length > 0) {
-    const hazardResult = applyHazardsForMovementPath(unit, state, path);
-    if (hazardResult.shouldStopCaller) {
-      stoppedAtHex = hazardResult.stoppedAtHex;
-      shouldStopCaller = true;
-    }
-  }
-  return { moved: true, from, to: { ...unit.pos }, stoppedAtHex, unitStillActive: !shouldStopCaller, shouldStopCaller };
+  const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn) ?? [];
+  const hazardResult = path.length > 0 ? applyHazardsForMovementPath(unit, state, path) : null;
+  return toMovementResult(unit, path, hazardResult);
 }
 
 function moveToPreferredRange(
@@ -114,11 +98,10 @@ function moveToPreferredRange(
   target: Hex,
   preferredRange: number,
   state: CombatState,
-): MovementResolutionResult {
-  const from = { ...unit.pos };
+): MovementResult {
   const curDist = distance(unit.pos, target);
   if (curDist === preferredRange) {
-    return { moved: false, from, to: from, unitStillActive: unit.hp > 0, shouldStopCaller: false };
+    return toMovementResult(unit, [], null);
   }
 
   const occ = buildOccupied(unit, state);
@@ -139,9 +122,10 @@ function moveToPreferredRange(
   }
 
   if (bestKey === null) {
-    return { moved: false, from, to: from, unitStillActive: unit.hp > 0, shouldStopCaller: false };
+    return toMovementResult(unit, [], null);
   }
 
+  const from = { ...unit.pos };
   const cost = reachable.get(bestKey) ?? 0;
   const dest = parseHexKey(bestKey);
   unit.pos = dest;
@@ -151,17 +135,9 @@ function moveToPreferredRange(
     text: `[T${state.round}] ${unit.displayName} moves to (${unit.pos.q}, ${unit.pos.r}). ${unit.movePointsRemaining} move remaining.`,
     round: state.round,
   });
-  const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn);
-  let stoppedAtHex: Hex | undefined;
-  let shouldStopCaller = false;
-  if (path && path.length > 0) {
-    const hazardResult = applyHazardsForMovementPath(unit, state, path);
-    if (hazardResult.shouldStopCaller) {
-      stoppedAtHex = hazardResult.stoppedAtHex;
-      shouldStopCaller = true;
-    }
-  }
-  return { moved: true, from, to: { ...unit.pos }, stoppedAtHex, unitStillActive: !shouldStopCaller, shouldStopCaller };
+  const path = findPath(from, dest, occ, gridKeys, cost + 1, costFn) ?? [];
+  const hazardResult = path.length > 0 ? applyHazardsForMovementPath(unit, state, path) : null;
+  return toMovementResult(unit, path, hazardResult);
 }
 
 function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => number): void {
@@ -195,7 +171,7 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
       return;
     }
     const mr1 = moveToward(unit, pickTarget(unit, state)?.pos ?? { q: 0, r: 0 }, state);
-    if (!mr1.unitStillActive) return;
+    if (!mr1.completed) return;
     const newAdj = pickAdjacentTarget(unit, state);
     if (newAdj) {
       resolveAction(action, unit, newAdj, state, rng);
@@ -213,7 +189,7 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
         }
       }
       const mr2 = moveToward(unit, target.pos, state);
-      if (!mr2.unitStillActive) return;
+      if (!mr2.completed) return;
       if (distance(unit.pos, target.pos) <= fallbackAction.range) {
         const targets = validTargets(fallbackAction, unit, state);
         if (targets.length > 0) {
@@ -236,7 +212,7 @@ function executeBossTurn(unit: UnitInstance, state: CombatState, rng: () => numb
     }
   }
   const mr3 = moveToward(unit, target.pos, state);
-  if (!mr3.unitStillActive) return;
+  if (!mr3.completed) return;
   if (distance(unit.pos, target.pos) <= action.range) {
     const targets = validTargets(action, unit, state);
     if (targets.length > 0) {
@@ -292,7 +268,7 @@ function executeAmbusherTurn(unit: UnitInstance, state: CombatState, rng: () => 
     const target = prime[0];
     if (distance(unit.pos, target.pos) > action.range) {
       const mr = moveToward(unit, target.pos, state);
-      if (!mr.unitStillActive) return;
+      if (!mr.completed) return;
     }
     if (distance(unit.pos, target.pos) <= action.range) {
       const targets = validTargets(action, unit, state);
@@ -363,7 +339,7 @@ export function takeEnemyTurn(
       }
     }
     const bruteMove = moveToward(unit, target.pos, state);
-    if (!bruteMove.unitStillActive) return;
+    if (!bruteMove.completed) return;
     if (distance(unit.pos, target.pos) <= action.range) {
       const targets = validTargets(action, unit, state);
       if (targets.length > 0) {
@@ -374,7 +350,7 @@ export function takeEnemyTurn(
     const curDist = distance(unit.pos, target.pos);
     if (curDist !== action.range) {
       const rangeMove = moveToPreferredRange(unit, target.pos, action.range, state);
-      if (!rangeMove.unitStillActive) return;
+      if (!rangeMove.completed) return;
     }
     if (distance(unit.pos, target.pos) <= action.range) {
       const targets = validTargets(action, unit, state);

@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { reachableHexes, findPath } from "./Movement.ts";
+import { reachableHexes, findPath, toMovementResult } from "./Movement.ts";
+import { applyHazardsForMovementPath } from "./Terrain.ts";
 import { hexesWithinRange, hexKey } from "../core/hex.ts";
-import type { Hex } from "../state/types.ts";
+import type { CombatState, Hex, UnitInstance } from "../state/types.ts";
 
 function makeGrid(radius: number): Set<string> {
   return new Set(hexesWithinRange({ q: 0, r: 0 }, radius).map(hexKey));
@@ -110,5 +111,83 @@ describe("Movement", () => {
     const path = findPath({ q: 0, r: 0 }, { q: 2, r: 0 }, occupied, gridR3, 3);
     expect(path).not.toBeNull();
     expect(path!.length).toBe(2);
+  });
+});
+
+// ── toMovementResult builder (#274) ──────────────────────────────────────────
+
+function makeUnit(overrides: Partial<UnitInstance> & { instanceId: string; pos: Hex }): UnitInstance {
+  return {
+    defId: "class.guardian",
+    displayName: "Test",
+    team: "hero",
+    level: 1,
+    xp: 0,
+    stats: { maxHp: 18, armor: 14, move: 3, str: 2, dex: 1, con: 0, int: 0, wis: 0, cha: 0 },
+    hp: 18,
+    conditions: [],
+    movePointsRemaining: 3,
+    hasActed: false,
+    equippedItemIds: { weapon: null, armor: null, trinket: null },
+    bonusStats: {},
+    ...overrides,
+  };
+}
+
+function makeState(terrain?: Record<string, "normal" | "difficult" | "cover" | "hazard">): CombatState {
+  return {
+    round: 1,
+    activeIndex: 0,
+    turnQueue: [],
+    units: [],
+    log: [],
+    status: "active",
+    gridKeys: ["0,0", "1,0", "2,0", "-1,0", "0,1", "0,-1", "1,-1", "-1,1"],
+    targetingActionId: null,
+    perEncounterUses: {},
+    terrain,
+  };
+}
+
+describe("toMovementResult", () => {
+  it("completed non-hazard move reports completed with full path and destination", () => {
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 2, r: 0 } }); // already at destination
+    const state = makeState();
+    const path: Hex[] = [{ q: 1, r: 0 }, { q: 2, r: 0 }];
+    const hazardResult = applyHazardsForMovementPath(unit, state, path);
+
+    const result = toMovementResult(unit, path, hazardResult);
+
+    expect(result.completed).toBe(true);
+    expect(result.stoppedByHazard).toBe(false);
+    expect(result.unitDropped).toBe(false);
+    expect(result.finalPosition).toEqual({ q: 2, r: 0 });
+    expect(result.pathTaken).toEqual(path);
+  });
+
+  it("fatal-hazard move reports the unit dropped on the hazard tile", () => {
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 }, hp: 1 }); // dies to hazard
+    const state = makeState({ "1,0": "hazard" });
+    const path: Hex[] = [{ q: 1, r: 0 }, { q: 2, r: 0 }];
+    const hazardResult = applyHazardsForMovementPath(unit, state, path);
+
+    const result = toMovementResult(unit, path, hazardResult);
+
+    expect(result.completed).toBe(false);
+    expect(result.stoppedByHazard).toBe(true);
+    expect(result.unitDropped).toBe(true);
+    expect(result.finalPosition).toEqual({ q: 1, r: 0 }); // stopped on the killing hazard hex
+  });
+
+  it("no-op move (null hazard result) reports a completed move with empty path", () => {
+    const unit = makeUnit({ instanceId: "u1", pos: { q: 0, r: 0 } });
+
+    const result = toMovementResult(unit, [], null);
+
+    expect(result.completed).toBe(true);
+    expect(result.stoppedByHazard).toBe(false);
+    expect(result.unitDropped).toBe(false);
+    expect(result.finalPosition).toEqual({ q: 0, r: 0 });
+    expect(result.pathTaken).toEqual([]);
   });
 });
