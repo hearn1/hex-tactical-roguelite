@@ -155,10 +155,10 @@ describe("Archetype: Mesmerize (Enchanter) with save", () => {
 
     // Enemy with wis=10 — high enough to save.
     callIdx = 0;
-    const enemyWithSave = makeUnit({ instanceId: “e1”, pos: { q: 1, r: 0 }, team: “enemy”, hp: 20, stats: { maxHp: 20, armor: 12, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 10, cha: 0 } });
+    const enemyWithSave = makeUnit({ instanceId: "e1", pos: { q: 1, r: 0 }, team: "enemy", hp: 20, stats: { maxHp: 20, armor: 12, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 10, cha: 0 } });
     const state1 = twoUnitState(enchanter, enemyWithSave);
     resolveAction(action, enchanter, enemyWithSave, state1, highSaveRng);
-    expect(enemyWithSave.conditions.some((c) => c.id === “mesmerized”)).toBe(false);
+    expect(enemyWithSave.conditions.some((c) => c.id === "mesmerized")).toBe(false);
 
     // Enemy with wis=0 — should fail the save.
     callIdx = 0;

@@ -140,42 +140,53 @@ export function checkEnemyThresholdTraits(
     result.triggeredBossThreshold = true;
     markTraitTriggered(state, triggeredKey);
 
-    const occupied = new Set(state.units.filter((u) => u.hp > 0).map((u) => hexKey(u.pos)));
-    let spawnPos: { q: number; r: number } | null = null;
-    for (const pos of trait.spawnCandidates) {
-      const key = hexKey(pos);
-      if (!occupied.has(key) && state.gridKeys.includes(key)) {
-        spawnPos = pos;
-        break;
-      }
-    }
-    if (!spawnPos) continue;
-
     const def = ENEMY_REGISTRY[trait.enemyId];
     if (!def) continue;
 
-    const reinforcement: UnitInstance = {
-      instanceId: "enemy_reinforcement",
-      defId: def.id,
-      displayName: def.displayName,
-      team: "enemy",
-      level: 1,
-      xp: 0,
-      stats: { ...def.baseStats },
-      hp: def.baseStats.maxHp,
-      pos: spawnPos,
-      conditions: [],
-      movePointsRemaining: 0,
-      hasActed: false,
-      equippedItemIds: { weapon: null, armor: null, trinket: null },
-      bonusStats: {},
-    };
-    state.units.push(reinforcement);
-
+    const spawnCount = trait.count ?? 1;
     const activeId = state.turnQueue[state.activeIndex];
     const bossIdx = state.turnQueue.indexOf(damagedUnit.instanceId);
-    const insertAt = bossIdx >= 0 ? bossIdx + 1 : state.turnQueue.length;
-    state.turnQueue.splice(insertAt, 0, reinforcement.instanceId);
+
+    for (let i = 0; i < spawnCount; i++) {
+      const occupied = new Set(state.units.filter((u) => u.hp > 0).map((u) => hexKey(u.pos)));
+      let spawnPos: { q: number; r: number } | null = null;
+      for (const pos of trait.spawnCandidates) {
+        const key = hexKey(pos);
+        if (!occupied.has(key) && state.gridKeys.includes(key)) {
+          spawnPos = pos;
+          break;
+        }
+      }
+      if (!spawnPos) break;
+
+      const n = (state.reinforcementCounter ?? 0) + 1;
+      state.reinforcementCounter = n;
+
+      const reinforcement: UnitInstance = {
+        instanceId: `${damagedUnit.instanceId}_reinforcement_${n}`,
+        defId: def.id,
+        displayName: def.displayName,
+        team: "enemy",
+        level: 1,
+        xp: 0,
+        stats: { ...def.baseStats },
+        hp: def.baseStats.maxHp,
+        pos: spawnPos,
+        conditions: [],
+        movePointsRemaining: 0,
+        hasActed: false,
+        equippedItemIds: { weapon: null, armor: null, trinket: null },
+        bonusStats: {},
+      };
+      state.units.push(reinforcement);
+
+      const insertAt = bossIdx >= 0 ? bossIdx + 1 + i : state.turnQueue.length;
+      state.turnQueue.splice(insertAt, 0, reinforcement.instanceId);
+
+      result.triggeredReinforcements = true;
+      result.spawnedReinforcementIds.push(reinforcement.instanceId);
+    }
+
     const newActiveIndex = state.turnQueue.indexOf(activeId);
     if (newActiveIndex >= 0) {
       state.activeIndex = newActiveIndex;
@@ -186,9 +197,6 @@ export function checkEnemyThresholdTraits(
       text: `[T${state.round}] ${trait.logText ?? `${damagedUnit.displayName} calls reinforcement — a ${def.displayName} joins!`}`,
       round: state.round,
     });
-
-    result.triggeredReinforcements = true;
-    result.spawnedReinforcementIds.push(reinforcement.instanceId);
   }
 
   return result;
