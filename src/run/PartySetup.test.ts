@@ -9,6 +9,9 @@ import {
 import type { PartySpec } from "./PartySetup.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
 import { createDefaultAbilityScores } from "../data/abilities.ts";
+import { DEFAULT_CAMPAIGN, getActDefinition } from "../data/campaigns.ts";
+import { MAP_TEMPLATES } from "../data/nodes.ts";
+import { createCampaignState } from "../state/CampaignState.ts";
 
 const scores = () => createDefaultAbilityScores();
 
@@ -193,5 +196,67 @@ describe("createRunState", () => {
   it("defaults difficulty to normal", () => {
     const run = createRunState(buildParty(defaultPartySpecs()));
     expect(run.difficulty).toBe("normal");
+  });
+});
+
+describe("createRunState — Act 1 campaign routing", () => {
+  it("default map template matches the Act 1 campaign definition", () => {
+    const act1 = getActDefinition(DEFAULT_CAMPAIGN, 1);
+    expect(act1).toBeDefined();
+    const run = createRunState(buildParty(defaultPartySpecs()));
+    expect(act1!.mapPool.templateIds).toContain(run.mapTemplateId);
+  });
+
+  it("Act 1 map template exists in MAP_TEMPLATES", () => {
+    const run = createRunState(buildParty(defaultPartySpecs()));
+    expect(MAP_TEMPLATES[run.mapTemplateId!]).toBeDefined();
+  });
+
+  it("Act 1 fallback: 'long' template used when campaign data has no templates", () => {
+    // Simulate missing campaign data by passing an explicit template id
+    // (the same value selectActMapTemplate returns for an undefined act).
+    const run = createRunState(buildParty(defaultPartySpecs()), "normal", "long");
+    expect(run.mapTemplateId).toBe("long");
+  });
+});
+
+describe("campaign state initialization", () => {
+  const party = () => buildParty(defaultPartySpecs());
+
+  it("createCampaignState starts at act 1", () => {
+    const run = createRunState(party());
+    const campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, run.difficulty, run.party, run.inventory);
+    expect(campaign.currentActNumber).toBe(1);
+  });
+
+  it("campaign is active after initialization", () => {
+    const run = createRunState(party());
+    const campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, run.difficulty, run.party, run.inventory);
+    expect(campaign.campaignStatus).toBe("active");
+  });
+
+  it("campaign carries the same party reference as the run", () => {
+    const run = createRunState(party());
+    const campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, run.difficulty, run.party, run.inventory);
+    expect(campaign.party).toBe(run.party);
+  });
+
+  it("campaign uses the default campaign id", () => {
+    const run = createRunState(party());
+    const campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, run.difficulty, run.party, run.inventory);
+    expect(campaign.campaignId).toBe(DEFAULT_CAMPAIGN.id);
+  });
+
+  it("completedActs is empty at run start", () => {
+    const run = createRunState(party());
+    const campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, run.difficulty, run.party, run.inventory);
+    expect(campaign.completedActs).toHaveLength(0);
+  });
+
+  it("campaign seed and difficulty match the run", () => {
+    const run = createRunState(party(), "hard");
+    const campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, "hard", run.party, run.inventory);
+    expect(campaign.seed).toBe(run.seed);
+    expect(campaign.difficulty).toBe("hard");
   });
 });

@@ -6,6 +6,8 @@ import { applyMetaUpgradesToFreshRun } from "../../meta/Upgrades.ts";
 import { applyBackgrounds } from "../../run/Backgrounds.ts";
 import { generateModifierOffers, applyAdventureModifier, ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
 import { resetSetupScreenState } from "./SetupScreen.ts";
+import { createCampaignState } from "../../state/CampaignState.ts";
+import { DEFAULT_CAMPAIGN } from "../../data/campaigns.ts";
 
 export class MainMenu {
   private app: App;
@@ -66,6 +68,7 @@ export class MainMenu {
       applyMetaUpgradesToFreshRun(run, gameState.meta);
       reseedRngFromRun(run.seed);
       gameState.run = run;
+      gameState.campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, run.difficulty, run.party, run.inventory);
       gameState.combat = null;
       gameState.screen = "map";
       this.app.render();

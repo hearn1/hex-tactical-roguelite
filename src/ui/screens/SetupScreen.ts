@@ -31,6 +31,8 @@ import { applyBackgrounds } from "../../run/Backgrounds.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { generateModifierOffers, applyAdventureModifier, ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
 import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
+import { createCampaignState } from "../../state/CampaignState.ts";
+import { DEFAULT_CAMPAIGN } from "../../data/campaigns.ts";
 
 // Module-level state persists across SetupScreen instances created by App.render().
 let specs: PartySpec[] = [];
@@ -624,6 +626,7 @@ export class SetupScreen {
     });
 
     gameState.run = run;
+    gameState.campaign = createCampaignState(DEFAULT_CAMPAIGN.id, run.seed, run.difficulty, run.party, run.inventory);
     gameState.combat = null;
     gameState.screen = "map";
     initialized = false;

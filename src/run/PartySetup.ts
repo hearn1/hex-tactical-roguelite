@@ -6,6 +6,7 @@ import { abilityMod, createDefaultAbilityScores, isCompleteAbilityScores } from 
 import type { AbilityScores } from "../data/abilities.ts";
 import { createInventory } from "./Inventory.ts";
 import { STARTING_CAMP_SUPPLIES, syncHitDiceForPartyMember, syncSpellSlotsForPartyMember } from "./Rest.ts";
+import { DEFAULT_CAMPAIGN, getActDefinition } from "../data/campaigns.ts";
 
 /**
  * Number of heroes the run-setup flow builds.
@@ -125,11 +126,15 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
   });
 }
 
+/** Map template to use for Act 1 new runs, derived from campaign data with a safe fallback. */
+const ACT_1_MAP_TEMPLATE_ID =
+  getActDefinition(DEFAULT_CAMPAIGN, 1)?.mapPool.templateIds[0] ?? DEFAULT_MAP_TEMPLATE_ID;
+
 /** Builds a fresh active run around an already-built party. */
 export function createRunState(
   party: PartyMember[],
   difficulty: Difficulty = "normal",
-  mapTemplateId: string = DEFAULT_MAP_TEMPLATE_ID,
+  mapTemplateId: string = ACT_1_MAP_TEMPLATE_ID,
 ): RunState {
   const template = getMapTemplate(mapTemplateId);
   return {

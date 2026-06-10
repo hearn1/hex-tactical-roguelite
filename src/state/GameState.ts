@@ -15,6 +15,7 @@ import { LEVELUP_PASSIVE_START_COMBAT_GUARDED } from "../data/levelups.ts";
 import { resolveOncePerCombatBonus } from "../combat/ItemHooks.ts";
 import type { MetaProgressionState } from "../meta/MetaProgression.ts";
 import { createDefaultMetaProgression } from "../meta/MetaProgression.ts";
+import type { CampaignState } from "./CampaignState.ts";
 import { DIFFICULTY_CONFIG, scaleStat } from "../data/difficulty.ts";
 import { nodeTypeToEnvironmentTheme } from "../data/environmentThemes.ts";
 import type { NodeType } from "../data/nodes.ts";
@@ -36,6 +37,8 @@ export interface GameState {
   rngSeed: number;
   combat: CombatState | null;
   run: RunState | null;
+  /** Active campaign state; null until a run starts. Reset to null by resetGameState(). */
+  campaign: CampaignState | null;
   inventory: InventoryState;
   meta: MetaProgressionState;
   /** Level-ups awaiting a player choice (F29 / #60), resolved one at a time on the levelup screen. */
@@ -408,6 +411,7 @@ function createGameState(): GameState {
     rngSeed: seed,
     combat: null,
     run: null,
+    campaign: null,
     inventory: createInventory(),
     meta: createDefaultMetaProgression(),
     pendingLevelUps: [],
@@ -422,6 +426,7 @@ export function resetGameState(seed?: number): void {
   gameState.rngSeed = actualSeed;
   gameState.combat = null;
   gameState.run = null;
+  gameState.campaign = null;
   gameState.inventory = createInventory();
   gameState.meta = createDefaultMetaProgression();
   gameState.pendingLevelUps = [];
