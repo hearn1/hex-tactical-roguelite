@@ -48,7 +48,7 @@ export function resolveQuestNode(
       );
       break;
     case "fail":
-      failQuest(progress, questId, actNumber);
+      failQuest(progress, questId, actNumber, questOutcomeHookId);
       break;
   }
 }

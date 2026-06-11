@@ -72,6 +72,11 @@ export interface CampaignState {
   lossNodeId?: string;
   /** Side quest runtime state; accumulates across acts. */
   questProgress: QuestProgressMap;
+  /**
+   * Outcome hook ids that have already been applied to this campaign.
+   * Guards against double-applying rewards/consequences (#367 idempotency contract).
+   */
+  appliedQuestOutcomeHookIds: string[];
 }
 
 /** Factory: builds a fresh campaign state for a new run attempt. */
@@ -95,5 +100,6 @@ export function createCampaignState(
     adventureLog: [],
     completedActs: [],
     questProgress: initQuestProgress(),
+    appliedQuestOutcomeHookIds: [],
   };
 }
