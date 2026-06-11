@@ -442,6 +442,14 @@ describe("validateQuestNodeReferences — valid quest node metadata passes (#364
     expect(validateQuestNodeReferences(MAP_TEMPLATES.act_2_map, SIDE_QUEST_REGISTRY)).toEqual([]);
   });
 
+  it("canonical act_3_map passes quest reference validation", () => {
+    expect(validateQuestNodeReferences(MAP_TEMPLATES.act_3_map, SIDE_QUEST_REGISTRY)).toEqual([]);
+  });
+
+  it("canonical act_4_map passes quest reference validation", () => {
+    expect(validateQuestNodeReferences(MAP_TEMPLATES.act_4_map, SIDE_QUEST_REGISTRY)).toEqual([]);
+  });
+
   it("template with no quest nodes passes validation", () => {
     expect(validateQuestNodeReferences(MAP_TEMPLATES.short, SIDE_QUEST_REGISTRY)).toEqual([]);
   });

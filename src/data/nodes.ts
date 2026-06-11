@@ -809,6 +809,10 @@ const ACT_3_NODES: NodeDef[] = [
     description: "Muffled voices behind a locked door suggest captives nearby.",
     layer: 4,
     optional: true,
+    questId: "sq.act3.prisoner_rescue",
+    questNodeRole: "start",
+    questStageId: "sq.act3.prisoner_rescue.stage_1",
+    questStepId: "sq.act3.prisoner_rescue.stage_1.step_1",
     nextNodeIds: ["node.act3_side1_combat"],
   },
   {
@@ -819,6 +823,10 @@ const ACT_3_NODES: NodeDef[] = [
     layer: 5,
     encounterId: "encounter.bandit_toll",
     encounterPoolId: "pool.act_3_combat",
+    questId: "sq.act3.prisoner_rescue",
+    questNodeRole: "advance",
+    questStageId: "sq.act3.prisoner_rescue.stage_1",
+    questStepId: "sq.act3.prisoner_rescue.stage_1.step_2",
     nextNodeIds: ["node.act3_side1_return"],
   },
   {
@@ -828,6 +836,9 @@ const ACT_3_NODES: NodeDef[] = [
     description: "The freed prisoners share what they know about the sanctum's interior.",
     layer: 6,
     returnNodeId: "node.act3_elite_b",
+    questId: "sq.act3.prisoner_rescue",
+    questNodeRole: "complete",
+    questOutcomeHookId: "outcome.sq.act3.prisoner_rescue.rescued",
     nextNodeIds: ["node.act3_elite_b"],
   },
   {
@@ -875,6 +886,7 @@ const ACT_3_NODES: NodeDef[] = [
     description: "A pre-cult tomb lies partially excavated beneath the sanctum.",
     layer: 9,
     optional: true,
+    questNodeRole: "start",
     nextNodeIds: ["node.act3_side2_combat"],
   },
   {
@@ -885,6 +897,7 @@ const ACT_3_NODES: NodeDef[] = [
     layer: 10,
     encounterId: "encounter.old_graveyard",
     encounterPoolId: "pool.act_3_combat",
+    questNodeRole: "advance",
     nextNodeIds: ["node.act3_side2_return"],
   },
   {
@@ -894,6 +907,7 @@ const ACT_3_NODES: NodeDef[] = [
     description: "A pre-cult relic is recovered before ascending to the final approach.",
     layer: 11,
     returnNodeId: "node.act3_combat_f",
+    questNodeRole: "complete",
     nextNodeIds: ["node.act3_combat_f"],
   },
   {
@@ -1035,6 +1049,7 @@ const ACT_4_NODES: NodeDef[] = [
     description: "A fast courier carries orders from the arcane lord — intercept them.",
     layer: 4,
     optional: true,
+    questNodeRole: "start",
     nextNodeIds: ["node.act4_side1_combat"],
   },
   {
@@ -1045,6 +1060,7 @@ const ACT_4_NODES: NodeDef[] = [
     layer: 5,
     encounterId: "encounter.broken_banner_elite",
     encounterPoolId: "pool.act_4_combat",
+    questNodeRole: "advance",
     nextNodeIds: ["node.act4_side1_return"],
   },
   {
@@ -1054,6 +1070,7 @@ const ACT_4_NODES: NodeDef[] = [
     description: "The captured courier's orders reveal the arcane lord's endgame.",
     layer: 6,
     returnNodeId: "node.act4_event_b",
+    questNodeRole: "complete",
     nextNodeIds: ["node.act4_event_b"],
   },
   {
@@ -1101,6 +1118,10 @@ const ACT_4_NODES: NodeDef[] = [
     description: "An unstable rift node offers a dangerous shortcut — or a catastrophe.",
     layer: 9,
     optional: true,
+    questId: "sq.act4.planar_echo",
+    questNodeRole: "start",
+    questStageId: "sq.act4.planar_echo.stage_1",
+    questStepId: "sq.act4.planar_echo.stage_1.step_1",
     nextNodeIds: ["node.act4_side2_combat"],
   },
   {
@@ -1111,6 +1132,8 @@ const ACT_4_NODES: NodeDef[] = [
     layer: 10,
     encounterId: "encounter.old_graveyard",
     encounterPoolId: "pool.act_4_combat",
+    questId: "sq.act4.planar_echo",
+    questNodeRole: "advance",
     nextNodeIds: ["node.act4_side2_return"],
   },
   {
@@ -1120,6 +1143,9 @@ const ACT_4_NODES: NodeDef[] = [
     description: "The rift collapses inward, depositing the party inside the lord's chamber.",
     layer: 11,
     returnNodeId: "node.act4_boss",
+    questId: "sq.act4.planar_echo",
+    questNodeRole: "complete",
+    questOutcomeHookId: "outcome.sq.act4.planar_echo.ward_broken",
     nextNodeIds: ["node.act4_boss"],
   },
   {
