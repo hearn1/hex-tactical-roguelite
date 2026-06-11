@@ -19,6 +19,7 @@ import { ITEM_REGISTRY } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
 import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
+import { recordCampaignLoss } from "../../run/ActTransition.ts";
 import { LEVELUP_OPTION_BY_ID } from "../../data/levelups.ts";
 import { ARCHETYPE_REGISTRY } from "../../data/archetypes.ts";
 import { getEnvironmentTheme, type EnvironmentThemeDef } from "../../data/environmentThemes.ts";
@@ -1201,6 +1202,9 @@ export class CombatScreen {
           runStatus: "lost",
         });
         run.runStatus = "lost";
+        if (gameState.campaign) {
+          recordCampaignLoss(gameState.campaign, run);
+        }
       }
       gameState.screen = "run_summary";
       this.app.render();

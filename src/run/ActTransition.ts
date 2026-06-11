@@ -34,6 +34,7 @@ export function applyBetweenActReset(party: PartyMember[]): void {
 }
 
 function buildActSummary(campaign: CampaignState, run: RunState): CompletedActSummary {
+  const log = run.adventureLog ?? [];
   return {
     actId: `act_${campaign.currentActNumber}`,
     actNumber: campaign.currentActNumber,
@@ -41,6 +42,8 @@ function buildActSummary(campaign: CampaignState, run: RunState): CompletedActSu
     elitesDefeated: run.mapState.elitesDefeated,
     bossDefeated: run.mapState.bossDefeated,
     goldEarned: run.gold,
+    heroDownCount: log.filter((e) => e.kind === "hero_downed").length,
+    itemsGained: log.filter((e) => e.kind === "loot_gained").length,
     runStatus: "won",
     mapSnapshot: { ...run.mapState },
   };
@@ -81,4 +84,15 @@ export function completeCampaign(campaign: CampaignState, completedRun: RunState
   campaign.completedActs.push(buildActSummary(campaign, completedRun));
   campaign.party = completedRun.party.map((pm) => ({ ...pm }));
   campaign.campaignStatus = "won";
+}
+
+/**
+ * Records the act and node where a campaign run was lost.
+ * Call this from the defeat path before transitioning to the summary screen.
+ */
+export function recordCampaignLoss(campaign: CampaignState, run: RunState): void {
+  if (campaign.campaignStatus !== "active") return;
+  campaign.campaignStatus = "lost";
+  campaign.lossActNumber = campaign.currentActNumber;
+  campaign.lossNodeId = run.mapState.currentNodeId ?? undefined;
 }
