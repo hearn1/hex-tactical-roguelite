@@ -277,6 +277,33 @@ describe("AoE aftermath routing (#271)", () => {
       expect(result.shouldCheckCombatEnd).toBe(true);
     });
 
+    it("AoE radius is centered on the cast point (target), not the caster", () => {
+      const rng = () => 0.99; // d20=20 (crit), guaranteed hit
+      // Caster at origin; target (cast point) 4 hexes away.
+      // Enemies cluster around the cast point, outside radius 2 of the caster.
+      const caster = makeAoeUnit({
+        instanceId: "caster",
+        pos: { q: 0, r: 0 },
+        defId: "class.arcanist",
+        stats: { maxHp: 12, armor: 11, move: 3, str: 0, dex: 0, con: 0, int: 20, wis: 0, cha: 0 },
+      });
+      const castTarget = makeAoeUnit({ instanceId: "t", pos: { q: 4, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const nearby = makeAoeUnit({ instanceId: "nearby", pos: { q: 5, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const farFromCaster = makeAoeUnit({ instanceId: "far", pos: { q: 3, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 1, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      // outOfBlast is >2 hexes from the cast point but <4 from the caster — only hit if center is wrong
+      const outOfBlast = makeAoeUnit({ instanceId: "out", pos: { q: 1, r: 0 }, team: "enemy", hp: 20, stats: { maxHp: 20, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const state = makeAoeState([caster, castTarget, nearby, farFromCaster, outOfBlast]);
+
+      resolveAction(ACTION_REGISTRY["action.fireball"], caster, castTarget, state, rng);
+
+      // All three clustered around the cast point are hit
+      expect(castTarget.hp).toBe(0);
+      expect(nearby.hp).toBe(0);
+      expect(farFromCaster.hp).toBe(0);
+      // Enemy adjacent to the caster (distance 1 from caster, distance 3 from cast point) is NOT hit
+      expect(outOfBlast.hp).toBe(20);
+    });
+
     it("AoE crossing a boss HP threshold spawns reinforcement exactly once (#271)", () => {
       const rng = () => 0.99;
       const caster = makeAoeUnit({
