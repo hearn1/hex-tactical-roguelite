@@ -20,9 +20,32 @@ export interface NodeDef {
   /** Pins a specific event to this node, overriding pool selection (for signature scenes). */
   eventId?: string;
   nextNodeIds: string[];
+  /**
+   * For side_route_return nodes: the main-branch node this route rejoins.
+   * Must equal the single entry in nextNodeIds for return nodes; kept as metadata
+   * so callers can distinguish return edges from ordinary forward edges.
+   */
+  returnNodeId?: string;
+  /** True when this node is an optional detour (shops, camps, side routes) off the critical path. */
+  optional?: boolean;
+  /** Lightweight presentation coordinates — graph logic must not depend on these. */
+  layout?: { x: number; y: number };
 }
 
-export type NodeType = "start" | "combat" | "elite" | "boss" | "shop" | "camp" | "event" | "recruit" | "pet";
+export type NodeType =
+  | "start"
+  | "combat"
+  | "elite"
+  | "boss"
+  | "shop"
+  | "camp"
+  | "event"
+  | "recruit"
+  | "pet"
+  | "shrine"
+  | "side_route_start"
+  | "side_route_node"
+  | "side_route_return";
 
 /** A self-contained act map: an ordered set of nodes from a single start to a single boss. */
 export interface MapTemplate {
@@ -31,6 +54,10 @@ export interface MapTemplate {
   startNodeId: string;
   bossNodeId: string;
   nodes: NodeDef[];
+  /** Campaign this template belongs to. Used for generic act-routing lookups. */
+  campaignId?: string;
+  /** Act this template covers ("act_1" … "act_4"). */
+  actId?: string;
 }
 
 /**
@@ -307,9 +334,159 @@ const LONG_NODES: NodeDef[] = [
 ];
 
 // ---------------------------------------------------------------------------
-// Placeholder map templates for Acts 2–4.
-// These are intentionally minimal (start → combat → boss) and use existing
-// encounter IDs as stubs. Full node graphs will be authored in later tasks.
+// Canonical Act 1 map template (#344).
+// 15 nodes across 7 layers with one side-route mini-act (Captured Merchant Trail).
+// Branch structure: two opening combat paths → event/combat mid-layer →
+// shop/shrine/combat convergence → camp gate → optional elite → combat → boss.
+// ---------------------------------------------------------------------------
+
+const ACT_1_NODES: NodeDef[] = [
+  {
+    id: "node.a1_start",
+    type: "start",
+    title: "Verdant Frontier",
+    description: "The party sets out from the last safe settlement into the threatened wilds.",
+    layer: 0,
+    nextNodeIds: ["node.a1_combat_a", "node.a1_combat_b"],
+  },
+  {
+    id: "node.a1_combat_a",
+    type: "combat",
+    title: "Goblin Ambush",
+    description: "Raiders surge from the treeline along the old road.",
+    layer: 1,
+    encounterId: "encounter.road_ambush",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.a1_event_a", "node.a1_combat_c"],
+  },
+  {
+    id: "node.a1_combat_b",
+    type: "combat",
+    title: "Mire Patrol",
+    description: "Wolves harry the boggy shortcut through the fens.",
+    layer: 1,
+    encounterId: "encounter.long_mire_crossing",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.a1_event_a", "node.a1_combat_c"],
+  },
+  {
+    id: "node.a1_event_a",
+    type: "event",
+    title: "Abandoned Waypost",
+    description: "A weathered signpost marks a crossroads of uncertain paths.",
+    layer: 2,
+    nextNodeIds: ["node.a1_shop_a", "node.a1_shrine_a", "node.a1_combat_d"],
+  },
+  {
+    id: "node.a1_combat_c",
+    type: "combat",
+    title: "Toll Bridge Brutes",
+    description: "Bandits demand blood payment at the narrow crossing.",
+    layer: 2,
+    encounterId: "encounter.bandit_toll",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.a1_shop_a", "node.a1_shrine_a", "node.a1_combat_d"],
+  },
+  {
+    id: "node.a1_shop_a",
+    type: "shop",
+    title: "Traveling Merchant",
+    description: "A cautious merchant trades from a fortified wagon.",
+    layer: 3,
+    shopPoolId: "shop.basic",
+    optional: true,
+    nextNodeIds: ["node.a1_camp_a"],
+  },
+  {
+    id: "node.a1_shrine_a",
+    type: "shrine",
+    title: "Mossy War-Shrine",
+    description: "An ancient shrine hums with faded protective magic.",
+    layer: 3,
+    optional: true,
+    nextNodeIds: ["node.a1_camp_a", "node.a1_side1_start"],
+  },
+  {
+    id: "node.a1_combat_d",
+    type: "combat",
+    title: "Cultist Outriders",
+    description: "Robed soldiers guard the road into the deeper wilds.",
+    layer: 3,
+    encounterId: "encounter.cult_ritual",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.a1_camp_a"],
+  },
+  // Side route: Captured Merchant Trail (branches from shrine, returns to camp)
+  {
+    id: "node.a1_side1_start",
+    type: "side_route_start",
+    title: "Captured Merchant Trail",
+    description: "Cries from the undergrowth hint at prisoners nearby.",
+    layer: 4,
+    optional: true,
+    nextNodeIds: ["node.a1_side1_combat"],
+  },
+  {
+    id: "node.a1_side1_combat",
+    type: "side_route_node",
+    title: "Bandit Camp Raid",
+    description: "A hidden camp holds captives under armed guard.",
+    layer: 5,
+    encounterId: "encounter.bandit_toll",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.a1_side1_return"],
+  },
+  {
+    id: "node.a1_side1_return",
+    type: "side_route_return",
+    title: "Freed Captives",
+    description: "The rescued merchants share supplies before parting ways.",
+    layer: 6,
+    returnNodeId: "node.a1_camp_a",
+    nextNodeIds: ["node.a1_camp_a"],
+  },
+  {
+    id: "node.a1_camp_a",
+    type: "camp",
+    title: "Sheltered Hollow",
+    description: "A defensible clearing offers rest before the final approach.",
+    layer: 7,
+    nextNodeIds: ["node.a1_combat_e", "node.a1_elite_a"],
+  },
+  {
+    id: "node.a1_elite_a",
+    type: "elite",
+    title: "Warband Commander",
+    description: "A scarred officer leads a disciplined warband. (Optional, high risk.)",
+    layer: 8,
+    encounterId: "encounter.broken_banner_elite",
+    optional: true,
+    nextNodeIds: ["node.a1_combat_e"],
+  },
+  {
+    id: "node.a1_combat_e",
+    type: "combat",
+    title: "Primal Heart Sentinels",
+    description: "The primal source's guardian force holds the threshold.",
+    layer: 9,
+    encounterId: "encounter.long_hexscar_patrol",
+    encounterPoolId: "pool.long_combat",
+    nextNodeIds: ["node.a1_boss"],
+  },
+  {
+    id: "node.a1_boss",
+    type: "boss",
+    title: "The Verdant Heart",
+    description: "The primal force driving the goblin surge pulses at the center of the wilds.",
+    layer: 10,
+    encounterId: "encounter.boss_ogre_hexbreaker",
+    nextNodeIds: [],
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Canonical Act 2 map template (#344).
+// 17 nodes. The warlord's fortified pass with ogre-deserter side route.
 // ---------------------------------------------------------------------------
 
 const ACT_2_NODES: NodeDef[] = [
@@ -317,17 +494,146 @@ const ACT_2_NODES: NodeDef[] = [
     id: "node.act2_start",
     type: "start",
     title: "The Iron Gate",
-    description: "The party reaches the fortified pass.",
+    description: "The party reaches the fortified mountain pass.",
     layer: 0,
-    nextNodeIds: ["node.act2_combat_a"],
+    nextNodeIds: ["node.act2_combat_a", "node.act2_event_a"],
   },
   {
     id: "node.act2_combat_a",
     type: "combat",
     title: "Pass Defenders",
-    description: "The warlord's vanguard holds the gate.",
+    description: "The warlord's vanguard holds the outer gate.",
     layer: 1,
     encounterId: "encounter.road_ambush",
+    encounterPoolId: "pool.act_2_combat",
+    nextNodeIds: ["node.act2_combat_b", "node.act2_shop_a"],
+  },
+  {
+    id: "node.act2_event_a",
+    type: "event",
+    title: "Ogre Deserter",
+    description: "A weary ogre soldier offers intel about the keep's layout.",
+    layer: 1,
+    nextNodeIds: ["node.act2_combat_b", "node.act2_shop_a"],
+  },
+  {
+    id: "node.act2_combat_b",
+    type: "combat",
+    title: "Siege Platform",
+    description: "Archers and brutes hold the elevated firing positions.",
+    layer: 2,
+    encounterId: "encounter.long_gatehouse",
+    encounterPoolId: "pool.act_2_combat",
+    nextNodeIds: ["node.act2_elite_a", "node.act2_combat_c"],
+  },
+  {
+    id: "node.act2_shop_a",
+    type: "shop",
+    title: "Black Market Stockpile",
+    description: "Contraband salvage from fallen soldiers lines a hidden alcove.",
+    layer: 2,
+    shopPoolId: "shop.basic",
+    optional: true,
+    nextNodeIds: ["node.act2_elite_a", "node.act2_combat_c"],
+  },
+  {
+    id: "node.act2_elite_a",
+    type: "elite",
+    title: "The Iron Prefect",
+    description: "The warlord's disciplinarian and his honor guard bar the inner gate.",
+    layer: 3,
+    encounterId: "encounter.long_iron_sergeant_elite",
+    nextNodeIds: ["node.act2_camp_a"],
+  },
+  {
+    id: "node.act2_combat_c",
+    type: "combat",
+    title: "Undead Pickets",
+    description: "Risen soldiers guard the necromancer's wing of the keep.",
+    layer: 3,
+    encounterId: "encounter.old_graveyard",
+    encounterPoolId: "pool.act_2_combat",
+    nextNodeIds: ["node.act2_camp_a"],
+  },
+  {
+    id: "node.act2_camp_a",
+    type: "camp",
+    title: "Captured Barracks",
+    description: "A cleared barracks room offers a brief respite.",
+    layer: 4,
+    nextNodeIds: ["node.act2_combat_d", "node.act2_shrine_a", "node.act2_side1_start"],
+  },
+  {
+    id: "node.act2_shrine_a",
+    type: "shrine",
+    title: "Soldier's Offering Stone",
+    description: "An old shrine in the keep's courtyard still holds power.",
+    layer: 5,
+    optional: true,
+    nextNodeIds: ["node.act2_combat_e", "node.act2_event_b"],
+  },
+  {
+    id: "node.act2_combat_d",
+    type: "combat",
+    title: "Courtyard Garrison",
+    description: "The remaining garrison makes a desperate stand.",
+    layer: 5,
+    encounterId: "encounter.long_blackwater_ford",
+    encounterPoolId: "pool.act_2_combat",
+    nextNodeIds: ["node.act2_combat_e", "node.act2_event_b"],
+  },
+  // Side route: Ogre Deserter Route (branches from camp, returns to combat_e)
+  {
+    id: "node.act2_side1_start",
+    type: "side_route_start",
+    title: "Deserter's Hidden Pass",
+    description: "The ogre deserter's secret route cuts through the keep's undercroft.",
+    layer: 5,
+    optional: true,
+    nextNodeIds: ["node.act2_side1_event"],
+  },
+  {
+    id: "node.act2_side1_event",
+    type: "side_route_node",
+    title: "Undercroft Discovery",
+    description: "The hidden passage reveals the keep's dark secrets.",
+    layer: 6,
+    nextNodeIds: ["node.act2_side1_combat"],
+  },
+  {
+    id: "node.act2_side1_combat",
+    type: "side_route_node",
+    title: "Shadow Guard Ambush",
+    description: "The keep's hidden sentinels spring an ambush in the dark.",
+    layer: 7,
+    encounterId: "encounter.bandit_toll",
+    encounterPoolId: "pool.act_2_combat",
+    nextNodeIds: ["node.act2_side1_return"],
+  },
+  {
+    id: "node.act2_side1_return",
+    type: "side_route_return",
+    title: "Undercroft Exit",
+    description: "The passage emerges behind the main keep's inner defenses.",
+    layer: 8,
+    returnNodeId: "node.act2_combat_e",
+    nextNodeIds: ["node.act2_combat_e"],
+  },
+  {
+    id: "node.act2_event_b",
+    type: "event",
+    title: "Warlord's War Room",
+    description: "Captured battle plans reveal the alliance's true scope.",
+    layer: 9,
+    nextNodeIds: ["node.act2_boss"],
+  },
+  {
+    id: "node.act2_combat_e",
+    type: "combat",
+    title: "Inner Keep Defenders",
+    description: "Elite soldiers make a last stand at the throne room door.",
+    layer: 9,
+    encounterId: "encounter.long_ashen_lookout",
     encounterPoolId: "pool.act_2_combat",
     nextNodeIds: ["node.act2_boss"],
   },
@@ -335,8 +641,8 @@ const ACT_2_NODES: NodeDef[] = [
     id: "node.act2_boss",
     type: "boss",
     title: "The Warlord's Keep",
-    description: "The ogre warlord and necromancer lieutenant await.",
-    layer: 2,
+    description: "The ogre warlord and necromancer lieutenant take the field.",
+    layer: 10,
     encounterId: "encounter.boss_ogre_hexbreaker",
     nextNodeIds: [],
   },
@@ -362,22 +668,197 @@ const ACT_2_ALT_NODES: NodeDef[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Canonical Act 3 map template (#345).
+// 21 nodes. The cult's scarred reach with prisoner-rescue and ancient-tomb side routes.
+// ---------------------------------------------------------------------------
+
 const ACT_3_NODES: NodeDef[] = [
   {
     id: "node.act3_start",
     type: "start",
     title: "The Scarred Reach",
-    description: "The cult's territory stretches across ruined land.",
+    description: "The cult's territory stretches across ruined, ashen land.",
     layer: 0,
-    nextNodeIds: ["node.act3_combat_a"],
+    nextNodeIds: ["node.act3_combat_a", "node.act3_combat_b", "node.act3_event_a"],
   },
   {
     id: "node.act3_combat_a",
     type: "combat",
     title: "Cult Vanguard",
-    description: "Cultist cells guard the approach to the sanctum.",
+    description: "Cultist cells guard the outer approach.",
     layer: 1,
     encounterId: "encounter.cult_ritual",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_shrine_a", "node.act3_combat_c"],
+  },
+  {
+    id: "node.act3_combat_b",
+    type: "combat",
+    title: "Ash Field Patrol",
+    description: "Cult soldiers sweep the burned fields for intruders.",
+    layer: 1,
+    encounterId: "encounter.long_gatehouse",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_shrine_a", "node.act3_combat_c"],
+  },
+  {
+    id: "node.act3_event_a",
+    type: "event",
+    title: "Survivor's Cache",
+    description: "A local survivor hidden in rubble offers help and information.",
+    layer: 1,
+    nextNodeIds: ["node.act3_shrine_a", "node.act3_combat_c"],
+  },
+  {
+    id: "node.act3_shrine_a",
+    type: "shrine",
+    title: "Defaced War-Shrine",
+    description: "The cult partially defaced this shrine, but power still lingers.",
+    layer: 2,
+    optional: true,
+    nextNodeIds: ["node.act3_elite_a", "node.act3_combat_d", "node.act3_camp_a"],
+  },
+  {
+    id: "node.act3_combat_c",
+    type: "combat",
+    title: "Summoning Circle Guards",
+    description: "Fanatics protect a mid-reach ritual site.",
+    layer: 2,
+    encounterId: "encounter.long_cult_vanguard",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_elite_a", "node.act3_combat_d", "node.act3_camp_a"],
+  },
+  {
+    id: "node.act3_elite_a",
+    type: "elite",
+    title: "The Choir Commander",
+    description: "The first cult commander and her summoned chorus.",
+    layer: 3,
+    encounterId: "encounter.long_iron_sergeant_elite",
+    nextNodeIds: ["node.act3_event_b", "node.act3_combat_e"],
+  },
+  {
+    id: "node.act3_combat_d",
+    type: "combat",
+    title: "Ritual Enforcers",
+    description: "Enforcers punish any who stray from cult doctrine.",
+    layer: 3,
+    encounterId: "encounter.long_blackwater_ford",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_event_b", "node.act3_combat_e"],
+  },
+  {
+    id: "node.act3_camp_a",
+    type: "camp",
+    title: "Abandoned Mill",
+    description: "A derelict mill offers cover to rest and tend wounds.",
+    layer: 3,
+    optional: true,
+    nextNodeIds: ["node.act3_event_b", "node.act3_combat_e", "node.act3_side1_start"],
+  },
+  // Side route 1: Prisoner Rescue Branch (branches from camp, returns to elite_b)
+  {
+    id: "node.act3_side1_start",
+    type: "side_route_start",
+    title: "Prisoner Rescue",
+    description: "Muffled voices behind a locked door suggest captives nearby.",
+    layer: 4,
+    optional: true,
+    nextNodeIds: ["node.act3_side1_combat"],
+  },
+  {
+    id: "node.act3_side1_combat",
+    type: "side_route_node",
+    title: "Holding Pen Clash",
+    description: "Guards must be overcome before the captives can be freed.",
+    layer: 5,
+    encounterId: "encounter.bandit_toll",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_side1_return"],
+  },
+  {
+    id: "node.act3_side1_return",
+    type: "side_route_return",
+    title: "Liberated Captives",
+    description: "The freed prisoners share what they know about the sanctum's interior.",
+    layer: 6,
+    returnNodeId: "node.act3_elite_b",
+    nextNodeIds: ["node.act3_elite_b"],
+  },
+  {
+    id: "node.act3_event_b",
+    type: "event",
+    title: "Cult Communique",
+    description: "Intercepted messages reveal the high priest's ritual schedule.",
+    layer: 7,
+    nextNodeIds: ["node.act3_elite_b", "node.act3_shop_a"],
+  },
+  {
+    id: "node.act3_combat_e",
+    type: "combat",
+    title: "Sanctum Approaches",
+    description: "The path to the sanctum narrows and hardens.",
+    layer: 7,
+    encounterId: "encounter.long_ashen_lookout",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_elite_b", "node.act3_shop_a"],
+  },
+  {
+    id: "node.act3_elite_b",
+    type: "elite",
+    title: "The Second Commander",
+    description: "A veteran commander guards the sanctum's antechamber.",
+    layer: 8,
+    encounterId: "encounter.broken_banner_elite",
+    nextNodeIds: ["node.act3_combat_f"],
+  },
+  {
+    id: "node.act3_shop_a",
+    type: "shop",
+    title: "Salvaged Supply Depot",
+    description: "Supplies looted from the cult's own stores.",
+    layer: 8,
+    shopPoolId: "shop.basic",
+    optional: true,
+    nextNodeIds: ["node.act3_combat_f", "node.act3_side2_start"],
+  },
+  // Side route 2: Ancient Tomb Relic Branch (branches from shop, returns to combat_f)
+  {
+    id: "node.act3_side2_start",
+    type: "side_route_start",
+    title: "Ancient Tomb Entrance",
+    description: "A pre-cult tomb lies partially excavated beneath the sanctum.",
+    layer: 9,
+    optional: true,
+    nextNodeIds: ["node.act3_side2_combat"],
+  },
+  {
+    id: "node.act3_side2_combat",
+    type: "side_route_node",
+    title: "Tomb Guardian",
+    description: "An ancient ward has been disturbed by the cult's digging.",
+    layer: 10,
+    encounterId: "encounter.old_graveyard",
+    encounterPoolId: "pool.act_3_combat",
+    nextNodeIds: ["node.act3_side2_return"],
+  },
+  {
+    id: "node.act3_side2_return",
+    type: "side_route_return",
+    title: "Relic Recovery",
+    description: "A pre-cult relic is recovered before ascending to the final approach.",
+    layer: 11,
+    returnNodeId: "node.act3_combat_f",
+    nextNodeIds: ["node.act3_combat_f"],
+  },
+  {
+    id: "node.act3_combat_f",
+    type: "combat",
+    title: "Sanctum Threshold",
+    description: "The final outer ring of cult defenders holds the sanctum door.",
+    layer: 12,
+    encounterId: "encounter.long_hexscar_patrol",
     encounterPoolId: "pool.act_3_combat",
     nextNodeIds: ["node.act3_boss"],
   },
@@ -385,8 +866,8 @@ const ACT_3_NODES: NodeDef[] = [
     id: "node.act3_boss",
     type: "boss",
     title: "The Ashen Sanctum",
-    description: "Three cult commanders and the high priest await inside.",
-    layer: 2,
+    description: "The high priest of the Ashen Choir activates as the sanctum is breached.",
+    layer: 13,
     encounterId: "encounter.boss_ogre_hexbreaker",
     nextNodeIds: [],
   },
@@ -412,31 +893,197 @@ const ACT_3_ALT_NODES: NodeDef[] = [
   },
 ];
 
+// ---------------------------------------------------------------------------
+// Canonical Act 4 map template (#345).
+// 20 nodes. The draconid spire with draconid-courier and planar-anchor side routes.
+// The final boss node is the campaign completion gate.
+// ---------------------------------------------------------------------------
+
 const ACT_4_NODES: NodeDef[] = [
   {
     id: "node.act4_start",
     type: "start",
     title: "The Ascending Spire",
-    description: "The draconid arcane lord's sanctum towers ahead.",
+    description: "The draconid arcane lord's sanctum towers against the sky.",
     layer: 0,
-    nextNodeIds: ["node.act4_combat_a"],
+    nextNodeIds: ["node.act4_combat_a", "node.act4_shop_a", "node.act4_event_a"],
   },
   {
     id: "node.act4_combat_a",
     type: "combat",
-    title: "Sanctum Guardians",
-    description: "Draconid soldiers and arcane constructs hold the outer ring.",
+    title: "Sanctum Outer Ring",
+    description: "Draconid soldiers and arcane constructs hold the outer perimeter.",
     layer: 1,
     encounterId: "encounter.road_ambush",
     encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_combat_b", "node.act4_elite_a"],
+  },
+  {
+    id: "node.act4_shop_a",
+    type: "shop",
+    title: "Arcane Contraband Cache",
+    description: "Confiscated artifacts from the arcane lord's raids.",
+    layer: 1,
+    shopPoolId: "shop.basic",
+    optional: true,
+    nextNodeIds: ["node.act4_combat_b", "node.act4_elite_a"],
+  },
+  {
+    id: "node.act4_event_a",
+    type: "event",
+    title: "Draconid Defector",
+    description: "A disillusioned draconid warrior shares the spire's layout.",
+    layer: 1,
+    nextNodeIds: ["node.act4_combat_b", "node.act4_elite_a"],
+  },
+  {
+    id: "node.act4_combat_b",
+    type: "combat",
+    title: "Spire Sentinels",
+    description: "The mid-ring defense is better organized and forewarned.",
+    layer: 2,
+    encounterId: "encounter.long_cult_vanguard",
+    encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_camp_a", "node.act4_combat_c", "node.act4_shrine_a"],
+  },
+  {
+    id: "node.act4_elite_a",
+    type: "elite",
+    title: "The Arcane Warden",
+    description: "The lord's chief enforcer and her arcane golem escort.",
+    layer: 2,
+    encounterId: "encounter.long_iron_sergeant_elite",
+    nextNodeIds: ["node.act4_camp_a", "node.act4_combat_c", "node.act4_shrine_a"],
+  },
+  {
+    id: "node.act4_camp_a",
+    type: "camp",
+    title: "Reclaimed Garrison Post",
+    description: "A cleared post offers the last chance to rest before the inner spire.",
+    layer: 3,
+    optional: true,
+    nextNodeIds: ["node.act4_event_b", "node.act4_elite_b"],
+  },
+  {
+    id: "node.act4_combat_c",
+    type: "combat",
+    title: "Arcane Construct Wing",
+    description: "The lord's constructs patrol the inner ring autonomously.",
+    layer: 3,
+    encounterId: "encounter.long_ashen_lookout",
+    encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_event_b", "node.act4_elite_b"],
+  },
+  {
+    id: "node.act4_shrine_a",
+    type: "shrine",
+    title: "Ley Nexus",
+    description: "A natural arcane focus point beneath the spire still holds old power.",
+    layer: 3,
+    optional: true,
+    nextNodeIds: ["node.act4_event_b", "node.act4_elite_b", "node.act4_side1_start"],
+  },
+  // Side route 1: Draconid Courier Intercept (branches from shrine, returns to event_b)
+  {
+    id: "node.act4_side1_start",
+    type: "side_route_start",
+    title: "Courier Intercept",
+    description: "A fast courier carries orders from the arcane lord — intercept them.",
+    layer: 4,
+    optional: true,
+    nextNodeIds: ["node.act4_side1_combat"],
+  },
+  {
+    id: "node.act4_side1_combat",
+    type: "side_route_node",
+    title: "Courier Escort Clash",
+    description: "Elite draconid guards escort the courier at speed.",
+    layer: 5,
+    encounterId: "encounter.broken_banner_elite",
+    encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_side1_return"],
+  },
+  {
+    id: "node.act4_side1_return",
+    type: "side_route_return",
+    title: "Orders Seized",
+    description: "The captured courier's orders reveal the arcane lord's endgame.",
+    layer: 6,
+    returnNodeId: "node.act4_event_b",
+    nextNodeIds: ["node.act4_event_b"],
+  },
+  {
+    id: "node.act4_event_b",
+    type: "event",
+    title: "Inner Sanctum Gate",
+    description: "The arcane seals on the inner gate require a key — or brute force.",
+    layer: 7,
+    nextNodeIds: ["node.act4_combat_d", "node.act4_combat_e"],
+  },
+  {
+    id: "node.act4_elite_b",
+    type: "elite",
+    title: "The Lord's Champion",
+    description: "The arcane lord's personal champion stands at the sanctum threshold.",
+    layer: 7,
+    encounterId: "encounter.broken_banner_elite",
+    nextNodeIds: ["node.act4_combat_d", "node.act4_combat_e"],
+  },
+  {
+    id: "node.act4_combat_d",
+    type: "combat",
+    title: "Sanctum Vestibule",
+    description: "The antechamber before the arcane lord's chamber.",
+    layer: 8,
+    encounterId: "encounter.long_blackwater_ford",
+    encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_boss"],
+  },
+  {
+    id: "node.act4_combat_e",
+    type: "combat",
+    title: "Arcane Battery Room",
+    description: "Power conduits feed the final chamber — they can be disabled.",
+    layer: 8,
+    encounterId: "encounter.long_hexscar_patrol",
+    encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_side2_start", "node.act4_boss"],
+  },
+  // Side route 2: Planar Anchor Stabilization (branches from combat_e, returns to final boss)
+  {
+    id: "node.act4_side2_start",
+    type: "side_route_start",
+    title: "Planar Anchor Chamber",
+    description: "An unstable rift node offers a dangerous shortcut — or a catastrophe.",
+    layer: 9,
+    optional: true,
+    nextNodeIds: ["node.act4_side2_combat"],
+  },
+  {
+    id: "node.act4_side2_combat",
+    type: "side_route_node",
+    title: "Rift Stabilization Fight",
+    description: "Planar invaders pour through the destabilized anchor.",
+    layer: 10,
+    encounterId: "encounter.old_graveyard",
+    encounterPoolId: "pool.act_4_combat",
+    nextNodeIds: ["node.act4_side2_return"],
+  },
+  {
+    id: "node.act4_side2_return",
+    type: "side_route_return",
+    title: "Anchor Sealed",
+    description: "The rift collapses inward, depositing the party inside the lord's chamber.",
+    layer: 11,
+    returnNodeId: "node.act4_boss",
     nextNodeIds: ["node.act4_boss"],
   },
   {
     id: "node.act4_boss",
     type: "boss",
     title: "The Arcane Lord's Chamber",
-    description: "The draconid arcane lord and elite bodyguards await.",
-    layer: 2,
+    description: "The draconid arcane lord and his elite bodyguard await. This is the campaign's final gate.",
+    layer: 12,
     encounterId: "encounter.boss_ogre_hexbreaker",
     nextNodeIds: [],
   },
@@ -477,44 +1124,65 @@ export const MAP_TEMPLATES: Record<string, MapTemplate> = {
     bossNodeId: "node.long_boss",
     nodes: LONG_NODES,
   },
+  act_1_map: {
+    id: "act_1_map",
+    name: "The Verdant Threat",
+    campaignId: "campaign.verdant_dark",
+    actId: "act_1",
+    startNodeId: "node.a1_start",
+    bossNodeId: "node.a1_boss",
+    nodes: ACT_1_NODES,
+  },
   act_2_map: {
     id: "act_2_map",
-    name: "The Iron Wall (Placeholder)",
+    name: "The Iron Wall",
+    campaignId: "campaign.verdant_dark",
+    actId: "act_2",
     startNodeId: "node.act2_start",
     bossNodeId: "node.act2_boss",
     nodes: ACT_2_NODES,
   },
   act_2_map_deserter_route: {
     id: "act_2_map_deserter_route",
-    name: "The Iron Wall — Deserter Route (Placeholder)",
+    name: "The Iron Wall — Deserter Route",
+    campaignId: "campaign.verdant_dark",
+    actId: "act_2",
     startNodeId: "node.act2_alt_start",
     bossNodeId: "node.act2_alt_boss",
     nodes: ACT_2_ALT_NODES,
   },
   act_3_map: {
     id: "act_3_map",
-    name: "The Ashen Choir (Placeholder)",
+    name: "The Ashen Choir",
+    campaignId: "campaign.verdant_dark",
+    actId: "act_3",
     startNodeId: "node.act3_start",
     bossNodeId: "node.act3_boss",
     nodes: ACT_3_NODES,
   },
   act_3_map_prisoner_rescue: {
     id: "act_3_map_prisoner_rescue",
-    name: "The Ashen Choir — Prisoner Rescue (Placeholder)",
+    name: "The Ashen Choir — Prisoner Rescue",
+    campaignId: "campaign.verdant_dark",
+    actId: "act_3",
     startNodeId: "node.act3_alt_start",
     bossNodeId: "node.act3_alt_boss",
     nodes: ACT_3_ALT_NODES,
   },
   act_4_map: {
     id: "act_4_map",
-    name: "The Ascending Dark (Placeholder)",
+    name: "The Ascending Dark",
+    campaignId: "campaign.verdant_dark",
+    actId: "act_4",
     startNodeId: "node.act4_start",
     bossNodeId: "node.act4_boss",
     nodes: ACT_4_NODES,
   },
   act_4_map_planar_anchor: {
     id: "act_4_map_planar_anchor",
-    name: "The Ascending Dark — Planar Anchor (Placeholder)",
+    name: "The Ascending Dark — Planar Anchor",
+    campaignId: "campaign.verdant_dark",
+    actId: "act_4",
     startNodeId: "node.act4_alt_start",
     bossNodeId: "node.act4_alt_boss",
     nodes: ACT_4_ALT_NODES,

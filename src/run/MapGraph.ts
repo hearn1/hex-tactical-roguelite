@@ -1,5 +1,5 @@
 import { NODE_REGISTRY } from "../data/nodes.ts";
-import type { MapTemplate, NodeDef } from "../data/nodes.ts";
+import type { MapTemplate, NodeDef, NodeType } from "../data/nodes.ts";
 
 export interface MapState {
   currentNodeId: string;
@@ -24,7 +24,7 @@ export function visitNode(mapState: MapState, nodeId: string): void {
 }
 
 /** Node types that count as a "recovery" stop for path-guarantee checks. */
-export const RECOVERY_NODE_TYPES = new Set<NodeDef["type"]>(["camp"]);
+export const RECOVERY_NODE_TYPES = new Set<NodeType>(["camp"]);
 
 function templateNodeMap(template: MapTemplate): Map<string, NodeDef> {
   return new Map(template.nodes.map((n) => [n.id, n]));
@@ -90,4 +90,79 @@ export function enumerateRootToBossPaths(template: MapTemplate): string[][] {
   };
   walk(template.startNodeId, []);
   return paths;
+}
+
+/**
+ * Validates the structural integrity of a map template.
+ * Returns an array of error strings; an empty array means the template is valid.
+ *
+ * Checks performed:
+ * - Start and boss node IDs exist in the template's node list.
+ * - No duplicate node IDs.
+ * - All nextNodeIds reference nodes within the template.
+ * - returnNodeId (on side_route_return nodes) references a node within the template.
+ * - Boss node has no outgoing edges.
+ * - Boss is reachable from start.
+ * - Every side_route_start has at least one reachable side_route_return.
+ */
+export function validateMapTemplate(template: MapTemplate): string[] {
+  const errors: string[] = [];
+  const nodeMap = new Map(template.nodes.map((n) => [n.id, n]));
+
+  if (nodeMap.size !== template.nodes.length) {
+    const seen = new Set<string>();
+    for (const node of template.nodes) {
+      if (seen.has(node.id)) errors.push(`Duplicate node id "${node.id}"`);
+      seen.add(node.id);
+    }
+  }
+
+  if (!nodeMap.has(template.startNodeId)) {
+    errors.push(`Start node "${template.startNodeId}" not found in template nodes`);
+  }
+
+  if (!nodeMap.has(template.bossNodeId)) {
+    errors.push(`Boss node "${template.bossNodeId}" not found in template nodes`);
+  }
+
+  for (const node of template.nodes) {
+    for (const nextId of node.nextNodeIds) {
+      if (!nodeMap.has(nextId)) {
+        errors.push(`Node "${node.id}" has invalid nextNodeId "${nextId}"`);
+      }
+    }
+    if (node.returnNodeId !== undefined && !nodeMap.has(node.returnNodeId)) {
+      errors.push(`Node "${node.id}" has invalid returnNodeId "${node.returnNodeId}"`);
+    }
+  }
+
+  const bossNode = nodeMap.get(template.bossNodeId);
+  if (bossNode && bossNode.nextNodeIds.length > 0) {
+    errors.push(`Boss node "${template.bossNodeId}" must have no outgoing edges`);
+  }
+
+  if (errors.length === 0 && !bfsReachesBoss(template)) {
+    errors.push("No path from start node to boss node");
+  }
+
+  for (const node of template.nodes) {
+    if (node.type !== "side_route_start") continue;
+    const visited = new Set<string>();
+    const queue: string[] = [node.id];
+    let hasReturn = false;
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (visited.has(cur)) continue;
+      visited.add(cur);
+      const curNode = nodeMap.get(cur);
+      if (!curNode) continue;
+      if (curNode.type === "side_route_return") { hasReturn = true; break; }
+      for (const next of curNode.nextNodeIds) queue.push(next);
+    }
+    if (!hasReturn) {
+      errors.push(`side_route_start "${node.id}" has no reachable side_route_return`);
+    }
+  }
+
+  return errors;
 }

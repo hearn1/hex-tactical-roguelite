@@ -59,7 +59,7 @@ const ACT_1: ActDefinition = {
   id: "act_1",
   displayName: "The Verdant Threat",
   order: 0,
-  mapPool: { templateIds: ["long", "short"] },
+  mapPool: { templateIds: ["act_1_map", "long"] },
   encounterPool: { poolId: "pool.long_combat" },
   rewardPool: { poolId: "pool.act_1_rewards" },
   storyBeats: [
