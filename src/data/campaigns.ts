@@ -60,7 +60,7 @@ const ACT_1: ActDefinition = {
   displayName: "The Verdant Threat",
   order: 0,
   mapPool: { templateIds: ["act_1_map", "long"] },
-  encounterPool: { poolId: "pool.long_combat" },
+  encounterPool: { poolId: "pool.act_1_combat" },
   rewardPool: { poolId: "pool.act_1_rewards" },
   storyBeats: [
     { id: "act_1.intro", description: "Party departs into the frontier threatened by goblin warbands." },
