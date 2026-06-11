@@ -18,6 +18,10 @@ export interface ActProgress {
   bossDefeated: boolean;
   /** Gold accumulated during this act (for summary display). */
   goldEarned: number;
+  /** Number of hero-down events that occurred during this act. */
+  heroDownCount: number;
+  /** Number of loot/item rewards gained during this act. */
+  itemsGained: number;
 }
 
 /**
@@ -58,6 +62,10 @@ export interface CampaignState {
   adventureLog: AdventureLogEntry[];
   /** One entry per completed act, in chronological order. */
   completedActs: CompletedActSummary[];
+  /** Act number where the campaign was lost (set by recordCampaignLoss). */
+  lossActNumber?: number;
+  /** Node id where the campaign was lost (set by recordCampaignLoss). */
+  lossNodeId?: string;
 }
 
 /** Factory: builds a fresh campaign state for a new run attempt. */
