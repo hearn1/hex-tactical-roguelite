@@ -1,5 +1,6 @@
 import type { CampaignState } from "../state/CampaignState.ts";
 import type { RunState } from "../state/RunState.ts";
+import { aggregateQuestCounts } from "./QuestState.ts";
 
 /** Per-act breakdown entry in a campaign summary. */
 export interface ActSummaryEntry {
@@ -45,6 +46,12 @@ export interface CampaignSummary {
   actBreakdowns: ActSummaryEntry[];
   /** Hook for #164 story system to attach outcome copy. */
   outcomeTextKey?: string;
+  /** Number of side quests completed across the entire campaign. */
+  questsCompleted: number;
+  /** Number of side quests failed across the entire campaign. */
+  questsFailed: number;
+  /** Number of side quests skipped across the entire campaign. */
+  questsSkipped: number;
 }
 
 /**
@@ -101,6 +108,8 @@ export function generateCampaignSummary(
   const itemsGained = actBreakdowns.reduce((sum, a) => sum + a.itemsGained, 0);
   const bossEncountersCompleted = actBreakdowns.filter((a) => a.bossDefeated).length;
 
+  const questCounts = aggregateQuestCounts(campaign.questProgress ?? {});
+
   return {
     campaignResult: campaign.campaignStatus,
     actsCompleted,
@@ -113,5 +122,8 @@ export function generateCampaignSummary(
     lossActNumber: campaign.lossActNumber,
     lossNodeId: campaign.lossNodeId,
     actBreakdowns,
+    questsCompleted: questCounts.completed,
+    questsFailed: questCounts.failed,
+    questsSkipped: questCounts.skipped,
   };
 }
