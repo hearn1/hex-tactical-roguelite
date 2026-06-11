@@ -490,7 +490,7 @@ export function resolveAction(
     const radius = action.effect.radius ?? action.range;
     const isFriendly = action.targetType === "ally";
     const affected = state.units.filter(
-      (u) => u.hp > 0 && distance(attacker.pos, u.pos) <= radius &&
+      (u) => u.hp > 0 && distance(target.pos, u.pos) <= radius &&
         (isFriendly ? u.team === attacker.team : u.team !== attacker.team),
     );
     if (affected.length === 0) {
