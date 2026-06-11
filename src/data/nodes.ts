@@ -30,6 +30,24 @@ export interface NodeDef {
   optional?: boolean;
   /** Lightweight presentation coordinates — graph logic must not depend on these. */
   layout?: { x: number; y: number };
+
+  // ── Side quest chain metadata (#364) ────────────────────────────────────────
+  /** Side quest this node participates in. Matches SideQuestDefinition.id. */
+  questId?: string;
+  /** Stage id within the quest that this node is associated with (metadata/validation). */
+  questStageId?: string;
+  /** Step id within the stage that this node is associated with (metadata/validation). */
+  questStepId?: string;
+  /**
+   * What this node does to quest state when completed:
+   * - "start"    — opens the quest (idempotent if already active)
+   * - "advance"  — moves the quest to the next step/stage
+   * - "complete" — resolves the quest as completed (requires questOutcomeHookId)
+   * - "fail"     — resolves the quest as failed
+   */
+  questNodeRole?: "start" | "advance" | "complete" | "fail";
+  /** Outcome hook id to fire on "complete" nodes. Must be in SideQuestDefinition.outcomeHookIds. */
+  questOutcomeHookId?: string;
 }
 
 export type NodeType =
@@ -416,7 +434,7 @@ const ACT_1_NODES: NodeDef[] = [
     encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_camp_a"],
   },
-  // Side route: Captured Merchant Trail (branches from shrine, returns to camp)
+  // Side route: Captured Merchant Trail → sq.act1.goblin_relic (start→advance→complete)
   {
     id: "node.a1_side1_start",
     type: "side_route_start",
@@ -425,6 +443,10 @@ const ACT_1_NODES: NodeDef[] = [
     layer: 4,
     optional: true,
     nextNodeIds: ["node.a1_side1_combat"],
+    questId: "sq.act1.goblin_relic",
+    questStageId: "sq.act1.goblin_relic.stage_1",
+    questStepId: "sq.act1.goblin_relic.stage_1.step_1",
+    questNodeRole: "start",
   },
   {
     id: "node.a1_side1_combat",
@@ -435,6 +457,10 @@ const ACT_1_NODES: NodeDef[] = [
     encounterId: "encounter.bandit_toll",
     encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_side1_return"],
+    questId: "sq.act1.goblin_relic",
+    questStageId: "sq.act1.goblin_relic.stage_1",
+    questStepId: "sq.act1.goblin_relic.stage_1.step_2",
+    questNodeRole: "advance",
   },
   {
     id: "node.a1_side1_return",
@@ -444,6 +470,9 @@ const ACT_1_NODES: NodeDef[] = [
     layer: 6,
     returnNodeId: "node.a1_camp_a",
     nextNodeIds: ["node.a1_camp_a"],
+    questId: "sq.act1.goblin_relic",
+    questNodeRole: "complete",
+    questOutcomeHookId: "outcome.sq.act1.goblin_relic.completed",
   },
   {
     id: "node.a1_camp_a",
@@ -582,7 +611,7 @@ const ACT_2_NODES: NodeDef[] = [
     encounterPoolId: "pool.act_2_combat",
     nextNodeIds: ["node.act2_combat_e", "node.act2_event_b"],
   },
-  // Side route: Ogre Deserter Route (branches from camp, returns to combat_e)
+  // Side route: Ogre Deserter Route → sq.act2.deserter_cache (start→advance→advance→complete)
   {
     id: "node.act2_side1_start",
     type: "side_route_start",
@@ -591,6 +620,10 @@ const ACT_2_NODES: NodeDef[] = [
     layer: 5,
     optional: true,
     nextNodeIds: ["node.act2_side1_event"],
+    questId: "sq.act2.deserter_cache",
+    questStageId: "sq.act2.deserter_cache.stage_1",
+    questStepId: "sq.act2.deserter_cache.stage_1.step_1",
+    questNodeRole: "start",
   },
   {
     id: "node.act2_side1_event",
@@ -599,6 +632,10 @@ const ACT_2_NODES: NodeDef[] = [
     description: "The hidden passage reveals the keep's dark secrets.",
     layer: 6,
     nextNodeIds: ["node.act2_side1_combat"],
+    questId: "sq.act2.deserter_cache",
+    questStageId: "sq.act2.deserter_cache.stage_1",
+    questStepId: "sq.act2.deserter_cache.stage_1.step_2",
+    questNodeRole: "advance",
   },
   {
     id: "node.act2_side1_combat",
@@ -609,6 +646,10 @@ const ACT_2_NODES: NodeDef[] = [
     encounterId: "encounter.bandit_toll",
     encounterPoolId: "pool.act_2_combat",
     nextNodeIds: ["node.act2_side1_return"],
+    questId: "sq.act2.deserter_cache",
+    questStageId: "sq.act2.deserter_cache.stage_2",
+    questStepId: "sq.act2.deserter_cache.stage_2.step_1",
+    questNodeRole: "advance",
   },
   {
     id: "node.act2_side1_return",
@@ -618,6 +659,9 @@ const ACT_2_NODES: NodeDef[] = [
     layer: 8,
     returnNodeId: "node.act2_combat_e",
     nextNodeIds: ["node.act2_combat_e"],
+    questId: "sq.act2.deserter_cache",
+    questNodeRole: "complete",
+    questOutcomeHookId: "outcome.sq.act2.deserter_cache.cache_secured",
   },
   {
     id: "node.act2_event_b",

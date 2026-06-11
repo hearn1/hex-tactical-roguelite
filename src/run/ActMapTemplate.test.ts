@@ -1,13 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { MAP_TEMPLATES, getMapTemplate } from "../data/nodes.ts";
 import type { MapTemplate, NodeDef } from "../data/nodes.ts";
-import { validateMapTemplate, availableNextNodes, visitNode, bfsReachesBoss } from "./MapGraph.ts";
+import { validateMapTemplate, availableNextNodes, visitNode, bfsReachesBoss, validateQuestNodeReferences } from "./MapGraph.ts";
 import type { MapState } from "./MapGraph.ts";
 import { templateIdForAct, advanceToNextAct } from "./ActTransition.ts";
 import { createCampaignState } from "../state/CampaignState.ts";
 import { createRunState, buildParty, defaultPartySpecs } from "./PartySetup.ts";
 import { createInventory } from "./Inventory.ts";
 import { DEFAULT_CAMPAIGN, getActDefinition } from "../data/campaigns.ts";
+import { SIDE_QUEST_REGISTRY } from "../data/sideQuests.ts";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -427,5 +428,185 @@ describe("seeded act template selection (#347)", () => {
     // With multiple templates in the pool, edge seeds should produce the boundary choices
     expect(low).toBe(act1.mapPool.templateIds[0]);
     expect(high).toBe(act1.mapPool.templateIds[act1.mapPool.templateIds.length - 1]);
+  });
+});
+
+// ── #364: validateQuestNodeReferences — structural checks ─────────────────────
+
+describe("validateQuestNodeReferences — valid quest node metadata passes (#364)", () => {
+  it("canonical act_1_map passes quest reference validation", () => {
+    expect(validateQuestNodeReferences(MAP_TEMPLATES.act_1_map, SIDE_QUEST_REGISTRY)).toEqual([]);
+  });
+
+  it("canonical act_2_map passes quest reference validation", () => {
+    expect(validateQuestNodeReferences(MAP_TEMPLATES.act_2_map, SIDE_QUEST_REGISTRY)).toEqual([]);
+  });
+
+  it("template with no quest nodes passes validation", () => {
+    expect(validateQuestNodeReferences(MAP_TEMPLATES.short, SIDE_QUEST_REGISTRY)).toEqual([]);
+  });
+});
+
+describe("validateQuestNodeReferences — invalid data fails (#364)", () => {
+  function baseTemplate(): MapTemplate {
+    return {
+      id: "test",
+      name: "Test",
+      startNodeId: "n.start",
+      bossNodeId: "n.boss",
+      nodes: [
+        { id: "n.start", type: "start", title: "S", description: "", layer: 0, nextNodeIds: ["n.boss"] },
+        { id: "n.boss", type: "boss", title: "B", description: "", layer: 1, nextNodeIds: [] },
+      ],
+    };
+  }
+
+  it("unknown questId fails validation", () => {
+    const t = baseTemplate();
+    t.nodes[0].questId = "sq.does_not_exist";
+    t.nodes[0].questNodeRole = "start";
+    const errs = validateQuestNodeReferences(t, SIDE_QUEST_REGISTRY);
+    expect(errs.some((e) => e.includes("unknown questId"))).toBe(true);
+  });
+
+  it("unknown questStageId fails validation", () => {
+    const t = baseTemplate();
+    t.nodes[0].questId = "sq.act1.goblin_relic";
+    t.nodes[0].questStageId = "sq.act1.goblin_relic.stage_99";
+    t.nodes[0].questNodeRole = "start";
+    const errs = validateQuestNodeReferences(t, SIDE_QUEST_REGISTRY);
+    expect(errs.some((e) => e.includes("unknown questStageId"))).toBe(true);
+  });
+
+  it("unknown questStepId fails validation", () => {
+    const t = baseTemplate();
+    t.nodes[0].questId = "sq.act1.goblin_relic";
+    t.nodes[0].questStageId = "sq.act1.goblin_relic.stage_1";
+    t.nodes[0].questStepId = "sq.act1.goblin_relic.stage_1.step_99";
+    t.nodes[0].questNodeRole = "advance";
+    const errs = validateQuestNodeReferences(t, SIDE_QUEST_REGISTRY);
+    expect(errs.some((e) => e.includes("unknown questStepId"))).toBe(true);
+  });
+
+  it("unknown questOutcomeHookId on a complete node fails validation", () => {
+    const t = baseTemplate();
+    t.nodes[0].questId = "sq.act1.goblin_relic";
+    t.nodes[0].questNodeRole = "complete";
+    t.nodes[0].questOutcomeHookId = "outcome.sq.act1.goblin_relic.bad_hook";
+    const errs = validateQuestNodeReferences(t, SIDE_QUEST_REGISTRY);
+    expect(errs.some((e) => e.includes("questOutcomeHookId"))).toBe(true);
+  });
+
+  it("valid questStageId and questStepId pass validation", () => {
+    const t = baseTemplate();
+    t.nodes[0].questId = "sq.act1.goblin_relic";
+    t.nodes[0].questStageId = "sq.act1.goblin_relic.stage_1";
+    t.nodes[0].questStepId = "sq.act1.goblin_relic.stage_1.step_1";
+    t.nodes[0].questNodeRole = "start";
+    expect(validateQuestNodeReferences(t, SIDE_QUEST_REGISTRY)).toEqual([]);
+  });
+});
+
+// ── #365: Early campaign side quest chains in Act 1 and Act 2 ─────────────────
+
+describe("act_1_map side quest chain — sq.act1.goblin_relic (#365)", () => {
+  const t = MAP_TEMPLATES.act_1_map;
+  const questNodes = t.nodes.filter((n) => n.questId === "sq.act1.goblin_relic");
+
+  it("has side route nodes wired to sq.act1.goblin_relic", () => {
+    expect(questNodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("has exactly one start node", () => {
+    expect(questNodes.filter((n) => n.questNodeRole === "start")).toHaveLength(1);
+  });
+
+  it("has at least one advance node", () => {
+    expect(questNodes.filter((n) => n.questNodeRole === "advance").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("has exactly one complete node with a valid outcome hook", () => {
+    const completeNodes = questNodes.filter((n) => n.questNodeRole === "complete");
+    expect(completeNodes).toHaveLength(1);
+    expect(completeNodes[0].questOutcomeHookId).toBe("outcome.sq.act1.goblin_relic.completed");
+  });
+
+  it("the complete node is a side_route_return that rejoins the main path", () => {
+    const returnNode = questNodes.find((n) => n.questNodeRole === "complete")!;
+    expect(returnNode.type).toBe("side_route_return");
+    expect(returnNode.returnNodeId).toBeDefined();
+    const nodeIds = new Set(t.nodes.map((n) => n.id));
+    expect(nodeIds.has(returnNode.returnNodeId!)).toBe(true);
+  });
+
+  it("skipping the side quest chain still reaches the boss", () => {
+    const startNode = questNodes.find((n) => n.questNodeRole === "start")!;
+    const nodeMap = new Map(t.nodes.map((n) => [n.id, n]));
+    const visited = new Set([t.startNodeId]);
+    const queue = [t.startNodeId];
+    let canReach = false;
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (cur === t.bossNodeId) { canReach = true; break; }
+      const node = nodeMap.get(cur);
+      if (!node) continue;
+      for (const next of node.nextNodeIds) {
+        if (next === startNode.id || visited.has(next)) continue;
+        visited.add(next);
+        queue.push(next);
+      }
+    }
+    expect(canReach).toBe(true);
+  });
+});
+
+describe("act_2_map side quest chain — sq.act2.deserter_cache (#365)", () => {
+  const t = MAP_TEMPLATES.act_2_map;
+  const questNodes = t.nodes.filter((n) => n.questId === "sq.act2.deserter_cache");
+
+  it("has side route nodes wired to sq.act2.deserter_cache", () => {
+    expect(questNodes.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("has exactly one start node", () => {
+    expect(questNodes.filter((n) => n.questNodeRole === "start")).toHaveLength(1);
+  });
+
+  it("has at least one advance node", () => {
+    expect(questNodes.filter((n) => n.questNodeRole === "advance").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("has exactly one complete node with a valid outcome hook", () => {
+    const completeNodes = questNodes.filter((n) => n.questNodeRole === "complete");
+    expect(completeNodes).toHaveLength(1);
+    expect(completeNodes[0].questOutcomeHookId).toBe("outcome.sq.act2.deserter_cache.cache_secured");
+  });
+
+  it("the complete node is a side_route_return that rejoins the main path", () => {
+    const returnNode = questNodes.find((n) => n.questNodeRole === "complete")!;
+    expect(returnNode.type).toBe("side_route_return");
+    expect(returnNode.returnNodeId).toBeDefined();
+    const nodeIds = new Set(t.nodes.map((n) => n.id));
+    expect(nodeIds.has(returnNode.returnNodeId!)).toBe(true);
+  });
+
+  it("skipping the side quest chain still reaches the boss", () => {
+    const startNode = questNodes.find((n) => n.questNodeRole === "start")!;
+    const nodeMap = new Map(t.nodes.map((n) => [n.id, n]));
+    const visited = new Set([t.startNodeId]);
+    const queue = [t.startNodeId];
+    let canReach = false;
+    while (queue.length > 0) {
+      const cur = queue.shift()!;
+      if (cur === t.bossNodeId) { canReach = true; break; }
+      const node = nodeMap.get(cur);
+      if (!node) continue;
+      for (const next of node.nextNodeIds) {
+        if (next === startNode.id || visited.has(next)) continue;
+        visited.add(next);
+        queue.push(next);
+      }
+    }
+    expect(canReach).toBe(true);
   });
 });

@@ -1,5 +1,6 @@
 import { NODE_REGISTRY } from "../data/nodes.ts";
 import type { MapTemplate, NodeDef, NodeType } from "../data/nodes.ts";
+import type { SideQuestDefinition } from "../data/sideQuests.ts";
 
 export interface MapState {
   currentNodeId: string;
@@ -161,6 +162,58 @@ export function validateMapTemplate(template: MapTemplate): string[] {
     }
     if (!hasReturn) {
       errors.push(`side_route_start "${node.id}" has no reachable side_route_return`);
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Validates that quest node metadata in the template references known quest/stage/step IDs
+ * and valid outcome hooks. Returns an array of error strings; empty means valid.
+ *
+ * Called separately from validateMapTemplate so callers can opt in to quest-registry checks
+ * without making the core structural validator depend on the side quest registry.
+ */
+export function validateQuestNodeReferences(
+  template: MapTemplate,
+  questRegistry: Record<string, SideQuestDefinition>,
+): string[] {
+  const errors: string[] = [];
+
+  for (const node of template.nodes) {
+    if (!node.questId) continue;
+
+    const quest = questRegistry[node.questId];
+    if (!quest) {
+      errors.push(`Node "${node.id}" references unknown questId "${node.questId}"`);
+      continue;
+    }
+
+    if (node.questStageId) {
+      const stage = quest.stages.find((s) => s.id === node.questStageId);
+      if (!stage) {
+        errors.push(
+          `Node "${node.id}" references unknown questStageId "${node.questStageId}" in quest "${node.questId}"`,
+        );
+      } else if (node.questStepId) {
+        const step = stage.steps.find((st) => st.id === node.questStepId);
+        if (!step) {
+          errors.push(
+            `Node "${node.id}" references unknown questStepId "${node.questStepId}" in stage "${node.questStageId}"`,
+          );
+        }
+      }
+    }
+
+    if (
+      (node.questNodeRole === "complete" || node.questNodeRole === "fail") &&
+      node.questOutcomeHookId !== undefined &&
+      !quest.outcomeHookIds.includes(node.questOutcomeHookId)
+    ) {
+      errors.push(
+        `Node "${node.id}" questOutcomeHookId "${node.questOutcomeHookId}" is not in quest "${node.questId}" outcomeHookIds`,
+      );
     }
   }
 
