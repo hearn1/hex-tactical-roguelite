@@ -16,7 +16,9 @@ export type ScreenId =
   | "recruit"
   | "pet"
   | "levelup"
-  | "run_summary";
+  | "run_summary"
+  | "act_transition"
+  | "campaign_victory";
 
 export type Team = "hero" | "enemy";
 

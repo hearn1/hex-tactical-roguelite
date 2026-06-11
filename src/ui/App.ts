@@ -14,6 +14,8 @@ import { PetScreen } from "./screens/PetScreen.ts";
 import { MetaUpgrades } from "./screens/MetaUpgrades.ts";
 import { SetupScreen } from "./screens/SetupScreen.ts";
 import { LevelUpScreen } from "./screens/LevelUpScreen.ts";
+import { ActTransitionScreen } from "./screens/ActTransitionScreen.ts";
+import { CampaignVictoryScreen } from "./screens/CampaignVictoryScreen.ts";
 
 export class App {
   private root: HTMLElement;
@@ -59,6 +61,10 @@ export class App {
         return new LevelUpScreen(this).render();
       case "run_summary":
         return new RunSummary(this).render();
+      case "act_transition":
+        return new ActTransitionScreen(this).render();
+      case "campaign_victory":
+        return new CampaignVictoryScreen(this).render();
       default:
         return new MainMenu(this).render();
     }

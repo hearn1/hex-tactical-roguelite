@@ -12,6 +12,8 @@ import type { UnitInstance } from "../../state/types.ts";
 import { visitNode } from "../../run/MapGraph.ts";
 import { NODE_REGISTRY } from "../../data/nodes.ts";
 import { ensureRunRestState } from "../../run/Rest.ts";
+import { isActComplete, isFinalAct } from "../../run/ActTransition.ts";
+import type { ScreenId } from "../../state/types.ts";
 import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 
 let rewardCache: CombatReward | null = null;
@@ -371,8 +373,14 @@ export class RewardScreen {
 
   gameState.combat = null;
   if (run) {
+    let intendedScreen: ScreenId = run.runStatus === "won" ? "run_summary" : "map";
+    if (run.runStatus === "won" && isActComplete(run) && gameState.campaign) {
+      intendedScreen = isFinalAct(gameState.campaign.currentActNumber)
+        ? "campaign_victory"
+        : "act_transition";
+    }
     // Divert through the level-up choice screen first if any are queued (F29).
-    routeAfterXp(run.runStatus === "won" ? "run_summary" : "map");
+    routeAfterXp(intendedScreen);
   } else {
     gameState.screen = "main_menu";
   }
