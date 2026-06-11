@@ -3,6 +3,8 @@ import type { PartyMember } from "./RunState.ts";
 import type { InventoryState } from "../run/Inventory.ts";
 import type { RunModifier } from "./types.ts";
 import type { AdventureLogEntry } from "../run/AdventureLog.ts";
+import { initQuestProgress } from "../run/QuestState.ts";
+import type { QuestProgressMap, QuestOutcomeRecord } from "../run/QuestState.ts";
 
 /**
  * In-flight metrics for the current act. Accumulated as the run progresses and
@@ -33,6 +35,8 @@ export interface CompletedActSummary extends ActProgress {
   runStatus: "won" | "lost";
   /** Snapshot of the map state at the moment the act ended. */
   mapSnapshot: MapState;
+  /** Quest outcomes resolved during this act. Empty when no quests were resolved. */
+  questOutcomes: QuestOutcomeRecord[];
 }
 
 /**
@@ -66,6 +70,8 @@ export interface CampaignState {
   lossActNumber?: number;
   /** Node id where the campaign was lost (set by recordCampaignLoss). */
   lossNodeId?: string;
+  /** Side quest runtime state; accumulates across acts. */
+  questProgress: QuestProgressMap;
 }
 
 /** Factory: builds a fresh campaign state for a new run attempt. */
@@ -88,5 +94,6 @@ export function createCampaignState(
     eventSelections: {},
     adventureLog: [],
     completedActs: [],
+    questProgress: initQuestProgress(),
   };
 }

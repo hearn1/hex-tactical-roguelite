@@ -4,6 +4,7 @@ import { createRunState } from "./PartySetup.ts";
 import { syncHitDiceForPartyMember, syncSpellSlotsForPartyMember } from "./Rest.ts";
 import { DEFAULT_MAP_TEMPLATE_ID } from "../data/nodes.ts";
 import { DEFAULT_CAMPAIGN, getActDefinition, selectActMapTemplate } from "../data/campaigns.ts";
+import { snapshotQuestOutcomesForAct } from "./QuestState.ts";
 
 export const CAMPAIGN_TOTAL_ACTS = 4;
 
@@ -47,6 +48,10 @@ function buildActSummary(campaign: CampaignState, run: RunState): CompletedActSu
     itemsGained: log.filter((e) => e.kind === "loot_gained").length,
     runStatus: "won",
     mapSnapshot: { ...run.mapState },
+    questOutcomes: snapshotQuestOutcomesForAct(
+      campaign.questProgress,
+      campaign.currentActNumber,
+    ),
   };
 }
 
