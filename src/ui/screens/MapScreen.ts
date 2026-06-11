@@ -12,6 +12,10 @@ import {
   shortRestsRemaining,
 } from "../../run/Rest.ts";
 import { appendAdventureLogOnce, ensureAdventureLog } from "../../run/AdventureLog.ts";
+import {
+  lookupStoryText,
+  getCampaignStartHookId,
+} from "../../data/storyText.ts";
 
 const LAYER_COLORS: Record<string, string> = {
   start: "#4a8",
@@ -79,6 +83,23 @@ export class MapScreen {
     const title = document.createElement("h2");
     title.textContent = template.name;
     container.appendChild(title);
+
+    const campaign = gameState.campaign;
+    const currentRun = gameState.run;
+    const isCampaignStart =
+      campaign != null &&
+      currentRun != null &&
+      campaign.currentActNumber === 1 &&
+      currentRun.mapState.nodesCleared === 0 &&
+      campaign.completedActs.length === 0;
+
+    if (isCampaignStart) {
+      const storyBanner = document.createElement("div");
+      storyBanner.style.cssText =
+        "font-size:14px;color:#ca8;max-width:600px;text-align:center;font-style:italic;line-height:1.6;margin-bottom:8px;padding:8px 12px;border:1px solid #443;border-radius:4px;";
+      storyBanner.textContent = lookupStoryText(getCampaignStartHookId(campaign.campaignId));
+      container.appendChild(storyBanner);
+    }
 
     container.appendChild(this.buildLegend());
 

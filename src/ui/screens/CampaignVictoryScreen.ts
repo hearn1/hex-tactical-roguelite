@@ -2,6 +2,7 @@ import type { App } from "../App.ts";
 import { gameState, resetGameState } from "../../state/GameState.ts";
 import { completeCampaign } from "../../run/ActTransition.ts";
 import { generateCampaignSummary } from "../../run/CampaignSummary.ts";
+import { lookupStoryText, getCampaignEndHookId } from "../../data/storyText.ts";
 
 export class CampaignVictoryScreen {
   private app: App;
@@ -27,9 +28,12 @@ export class CampaignVictoryScreen {
     banner.textContent = "Campaign Complete!";
     container.appendChild(banner);
 
+    const campaignId = campaign?.campaignId ?? "campaign.verdant_dark";
+    const endText = lookupStoryText(getCampaignEndHookId(campaignId));
     const sub = document.createElement("div");
-    sub.style.cssText = "font-size:16px;color:#ccc;";
-    sub.textContent = "The Ascending Dark has fallen. The realm is saved.";
+    sub.style.cssText =
+      "font-size:15px;color:#ccc;max-width:500px;text-align:center;font-style:italic;line-height:1.6;";
+    sub.textContent = endText;
     container.appendChild(sub);
 
     if (campaign) {

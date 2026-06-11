@@ -2,6 +2,12 @@ import type { App } from "../App.ts";
 import { gameState } from "../../state/GameState.ts";
 import { advanceToNextAct } from "../../run/ActTransition.ts";
 import { reseedRngFromRun } from "../../state/GameState.ts";
+import {
+  lookupStoryText,
+  getActOutroHookId,
+  getBossOutroHookId,
+  getActIntroHookId,
+} from "../../data/storyText.ts";
 
 export class ActTransitionScreen {
   private app: App;
@@ -37,6 +43,24 @@ export class ActTransitionScreen {
       statsEl.textContent = `Nodes cleared: ${run.mapState.nodesCleared} | Elites: ${run.mapState.elitesDefeated} | Gold: ${run.gold}`;
       container.appendChild(statsEl);
     }
+
+    const bossOutroEl = document.createElement("div");
+    bossOutroEl.style.cssText =
+      "font-size:14px;color:#ca8;margin-top:12px;max-width:520px;text-align:center;font-style:italic;line-height:1.5;";
+    bossOutroEl.textContent = lookupStoryText(getBossOutroHookId(completedActNum));
+    container.appendChild(bossOutroEl);
+
+    const actOutroEl = document.createElement("div");
+    actOutroEl.style.cssText =
+      "font-size:13px;color:#aaa;margin-top:8px;max-width:520px;text-align:center;line-height:1.5;";
+    actOutroEl.textContent = lookupStoryText(getActOutroHookId(completedActNum));
+    container.appendChild(actOutroEl);
+
+    const actIntroEl = document.createElement("div");
+    actIntroEl.style.cssText =
+      "font-size:14px;color:#8cf;margin-top:16px;max-width:520px;text-align:center;font-style:italic;line-height:1.5;";
+    actIntroEl.textContent = lookupStoryText(getActIntroHookId(nextActNum));
+    container.appendChild(actIntroEl);
 
     const restNotice = document.createElement("div");
     restNotice.style.cssText = "font-size:14px;color:#7bf;margin-top:8px;";
