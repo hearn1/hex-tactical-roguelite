@@ -9,9 +9,11 @@ Use one act for the prototype.
 Recommended structure:
 
 - Start node.
-- 3 to 4 layers of branching nodes.
-- Pre-boss rest/shop layer.
+- 3 to 4 layers of branching nodes (mix of combat, shop, camp, event — see `ACT_NODE_RULES.md`).
 - Boss node.
+
+Shop and camp/rest nodes are **optional route choices**, not mandatory pre-boss gates.
+A valid path from start to boss must always exist that bypasses recovery nodes.
 
 Example:
 
@@ -19,10 +21,13 @@ Example:
 Start
   -> Combat A / Combat B
       -> Shop / Event / Combat
-          -> Elite / Recruit / Camp
-              -> Combat / Shop
+          -> Elite / Camp (opt) / Combat
+              -> Combat / Shop (opt)
                   -> Boss
 ```
+
+For full act target sizes (node counts per act, duration targets) see `CAMPAIGN_TARGETS.md`.
+For required/optional node type mix and side-route rules see `ACT_NODE_RULES.md`.
 
 ## Node Data
 Each node should have:

@@ -136,16 +136,20 @@ DnRogueLite's first campaign is a **4-act ordered campaign** with placeholder co
 
 **Campaign completion** is defined as resolving the final boss encounter of the final configured act (Act 4). Target party level at campaign end is roughly level 11–13, with XP scaling subject to change as run content evolves.
 
+**Target run duration:** roughly 2–3 hours for a full campaign at mature pacing. Act 1 is the shortest act (15–25 min); later acts target 30–60 min each. See `CAMPAIGN_TARGETS.md` for node count targets and placeholder status.
+
 ### First Campaign: 4 Acts
 
-| Act | Theme | Mechanical Focus |
-|-----|-------|-----------------|
-| Act 1 | Nature / Goblins | Introduces all baseline mechanics; migrated from current run flow |
-| Act 2 | Goblins / Ogres / Skeletons | Single strong boss encounter |
-| Act 3 | Skeletons / Cultists | Multiple priority targets |
-| Act 4 | Cultists / Arcane / Draconid | Single boss with priority supports; final completion gate |
+| Act | Theme | Mechanical Focus | Duration Target |
+|-----|-------|-----------------|----------------|
+| Act 1 | Nature / Goblins | Introduces all baseline mechanics; migrated from current run flow | 15–25 min |
+| Act 2 | Goblins / Ogres / Skeletons | Single strong boss encounter | 30–45 min |
+| Act 3 | Skeletons / Cultists | Multiple priority targets | 40–60 min |
+| Act 4 | Cultists / Arcane / Draconid | Single boss with priority supports; final completion gate | 35–50 min |
 
 Each act ends with a boss or boss-like gate encounter before Act 4's final encounter.
+
+Act 1 is explicitly larger than the current single-run prototype (which has ~5 nodes), but remains shorter than later acts. See `CAMPAIGN_TARGETS.md` for node count guidance.
 
 ### Flexibility Constraints
 
