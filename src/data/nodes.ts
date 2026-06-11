@@ -356,7 +356,7 @@ const ACT_1_NODES: NodeDef[] = [
     description: "Raiders surge from the treeline along the old road.",
     layer: 1,
     encounterId: "encounter.road_ambush",
-    encounterPoolId: "pool.long_combat",
+    encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_event_a", "node.a1_combat_c"],
   },
   {
@@ -366,7 +366,7 @@ const ACT_1_NODES: NodeDef[] = [
     description: "Wolves harry the boggy shortcut through the fens.",
     layer: 1,
     encounterId: "encounter.long_mire_crossing",
-    encounterPoolId: "pool.long_combat",
+    encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_event_a", "node.a1_combat_c"],
   },
   {
@@ -384,7 +384,7 @@ const ACT_1_NODES: NodeDef[] = [
     description: "Bandits demand blood payment at the narrow crossing.",
     layer: 2,
     encounterId: "encounter.bandit_toll",
-    encounterPoolId: "pool.long_combat",
+    encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_shop_a", "node.a1_shrine_a", "node.a1_combat_d"],
   },
   {
@@ -413,7 +413,7 @@ const ACT_1_NODES: NodeDef[] = [
     description: "Robed soldiers guard the road into the deeper wilds.",
     layer: 3,
     encounterId: "encounter.cult_ritual",
-    encounterPoolId: "pool.long_combat",
+    encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_camp_a"],
   },
   // Side route: Captured Merchant Trail (branches from shrine, returns to camp)
@@ -433,7 +433,7 @@ const ACT_1_NODES: NodeDef[] = [
     description: "A hidden camp holds captives under armed guard.",
     layer: 5,
     encounterId: "encounter.bandit_toll",
-    encounterPoolId: "pool.long_combat",
+    encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_side1_return"],
   },
   {
@@ -470,7 +470,7 @@ const ACT_1_NODES: NodeDef[] = [
     description: "The primal source's guardian force holds the threshold.",
     layer: 9,
     encounterId: "encounter.long_hexscar_patrol",
-    encounterPoolId: "pool.long_combat",
+    encounterPoolId: "pool.act_1_combat",
     nextNodeIds: ["node.a1_boss"],
   },
   {
@@ -479,7 +479,7 @@ const ACT_1_NODES: NodeDef[] = [
     title: "The Verdant Heart",
     description: "The primal force driving the goblin surge pulses at the center of the wilds.",
     layer: 10,
-    encounterId: "encounter.boss_ogre_hexbreaker",
+    encounterId: "encounter.boss_goblin_warchief",
     nextNodeIds: [],
   },
 ];
@@ -643,7 +643,7 @@ const ACT_2_NODES: NodeDef[] = [
     title: "The Warlord's Keep",
     description: "The ogre warlord and necromancer lieutenant take the field.",
     layer: 10,
-    encounterId: "encounter.boss_ogre_hexbreaker",
+    encounterId: "encounter.boss_ogre_warlord",
     nextNodeIds: [],
   },
 ];
@@ -663,7 +663,7 @@ const ACT_2_ALT_NODES: NodeDef[] = [
     title: "The Warlord's Keep (Alternate Route)",
     description: "The deserter's path reaches the same final confrontation.",
     layer: 1,
-    encounterId: "encounter.boss_ogre_hexbreaker",
+    encounterId: "encounter.boss_ogre_warlord",
     nextNodeIds: [],
   },
 ];
@@ -868,7 +868,7 @@ const ACT_3_NODES: NodeDef[] = [
     title: "The Ashen Sanctum",
     description: "The high priest of the Ashen Choir activates as the sanctum is breached.",
     layer: 13,
-    encounterId: "encounter.boss_ogre_hexbreaker",
+    encounterId: "encounter.boss_high_priest",
     nextNodeIds: [],
   },
 ];
@@ -888,7 +888,7 @@ const ACT_3_ALT_NODES: NodeDef[] = [
     title: "The Ashen Sanctum (Rescue Route)",
     description: "The prisoner route converges on the same sanctum.",
     layer: 1,
-    encounterId: "encounter.boss_ogre_hexbreaker",
+    encounterId: "encounter.boss_high_priest",
     nextNodeIds: [],
   },
 ];
@@ -1084,7 +1084,7 @@ const ACT_4_NODES: NodeDef[] = [
     title: "The Arcane Lord's Chamber",
     description: "The draconid arcane lord and his elite bodyguard await. This is the campaign's final gate.",
     layer: 12,
-    encounterId: "encounter.boss_ogre_hexbreaker",
+    encounterId: "encounter.boss_arcane_lord",
     nextNodeIds: [],
   },
 ];
@@ -1104,7 +1104,7 @@ const ACT_4_ALT_NODES: NodeDef[] = [
     title: "The Arcane Lord's Chamber (Anchor Route)",
     description: "The planar anchor path emerges at the same final chamber.",
     layer: 1,
-    encounterId: "encounter.boss_ogre_hexbreaker",
+    encounterId: "encounter.boss_arcane_lord",
     nextNodeIds: [],
   },
 ];
