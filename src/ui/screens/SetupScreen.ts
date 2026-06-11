@@ -32,6 +32,7 @@ import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgr
 import { generateModifierOffers, applyAdventureModifier, ADVENTURE_MODIFIER_REGISTRY } from "../../data/adventureModifiers.ts";
 import { appendAdventureLogOnce } from "../../run/AdventureLog.ts";
 import { createCampaignState } from "../../state/CampaignState.ts";
+import { createInventory } from "../../run/Inventory.ts";
 import { DEFAULT_CAMPAIGN } from "../../data/campaigns.ts";
 
 // Module-level state persists across SetupScreen instances created by App.render().
