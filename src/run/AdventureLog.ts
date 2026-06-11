@@ -12,6 +12,7 @@ export type AdventureLogKind =
   | "event_choice"
   | "recruit_joined"
   | "pet_joined"
+  | "quest_outcome"
   | "run_end";
 
 export interface AdventureLogEntry {

@@ -178,6 +178,7 @@ export function failQuest(
   progress: QuestProgressMap,
   questId: string,
   actNumber: number,
+  outcomeHookId?: string,
 ): { ok: boolean; error?: string } {
   const state = progress[questId];
   if (!state) {
@@ -192,6 +193,7 @@ export function failQuest(
   }
   state.status = "failed";
   state.resolvedAtActNumber = actNumber;
+  if (outcomeHookId) state.resolvedOutcomeHookId = outcomeHookId;
   return { ok: true };
 }
 
@@ -203,6 +205,7 @@ export function skipQuest(
   progress: QuestProgressMap,
   questId: string,
   actNumber: number,
+  outcomeHookId?: string,
 ): { ok: boolean; error?: string } {
   const state = progress[questId];
   if (!state) {
@@ -217,6 +220,7 @@ export function skipQuest(
   }
   state.status = "skipped";
   state.resolvedAtActNumber = actNumber;
+  if (outcomeHookId) state.resolvedOutcomeHookId = outcomeHookId;
   return { ok: true };
 }
 
