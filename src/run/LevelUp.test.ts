@@ -58,12 +58,19 @@ describe("isChoiceLevel / getLevelUpOptions", () => {
     expect(isChoiceLevel(6)).toBe(false);
   });
 
-  it("each class offers 2 options at levels 2 and 3, 3 at 4, 2 at 5", () => {
+  it("each class offers 2 options at levels 2 and 3, 2 at 5", () => {
     for (const classId of ["class.guardian", "class.acolyte", "class.arcanist"]) {
       expect(getLevelUpOptions(classId, 2)).toHaveLength(2);
       expect(getLevelUpOptions(classId, 3)).toHaveLength(2);
-      expect(getLevelUpOptions(classId, 4)).toHaveLength(3);
       expect(getLevelUpOptions(classId, 5)).toHaveLength(2);
+    }
+  });
+
+  it("guardian offers 4 options at level 4 including an ASI, others offer 3", () => {
+    expect(getLevelUpOptions("class.guardian", 4)).toHaveLength(4);
+    expect(getLevelUpOptions("class.guardian", 4).some((o) => o.upgrade.kind === "abilityScoreImprovement")).toBe(true);
+    for (const classId of ["class.acolyte", "class.arcanist"]) {
+      expect(getLevelUpOptions(classId, 4)).toHaveLength(3);
     }
   });
 

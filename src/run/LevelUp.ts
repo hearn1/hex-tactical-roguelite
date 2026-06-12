@@ -59,8 +59,10 @@ export function enqueuePendingLevelUps(
  * Apply a chosen level-up upgrade to a party member, persisting it for the run, and return a
  * human-readable log line. `stat` upgrades fold into `bonusStats` (and bump max/current HP for
  * `maxHp`); `action` upgrades accumulate per-action bonuses; `passive` upgrades record a flag.
+ * For `abilityScoreImprovement` upgrades, pass `asiStats` with the player's chosen distribution;
+ * if omitted (e.g. default auto-apply paths), the ASI is recorded but no stats are changed.
  */
-export function applyLevelUpChoice(pm: PartyMember, option: LevelUpOption): string {
+export function applyLevelUpChoice(pm: PartyMember, option: LevelUpOption, asiStats?: Partial<UnitStats>): string {
   const upgrade = option.upgrade;
 
   switch (upgrade.kind) {
@@ -113,6 +115,16 @@ export function applyLevelUpChoice(pm: PartyMember, option: LevelUpOption): stri
       pm.spellsKnown = pm.spellsKnown ?? [];
       if (!pm.spellsKnown.includes(upgrade.actionId)) {
         pm.spellsKnown.push(upgrade.actionId);
+      }
+      break;
+    }
+    case "abilityScoreImprovement": {
+      if (asiStats) {
+        for (const key of STAT_KEYS) {
+          const val = asiStats[key];
+          if (val === undefined || val === 0) continue;
+          pm.bonusStats[key] = (pm.bonusStats[key] ?? 0) + val;
+        }
       }
       break;
     }
