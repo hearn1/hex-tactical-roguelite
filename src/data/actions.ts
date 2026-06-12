@@ -651,6 +651,15 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     spellLevel: 1,
     effect: { type: "applyCondition", conditionId: "mage_armored", duration: 999 },
   },
+  "action.wizard.arcane_ward": {
+    id: "action.wizard.arcane_ward",
+    displayName: "Arcane Ward",
+    description: "Weave a 10-HP magical shield around yourself that absorbs damage until combat ends.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    effect: { type: "applyCondition", conditionId: "arcane_ward", duration: 999 },
+  },
   "action.wizard.arcane_recovery": {
     id: "action.wizard.arcane_recovery",
     displayName: "Arcane Recovery",
