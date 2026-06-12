@@ -15,7 +15,9 @@ export type PassiveEffect =
   | { type: "resistance"; damageTypes: string[] }
   | { type: "healBonus"; amount: number; condition: "always" }
   | { type: "saveAura"; bonus: number; radius: number; condition: "adjacentAlly" }
-  | { type: "attackPenaltyAura"; penalty: number; appliesTo: "enemies" };
+  | { type: "attackPenaltyAura"; penalty: number; appliesTo: "enemies" }
+  | { type: "statCheckBonus"; bonus: number }
+  | { type: "superiorityDice"; dieSize: number; count: number };
 
 export interface PassiveDef {
   id: string;
@@ -72,5 +74,23 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Extra Attack",
     description: "You can attack twice whenever you take the Attack action on your turn.",
     effect: { type: "extraAttack" },
+  },
+  "passive.fighter.improved_critical": {
+    id: "passive.fighter.improved_critical",
+    displayName: "Improved Critical",
+    description: "Your weapon attacks score a critical hit on a roll of 19 or 20.",
+    effect: { type: "critRangeExpansion", expandBy: 1 },
+  },
+  "passive.fighter.remarkable_athlete": {
+    id: "passive.fighter.remarkable_athlete",
+    displayName: "Remarkable Athlete",
+    description: "+1 bonus to all Strength, Dexterity, and Constitution checks.",
+    effect: { type: "statCheckBonus", bonus: 1 },
+  },
+  "passive.fighter.combat_superiority": {
+    id: "passive.fighter.combat_superiority",
+    displayName: "Combat Superiority",
+    description: "You have a pool of 3 superiority dice (d8). Spend one die to fuel combat maneuvers.",
+    effect: { type: "superiorityDice", dieSize: 8, count: 3 },
   },
 };

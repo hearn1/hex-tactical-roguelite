@@ -81,6 +81,26 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     grantedActionId: "action.archetype_mesmerize",
     passiveId: ARCHETYPE_PASSIVE_ENCHANTER_ATTACK_DEBUFF_AURA,
   },
+  "archetype.fighter.champion": {
+    id: "archetype.fighter.champion",
+    displayName: "Champion",
+    classId: "class.fighter",
+    chosenAtLevel: 3,
+    description: "Hones physical prowess to perfection; crits on 19-20.",
+    passiveId: "passive.fighter.improved_critical",
+    featuresByHeroLevel: {
+      5: { featuresGranted: ["passive.fighter.remarkable_athlete"] },
+    },
+  },
+  "archetype.fighter.battle_master": {
+    id: "archetype.fighter.battle_master",
+    displayName: "Battle Master",
+    classId: "class.fighter",
+    chosenAtLevel: 3,
+    description: "Learns combat maneuvers powered by superiority dice.",
+    grantedActionId: "action.fighter.menacing_attack",
+    passiveId: "passive.fighter.combat_superiority",
+  },
 };
 
 /** Archetypes available for a given class. */

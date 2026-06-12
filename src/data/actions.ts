@@ -536,4 +536,15 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     isCantrip: true,
     effect: { type: "applyCondition", conditionId: "braced", duration: 1 },
   },
+  "action.fighter.menacing_attack": {
+    id: "action.fighter.menacing_attack",
+    displayName: "Menacing Attack",
+    description: "Strike a foe and spend a superiority die to impose the Frightened condition.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "str",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d8 + str", applyCondition: { id: "frightened", duration: 1 } },
+  },
 };
