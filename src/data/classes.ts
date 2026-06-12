@@ -1,4 +1,11 @@
 import type { UnitStats } from "../state/types.ts";
+import type { ClassProgressionTable } from "./progressionTables.ts";
+import {
+  GUARDIAN_PROGRESSION,
+  ACOLYTE_PROGRESSION,
+  ARCANIST_PROGRESSION,
+  SCOUT_PROGRESSION,
+} from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
 export type WeaponProficiency = "simple" | "martial" | "finesse" | "ranged";
@@ -33,6 +40,8 @@ export interface ClassDef {
   spellcastingAbility?: keyof UnitStats;
   /** True for classes that recover spell slots on a Short Rest (Warlock-style). */
   pactMagic?: boolean;
+  /** Per-level progression data: stat gains, features granted, spell slots. */
+  progressionTable: ClassProgressionTable;
 }
 
 export const CLASS_REGISTRY: Record<string, ClassDef> = {
@@ -48,6 +57,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     savingThrowProficiencies: ["str", "con"],
     armorProficiencies: ["light", "medium", "heavy", "shield"],
     weaponProficiencies: ["simple", "martial"],
+    progressionTable: GUARDIAN_PROGRESSION,
   },
   "class.acolyte": {
     id: "class.acolyte",
@@ -63,6 +73,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     armorProficiencies: ["light", "medium", "shield"],
     weaponProficiencies: ["simple"],
     spellcastingAbility: "wis",
+    progressionTable: ACOLYTE_PROGRESSION,
   },
   "class.arcanist": {
     id: "class.arcanist",
@@ -78,6 +89,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     armorProficiencies: ["none"],
     weaponProficiencies: ["simple"],
     spellcastingAbility: "int",
+    progressionTable: ARCANIST_PROGRESSION,
   },
   "class.scout": {
     id: "class.scout",
@@ -91,6 +103,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     savingThrowProficiencies: ["dex", "int"],
     armorProficiencies: ["light"],
     weaponProficiencies: ["simple", "martial", "finesse", "ranged"],
+    progressionTable: SCOUT_PROGRESSION,
   },
 };
 
