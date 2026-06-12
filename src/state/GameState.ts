@@ -283,6 +283,21 @@ export function createCombatFromRun(
       const modEffect = applyModifierCombatEffects(run.runModifiers, inst.stats.maxHp, isEliteEncounter);
       inst.stats.maxHp = scaleStat(modEffect.maxHp, diffConfig.enemyHpMultiplier);
       inst.hp = inst.stats.maxHp;
+      if (enemyDef.aiTag === "boss") {
+        const bossMod = run.runModifiers.find(
+          (m): m is Extract<RunModifier, { kind: "boss_encounter_modifier" }> =>
+            m.kind === "boss_encounter_modifier" && m.encounterId === encounterId,
+        );
+        if (bossMod) {
+          if (bossMod.hpMultiplier !== undefined) {
+            inst.stats.maxHp = Math.round(inst.stats.maxHp * bossMod.hpMultiplier);
+            inst.hp = inst.stats.maxHp;
+          }
+          if (bossMod.damageBonus !== undefined) {
+            inst.bonusDamage = bossMod.damageBonus;
+          }
+        }
+      }
       units.push(inst);
     }
   }

@@ -136,6 +136,8 @@ export interface UnitInstance {
   firstHealDone?: boolean;
   /** Item hook IDs that have already triggered this combat, e.g. "item.runemark_blade". */
   usedItemHooks?: string[];
+  /** Per-unit damage bonus applied by boss_encounter_modifier. Enemy boss units only. */
+  bonusDamage?: number;
   /** Action ids the hero has learned (from level-up learnAction choices). Copied from party member. */
   spellsKnown?: string[];
   /** Action ids the hero has prepared for this day. Copied from party member. */
@@ -176,7 +178,14 @@ export type RunModifier =
   | { kind: "enemy_damage_bonus"; value: number }
   | { kind: "event_dc_bonus"; value: number }
   | { kind: "event_reward_multiplier"; value: number }
-  | { kind: "elite_reward_multiplier"; value: number };
+  | { kind: "elite_reward_multiplier"; value: number }
+  | {
+      kind: "boss_encounter_modifier";
+      encounterId: string;
+      hpMultiplier?: number;
+      damageBonus?: number;
+      extraTraitId?: string;
+    };
 
 /**
  * A telegraphed boss heavy attack that was "wound up" on a previous boss turn and resolves

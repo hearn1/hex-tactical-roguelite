@@ -93,6 +93,10 @@ const HOOK_REGISTRY: Record<string, QuestOutcomeHookDef> = {
     consequences: [
       { kind: "campaign_flag", flagId: "flag.sq.act1.goblin_relic.completed" },
       {
+        kind: "run_modifier",
+        modifier: { kind: "boss_encounter_modifier", encounterId: "encounter.boss_ogre_hexbreaker", hpMultiplier: 0.80 },
+      },
+      {
         kind: "log_entry",
         message:
           "The Shattered Relic was recovered. The primal fragment radiates with newfound purpose.",
@@ -120,6 +124,10 @@ const HOOK_REGISTRY: Record<string, QuestOutcomeHookDef> = {
     ],
     consequences: [
       { kind: "campaign_flag", flagId: "flag.sq.act2.deserter_cache.secured" },
+      {
+        kind: "run_modifier",
+        modifier: { kind: "boss_encounter_modifier", encounterId: "encounter.boss_ogre_warlord", damageBonus: -2 },
+      },
       {
         kind: "log_entry",
         message: "The deserter's cache was secured. Warlord supply lines are disrupted.",
@@ -167,6 +175,10 @@ const HOOK_REGISTRY: Record<string, QuestOutcomeHookDef> = {
     consequences: [
       { kind: "campaign_flag", flagId: "flag.sq.act3.prisoner_rescue.rescued" },
       {
+        kind: "run_modifier",
+        modifier: { kind: "boss_encounter_modifier", encounterId: "encounter.boss_high_priest", hpMultiplier: 0.85 },
+      },
+      {
         kind: "log_entry",
         message: "The captive was freed. Their knowledge may aid the final confrontation.",
       },
@@ -194,6 +206,10 @@ const HOOK_REGISTRY: Record<string, QuestOutcomeHookDef> = {
     consequences: [
       { kind: "campaign_flag", flagId: "flag.sq.act4.planar_echo.ward_broken" },
       { kind: "run_modifier", modifier: { kind: "enemy_hp_multiplier", value: 0.85 } },
+      {
+        kind: "run_modifier",
+        modifier: { kind: "boss_encounter_modifier", encounterId: "encounter.boss_arcane_lord", hpMultiplier: 0.85, damageBonus: -1 },
+      },
       {
         kind: "log_entry",
         message:
