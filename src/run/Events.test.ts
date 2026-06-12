@@ -17,11 +17,13 @@ import {
   CAMP_BREW_POTION_ID,
 } from "./Events.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
+import type { CampaignState } from "../state/CampaignState.ts";
 import type { EventChoice, CheckEffect } from "../data/events.ts";
 import { EVENT_REGISTRY, EVENT_POOLS, DEFAULT_EVENT_POOL_ID } from "../data/events.ts";
 import { NODE_REGISTRY } from "../data/nodes.ts";
 import { createRng } from "../core/rng.ts";
 import { createInventory } from "./Inventory.ts";
+import { startQuest } from "./QuestState.ts";
 
 const makeParty = (): PartyMember[] => [
   {
@@ -610,5 +612,127 @@ describe("event content pack — check branches reward the attempting hero", () 
     resolveEventChoiceWithHero(choice, party[1], run, faceRng(20));
     expect(party[1].xp).toBe(15);
     expect(party[0].xp).toBe(0);
+  });
+});
+
+// ── #393: quest_resolve event effect ──────────────────────────────────────────
+
+const makeCampaign = (): CampaignState => ({
+  campaignId: "test",
+  seed: 0,
+  difficulty: "normal",
+  currentActNumber: 3,
+  campaignStatus: "active",
+  party: [],
+  inventory: createInventory(),
+  runModifiers: [],
+  eventSelections: {},
+  adventureLog: [],
+  completedActs: [],
+  questProgress: {},
+  appliedQuestOutcomeHookIds: [],
+});
+
+describe("quest_resolve effect — applyEffectList (#393)", () => {
+  const QUEST_ID = "sq.act3.prisoner_rescue";
+  const COMPLETE_HOOK = "outcome.sq.act3.prisoner_rescue.rescued";
+  const FAIL_HOOK = "outcome.sq.act3.prisoner_rescue.failed";
+
+  it("complete resolution transitions quest to completed and applies hook", () => {
+    const run = makeRun(makeParty());
+    const campaign = makeCampaign();
+    startQuest(campaign.questProgress, QUEST_ID, campaign.currentActNumber);
+
+    const messages = applyEffectList(
+      [{ type: "quest_resolve", questId: QUEST_ID, resolution: "complete", outcomeHookId: COMPLETE_HOOK }],
+      run,
+      Math.random,
+      undefined,
+      campaign,
+    );
+
+    expect(campaign.questProgress[QUEST_ID].status).toBe("completed");
+    expect(campaign.appliedQuestOutcomeHookIds).toContain(COMPLETE_HOOK);
+    expect(messages.some((m) => m.includes(QUEST_ID))).toBe(true);
+  });
+
+  it("fail resolution transitions quest to failed", () => {
+    const run = makeRun(makeParty());
+    const campaign = makeCampaign();
+    startQuest(campaign.questProgress, QUEST_ID, campaign.currentActNumber);
+
+    applyEffectList(
+      [{ type: "quest_resolve", questId: QUEST_ID, resolution: "fail", outcomeHookId: FAIL_HOOK }],
+      run,
+      Math.random,
+      undefined,
+      campaign,
+    );
+
+    expect(campaign.questProgress[QUEST_ID].status).toBe("failed");
+    expect(campaign.appliedQuestOutcomeHookIds).toContain(FAIL_HOOK);
+  });
+
+  it("quest_resolve on inactive quest is a no-op (does not crash)", () => {
+    const run = makeRun(makeParty());
+    const campaign = makeCampaign();
+
+    expect(() => {
+      applyEffectList(
+        [{ type: "quest_resolve", questId: QUEST_ID, resolution: "complete", outcomeHookId: COMPLETE_HOOK }],
+        run,
+        Math.random,
+        undefined,
+        campaign,
+      );
+    }).not.toThrow();
+
+    expect(campaign.questProgress[QUEST_ID]).toBeUndefined();
+    expect(campaign.appliedQuestOutcomeHookIds).toHaveLength(0);
+  });
+
+  it("quest_resolve is idempotent — hook applied only once on double call", () => {
+    const run = makeRun(makeParty());
+    const campaign = makeCampaign();
+    startQuest(campaign.questProgress, QUEST_ID, campaign.currentActNumber);
+
+    const effect = [{ type: "quest_resolve" as const, questId: QUEST_ID, resolution: "complete" as const, outcomeHookId: COMPLETE_HOOK }];
+    applyEffectList(effect, run, Math.random, undefined, campaign);
+    applyEffectList(effect, run, Math.random, undefined, campaign);
+
+    expect(campaign.appliedQuestOutcomeHookIds.filter((id) => id === COMPLETE_HOOK)).toHaveLength(1);
+  });
+});
+
+describe("ability-check events resolve quest (#393)", () => {
+  const faceRng = (face: number) => () => (face - 1) / 20;
+
+  it("ward_puzzle success resolves prisoner_rescue quest as completed", () => {
+    const party = makeParty();
+    // Give a high Wis to guarantee success on DC 13
+    party[0].abilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 18, cha: 10 }; // +4 wis
+    const run = makeRun(party);
+    const campaign = makeCampaign();
+    startQuest(campaign.questProgress, "sq.act3.prisoner_rescue", campaign.currentActNumber);
+
+    const choice = EVENT_REGISTRY["event.sq.prisoner_rescue.ward_puzzle"].choices[0];
+    // roll 15 + 4 = 19 >= DC 13 -> success
+    resolveEventChoiceWithHero(choice, party[0], run, faceRng(15), undefined, campaign);
+
+    expect(campaign.questProgress["sq.act3.prisoner_rescue"].status).toBe("completed");
+  });
+
+  it("ward_puzzle failure resolves prisoner_rescue quest as failed", () => {
+    const party = makeParty();
+    party[0].abilityScores = { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 }; // +0 wis
+    const run = makeRun(party);
+    const campaign = makeCampaign();
+    startQuest(campaign.questProgress, "sq.act3.prisoner_rescue", campaign.currentActNumber);
+
+    const choice = EVENT_REGISTRY["event.sq.prisoner_rescue.ward_puzzle"].choices[0];
+    // roll 1 + 0 = 1, far below DC 13 - partialWithin 3 = 10 -> failure
+    resolveEventChoiceWithHero(choice, party[0], run, faceRng(1), undefined, campaign);
+
+    expect(campaign.questProgress["sq.act3.prisoner_rescue"].status).toBe("failed");
   });
 });
