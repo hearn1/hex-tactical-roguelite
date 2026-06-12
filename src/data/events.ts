@@ -25,6 +25,13 @@ export type EventEffect =
   | { type: "xp"; amount: number; target: "party" | "random_hero" | "picked_hero" }
   | { type: "buff"; modifier: RunModifier }
   | { type: "noop" }
+  | {
+      type: "quest_resolve";
+      questId: string;
+      resolution: "complete" | "fail";
+      /** Fired via applyQuestOutcomeHook; must exist in QUEST_OUTCOME_HOOK_REGISTRY. */
+      outcomeHookId: string;
+    }
   | CheckEffect;
 
 /**
@@ -554,6 +561,80 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
         id: "event.sq.deserter_cache.locked_chest.leave",
         label: "Leave it",
         description: "Don't risk the trap.",
+        effects: [{ type: "noop" }],
+      },
+    ],
+  },
+
+  "event.sq.prisoner_rescue.ward_puzzle": {
+    id: "event.sq.prisoner_rescue.ward_puzzle",
+    title: "Warding Seals",
+    description: "The prison block is warded with arcane seals. Unraveling them quietly might free the captive without raising the alarm.",
+    tags: ["risk", "social"],
+    choices: [
+      {
+        id: "event.sq.prisoner_rescue.ward_puzzle.unravel",
+        label: "Unravel the seals",
+        description: "Wisdom check (DC 13). Success: quest resolved and bonus XP. Partial: quest resolved. Failure: quest fails and a hero takes damage.",
+        effects: [
+          {
+            type: "check",
+            check: { stat: "wis", dc: 13, partialWithin: 3 },
+            onSuccess: [
+              { type: "quest_resolve", questId: "sq.act3.prisoner_rescue", resolution: "complete", outcomeHookId: "outcome.sq.act3.prisoner_rescue.rescued" },
+              { type: "xp", amount: 20, target: "party" },
+            ],
+            onPartial: [
+              { type: "quest_resolve", questId: "sq.act3.prisoner_rescue", resolution: "complete", outcomeHookId: "outcome.sq.act3.prisoner_rescue.rescued" },
+            ],
+            onFailure: [
+              { type: "quest_resolve", questId: "sq.act3.prisoner_rescue", resolution: "fail", outcomeHookId: "outcome.sq.act3.prisoner_rescue.failed" },
+              { type: "hp_damage", amount: 6, target: "random_hero" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "event.sq.prisoner_rescue.ward_puzzle.force",
+        label: "Force the door",
+        description: "Abandon the subtle approach and press forward.",
+        effects: [{ type: "noop" }],
+      },
+    ],
+  },
+
+  "event.sq.planar_echo.anchor_attunement": {
+    id: "event.sq.planar_echo.anchor_attunement",
+    title: "Resonant Anchor",
+    description: "A fractured anchor stone pulses with planar energy. Attuning to its frequency could sever the Arcane Lord's connection to the bound plane.",
+    tags: ["risk", "train"],
+    choices: [
+      {
+        id: "event.sq.planar_echo.anchor_attunement.attune",
+        label: "Attune to the anchor",
+        description: "Intelligence check (DC 14). Success: quest resolved and event DC bonus. Partial: quest resolved. Failure: quest fails and a hero takes damage.",
+        effects: [
+          {
+            type: "check",
+            check: { stat: "int", dc: 14, partialWithin: 4 },
+            onSuccess: [
+              { type: "quest_resolve", questId: "sq.act4.planar_echo", resolution: "complete", outcomeHookId: "outcome.sq.act4.planar_echo.ward_broken" },
+              { type: "buff", modifier: { kind: "event_dc_bonus", value: 1 } },
+            ],
+            onPartial: [
+              { type: "quest_resolve", questId: "sq.act4.planar_echo", resolution: "complete", outcomeHookId: "outcome.sq.act4.planar_echo.ward_broken" },
+            ],
+            onFailure: [
+              { type: "quest_resolve", questId: "sq.act4.planar_echo", resolution: "fail", outcomeHookId: "outcome.sq.act4.planar_echo.failed" },
+              { type: "hp_damage", amount: 8, target: "random_hero" },
+            ],
+          },
+        ],
+      },
+      {
+        id: "event.sq.planar_echo.anchor_attunement.leave",
+        label: "Leave it alone",
+        description: "Step back from the anchor and leave the quest unresolved.",
         effects: [{ type: "noop" }],
       },
     ],

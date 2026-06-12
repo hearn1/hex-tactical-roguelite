@@ -11,6 +11,7 @@ import { ENCOUNTER_REGISTRY, ENCOUNTER_POOLS } from "./encounters.ts";
 import { hexesWithinRange, hexKey } from "../core/hex.ts";
 import type { EventDef, EventEffect } from "./events.ts";
 import { EVENT_REGISTRY, EVENT_POOLS } from "./events.ts";
+import { QUEST_OUTCOME_HOOK_REGISTRY } from "./questOutcomeHooks.ts";
 import { ABILITY_KEYS } from "./abilities.ts";
 import type { ItemDef } from "./items.ts";
 import { ITEM_REGISTRY } from "./items.ts";
@@ -551,6 +552,8 @@ export class DataRepository {
         for (const e of effect.onPartial ?? []) validateEventEffect(e, `${where} (onPartial)`);
       } else if (effect.type === "buff" && effect.modifier.kind === "global_stat" && !statKeys.has(effect.modifier.stat)) {
         errors.push(`${where}: buff stat "${effect.modifier.stat}" is not a valid stat`);
+      } else if (effect.type === "quest_resolve" && !QUEST_OUTCOME_HOOK_REGISTRY[effect.outcomeHookId]) {
+        errors.push(`${where}: quest_resolve outcomeHookId "${effect.outcomeHookId}" not found in registry`);
       }
     };
 
