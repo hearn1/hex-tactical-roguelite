@@ -308,6 +308,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.cleric": {
+    2: [
+      {
+        id: "cleric.improved_channel_divinity",
+        name: "Improved Channel Divinity",
+        description: "Channel Divinity can be used twice per combat instead of once.",
+        upgrade: { kind: "passive", passiveId: "passive.cleric.improved_channel" },
+      },
+      {
+        id: "cleric.learn_divine_favor",
+        name: "Learn Divine Favor",
+        description: "Learn Divine Favor — bless an ally for +1 to attack rolls for 2 rounds.",
+        upgrade: { kind: "learnAction", actionId: "action.divine_favor" },
+      },
+    ],
+    3: [
+      {
+        id: "cleric.archetype.life_domain",
+        name: "Life Domain",
+        description: "Healer's blessing; all healing restores +2+WIS extra HP, plus Mass Cure Wounds.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.cleric.life_domain" },
+      },
+      {
+        id: "cleric.archetype.war_domain",
+        name: "War Domain",
+        description: "Blessed warrior; gains martial proficiency, Divine Strike, and a bonus attack after cantrips.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.cleric.war_domain" },
+      },
+    ],
+    4: [
+      {
+        id: "cleric.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "cleric.learn_bless",
+        name: "Learn Bless",
+        description: "Learn Bless — grant +2 to an ally's next attack or heal.",
+        upgrade: { kind: "learnAction", actionId: "action.bless" },
+      },
+    ],
+    5: [
+      {
+        id: "cleric.learn_mass_cure_wounds",
+        name: "Learn Mass Cure Wounds",
+        description: "Learn Mass Cure Wounds — heal 2d8 + Wisdom to all allies in range 2.",
+        upgrade: { kind: "learnAction", actionId: "action.cleric.mass_cure_wounds" },
+      },
+      {
+        id: "cleric.faithful_servant",
+        name: "Faithful Servant",
+        description: "Permanent +1 Wisdom and +2 max HP.",
+        upgrade: { kind: "stat", stats: { wis: 1, maxHp: 2 } },
+      },
+    ],
+  },
   "class.arcanist": {
     2: [
       {

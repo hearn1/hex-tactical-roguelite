@@ -1,4 +1,5 @@
 import { CLASS_REGISTRY } from "../data/classes.ts";
+import { PASSIVE_REGISTRY } from "../data/passives.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
 
 export function isPartyMemberAlive(pm: PartyMember): boolean {
@@ -58,9 +59,16 @@ export function classSpellSlotsMax(classId: string): number {
   return CLASS_REGISTRY[classId]?.spellSlotsMax ?? 0;
 }
 
+function passiveSpellSlotBonus(passiveIds: string[]): number {
+  return passiveIds.reduce((sum, id) => {
+    const effect = PASSIVE_REGISTRY[id]?.effect;
+    return effect?.type === "spellSlotBonus" ? sum + effect.amount : sum;
+  }, 0);
+}
+
 /** Initializes a hero's spell-slot pool from their class (#118), preserving any remaining slots. */
 export function syncSpellSlotsForPartyMember(pm: PartyMember): void {
-  pm.spellSlotsMax = classSpellSlotsMax(pm.classId);
+  pm.spellSlotsMax = classSpellSlotsMax(pm.classId) + passiveSpellSlotBonus(pm.passives ?? []);
   pm.spellSlotsRemaining = Math.min(pm.spellSlotsMax, pm.spellSlotsRemaining ?? pm.spellSlotsMax);
 }
 
@@ -215,7 +223,7 @@ export function applyLongRest(run: RunState): RestResult {
     const beforeHp = pm.hp;
     pm.hp = pm.maxHp;
     pm.hitDiceRemaining = pm.hitDiceTotal ?? pm.level;
-    pm.spellSlotsMax = classSpellSlotsMax(pm.classId);
+    syncSpellSlotsForPartyMember(pm);
     pm.spellSlotsRemaining = pm.spellSlotsMax;
     hooksRecharged = rechargeOptionalUseHooks(pm) || hooksRecharged;
     heroes.push({
