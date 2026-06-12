@@ -813,6 +813,16 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     spellLevel: 2,
     effect: { type: "damage", formula: "2d10 + wis" },
   },
+  "action.druid.land_stride": {
+    id: "action.druid.land_stride",
+    displayName: "Land Stride",
+    description: "Call upon the land's power — ignore difficult terrain and minor hazards for 3 turns.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    isCantrip: true,
+    effect: { type: "applyCondition", conditionId: "land_stride", duration: 3 },
+  },
   // ── Druid starting actions ────────────────────────────────────────────
   "action.druid.shillelagh": {
     id: "action.druid.shillelagh",

@@ -4,6 +4,8 @@ export const ARCHETYPE_PASSIVE_WIZARD_SCULPT_SPELLS = "passive.wizard.sculpt_spe
 export const ARCHETYPE_PASSIVE_WIZARD_WARD_REGAIN = "passive.wizard.ward_regain";
 export const ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER = "passive.ranger.colossus_slayer";
 export const ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER = "passive.ranger.dread_ambusher";
+export const ARCHETYPE_PASSIVE_DRUID_COMBAT_WILD_SHAPE = "passive.druid.combat_wild_shape";
+export const ARCHETYPE_PASSIVE_DRUID_NATURAL_RECOVERY = "passive.druid.natural_recovery";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -177,6 +179,23 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Thrives in darkness; gains a bonus attack on the first round of combat.",
     grantedActionId: "action.ranger.umbral_sight",
     passiveId: ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
+  },
+  "archetype.druid.circle_of_moon": {
+    id: "archetype.druid.circle_of_moon",
+    classId: "class.druid",
+    chosenAtLevel: 3,
+    displayName: "Circle of the Moon",
+    description: "Wild Shape grants greater power and natural armor.",
+    passiveId: ARCHETYPE_PASSIVE_DRUID_COMBAT_WILD_SHAPE,
+  },
+  "archetype.druid.circle_of_land": {
+    id: "archetype.druid.circle_of_land",
+    classId: "class.druid",
+    chosenAtLevel: 3,
+    displayName: "Circle of the Land",
+    description: "Draws power from the terrain; recovers a spell slot after each combat.",
+    grantedActionId: "action.druid.land_stride",
+    passiveId: ARCHETYPE_PASSIVE_DRUID_NATURAL_RECOVERY,
   },
 };
 
