@@ -1,5 +1,6 @@
 import type { PartyMember, PendingLevelUp } from "../state/RunState.ts";
 import type { RunState } from "../state/RunState.ts";
+import type { CampaignState } from "../state/CampaignState.ts";
 import type { RunModifier } from "../state/types.ts";
 import type { EventChoice, EventEffect, CheckEffect, ChoiceRequirement } from "../data/events.ts";
 import { DEFAULT_EVENT_POOL_ID, EVENT_POOLS, EVENT_REGISTRY } from "../data/events.ts";
@@ -8,6 +9,8 @@ import { POTION_REGISTRY } from "../data/potions.ts";
 import { applyXpToPartyMember } from "./Leveling.ts";
 import { enqueuePendingLevelUps } from "./LevelUp.ts";
 import { resolveCheck, checkModifierFor, formatCheckLog, type CheckResult } from "./AbilityCheck.ts";
+import { completeQuest, failQuest, getQuestState } from "./QuestState.ts";
+import { applyQuestOutcomeHook } from "./QuestOutcomeApplicator.ts";
 
 export function restParty(party: PartyMember[]): void {
   for (const pm of party) {
@@ -142,6 +145,7 @@ export function applyEffectList(
   run: RunState,
   rng: () => number,
   out?: PendingLevelUp[],
+  campaign?: CampaignState,
 ): string[] {
   const messages: string[] = [];
 
@@ -205,6 +209,27 @@ export function applyEffectList(
       messages.push(describeRunModifier(effect.modifier));
     } else if (effect.type === "noop") {
       messages.push(`Nothing happens.`);
+    } else if (effect.type === "quest_resolve") {
+      if (!campaign) {
+        console.warn(`quest_resolve effect for "${effect.questId}" skipped: no campaign context`);
+      } else {
+        const { questId, resolution, outcomeHookId } = effect;
+        const state = getQuestState(campaign.questProgress, questId);
+        if (state?.status !== "active") {
+          console.warn(`quest_resolve: quest "${questId}" is not active (status: ${state?.status ?? "not found"}), skipping`);
+        } else {
+          const actNumber = campaign.currentActNumber;
+          if (resolution === "complete") {
+            completeQuest(campaign.questProgress, questId, outcomeHookId, actNumber);
+          } else {
+            failQuest(campaign.questProgress, questId, actNumber, outcomeHookId);
+          }
+          const hookResult = applyQuestOutcomeHook(outcomeHookId, campaign);
+          if (hookResult.applied) {
+            messages.push(`Quest resolved: ${questId} → ${resolution}`);
+          }
+        }
+      }
     }
   }
 
@@ -228,6 +253,7 @@ export function resolveCheckEffect(
   run: RunState,
   rng: () => number,
   out?: PendingLevelUp[],
+  campaign?: CampaignState,
 ): { result: CheckResult; messages: string[] } {
   const modifier = checkModifierFor(pm, effect.check.stat);
   const dcBonus = eventDcBonus(run);
@@ -243,7 +269,7 @@ export function resolveCheckEffect(
 
   // Branch effects resolve with the attempting hero in scope, so an outcome can grant that
   // hero a permanent stat or XP (e.g. a Spirit check that rewards +1 Spirit on success).
-  const messages = [formatCheckLog(pm.displayName, result), ...applyEffectsForHero(branch, pm, run, rng, out)];
+  const messages = [formatCheckLog(pm.displayName, result), ...applyEffectsForHero(branch, pm, run, rng, out, campaign)];
   return { result, messages };
 }
 
@@ -259,17 +285,18 @@ function applyEffectsForHero(
   run: RunState,
   rng: () => number,
   out?: PendingLevelUp[],
+  campaign?: CampaignState,
 ): string[] {
   const messages: string[] = [];
   for (const effect of effects) {
     if (effect.type === "check") {
-      messages.push(...resolveCheckEffect(effect, pm, run, rng, out).messages);
+      messages.push(...resolveCheckEffect(effect, pm, run, rng, out, campaign).messages);
     } else if (effect.type === "stat_boost") {
       messages.push(applyStatBoost(pm, effect.stat, effect.amount));
     } else if (effect.type === "xp" && effect.target === "picked_hero") {
       messages.push(applyXpToHero(pm, effect.amount, out));
     } else {
-      messages.push(...applyEffectList([effect], run, rng, out));
+      messages.push(...applyEffectList([effect], run, rng, out, campaign));
     }
   }
   return messages;
@@ -340,11 +367,12 @@ export function resolveEventChoice(
   run: RunState,
   rng: () => number,
   out?: PendingLevelUp[],
+  campaign?: CampaignState,
 ): EventChoiceResolution {
   if (choiceNeedsHeroPick(choice)) {
     return { messages: [], needsHeroPick: true };
   }
-  return { messages: applyEffectList(choice.effects, run, rng, out), needsHeroPick: false };
+  return { messages: applyEffectList(choice.effects, run, rng, out, campaign), needsHeroPick: false };
 }
 
 /**
@@ -357,8 +385,9 @@ export function resolveEventChoiceWithHero(
   run: RunState,
   rng: () => number,
   out?: PendingLevelUp[],
+  campaign?: CampaignState,
 ): { messages: string[] } {
-  return { messages: applyEffectsForHero(choice.effects, pm, run, rng, out) };
+  return { messages: applyEffectsForHero(choice.effects, pm, run, rng, out, campaign) };
 }
 
 /**

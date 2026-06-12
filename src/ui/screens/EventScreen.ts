@@ -158,7 +158,7 @@ export class EventScreen {
       }
     }
 
-    const { messages, needsHeroPick } = resolveEventChoice(choice, run, gameState.rng, gameState.pendingLevelUps);
+    const { messages, needsHeroPick } = resolveEventChoice(choice, run, gameState.rng, gameState.pendingLevelUps, gameState.campaign ?? undefined);
     if (needsHeroPick) {
       phase = "picker";
       pickedChoice = choice;
@@ -177,7 +177,7 @@ export class EventScreen {
 
   private resolveWithHero(choice: EventChoice, pm: PartyMember): void {
     const run = gameState.run!;
-    const { messages } = resolveEventChoiceWithHero(choice, pm, run, gameState.rng, gameState.pendingLevelUps);
+    const { messages } = resolveEventChoiceWithHero(choice, pm, run, gameState.rng, gameState.pendingLevelUps, gameState.campaign ?? undefined);
 
     const nodeId = run.mapState.currentNodeId;
     const eventId = activeNodeId ?? nodeId;
