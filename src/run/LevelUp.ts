@@ -7,7 +7,7 @@ import {
   LEVELUP_CHOICE_MAX_LEVEL,
   SHARED_FALLBACK_CHOICES,
 } from "../data/levelups.ts";
-import { ARCHETYPE_REGISTRY } from "../data/archetypes.ts";
+import { ARCHETYPE_REGISTRY, archetypesByClass } from "../data/archetypes.ts";
 
 const STAT_KEYS: (keyof UnitStats)[] = ["maxHp", "armor", "move", "str", "dex", "con", "int", "wis", "cha"];
 
@@ -18,14 +18,28 @@ export function isChoiceLevel(level: number): boolean {
 
 /**
  * Options offered for a class at a given level: the bespoke per-class table when present,
- * else the shared fallback. Returns `[]` for levels outside the choice band so callers know
- * the level stays on the automatic table.
+ * else options generated from archetypes with a matching `chosenAtLevel`, else the shared
+ * fallback. Returns `[]` for levels outside the choice band with no archetypes due.
  */
 export function getLevelUpOptions(classId: string, level: number): LevelUpOption[] {
-  if (!isChoiceLevel(level)) return [];
   const classTable = LEVELUP_CHOICES[classId];
-  const options = classTable?.[level];
-  return options && options.length > 0 ? options : SHARED_FALLBACK_CHOICES;
+  const explicit = classTable?.[level];
+  if (explicit && explicit.length > 0) return explicit;
+
+  const archetypesAtLevel = archetypesByClass(classId).filter(
+    (a) => (a.chosenAtLevel ?? 3) === level,
+  );
+  if (archetypesAtLevel.length > 0) {
+    return archetypesAtLevel.map((a) => ({
+      id: `${classId}.archetype.${a.id}`,
+      name: a.displayName,
+      description: a.description,
+      upgrade: { kind: "archetype" as const, archetypeId: a.id },
+    }));
+  }
+
+  if (!isChoiceLevel(level)) return [];
+  return SHARED_FALLBACK_CHOICES;
 }
 
 /** Look up a single option for a class/level by id (used when confirming a choice). */
@@ -38,8 +52,9 @@ export function findLevelUpOption(
 }
 
 /**
- * Append pending level-up choices for the levels a hero just gained. Only levels inside the
- * choice band enqueue (others stay automatic). Mutates and returns `queue` for chaining.
+ * Append pending level-up choices for the levels a hero just gained. Levels inside the
+ * choice band always enqueue; levels outside it enqueue only when archetypes are due at
+ * that level (via `chosenAtLevel`). Mutates and returns `queue` for chaining.
  */
 export function enqueuePendingLevelUps(
   queue: PendingLevelUp[],
@@ -48,7 +63,10 @@ export function enqueuePendingLevelUps(
   levelsGained: number[],
 ): PendingLevelUp[] {
   for (const newLevel of levelsGained) {
-    if (isChoiceLevel(newLevel)) {
+    const hasArchetypeChoice = archetypesByClass(classId).some(
+      (a) => (a.chosenAtLevel ?? 3) === newLevel,
+    );
+    if (isChoiceLevel(newLevel) || hasArchetypeChoice) {
       queue.push({ instanceId, classId, newLevel });
     }
   }

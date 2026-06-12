@@ -14,6 +14,8 @@ export interface ArchetypeDef {
   grantedActionId?: string;
   /** Passive id checked by the combat engine for conditional/aura effects. */
   passiveId?: string;
+  /** Hero level at which the archetype selection is presented. Defaults to 3. */
+  chosenAtLevel?: number;
 }
 
 export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
