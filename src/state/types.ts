@@ -136,6 +136,8 @@ export interface UnitInstance {
   firstHealDone?: boolean;
   /** Item hook IDs that have already triggered this combat, e.g. "item.runemark_blade". */
   usedItemHooks?: string[];
+  /** Per-unit damage bonus applied by boss_encounter_modifier. Enemy boss units only. */
+  bonusDamage?: number;
   /** Action ids the hero has learned (from level-up learnAction choices). Copied from party member. */
   spellsKnown?: string[];
   /** Action ids the hero has prepared for this day. Copied from party member. */

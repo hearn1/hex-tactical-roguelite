@@ -218,7 +218,7 @@ export function resolveAction(
         if (isCrit) dmg *= 2;
         if (attacker.team === "enemy") {
           const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
-          dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+          dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (attacker.bonusDamage ?? 0);
         }
         const beforeHp = u.hp;
         u.hp = Math.max(0, u.hp - dmg);
@@ -461,7 +461,7 @@ export function resolveAction(
         if (isCrit) dmg *= 2;
         if (attacker.team === "enemy") {
           const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
-          dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+          dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (attacker.bonusDamage ?? 0);
         }
         const beforeHp = u.hp;
         u.hp = Math.max(0, u.hp - dmg);
@@ -632,7 +632,7 @@ export function resolveAction(
   if (isCrit) damage *= 2;
   if (attacker.team === "enemy") {
     const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
-    damage += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+    damage += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (attacker.bonusDamage ?? 0);
   }
   // Opportunist burst (e.g. the ambusher's first strike on an exposed/wounded foe).
   if (bonusDamage > 0) damage += bonusDamage;
@@ -826,7 +826,7 @@ function resolvePrimaryPlusAdjacent(
     if (isCrit) damage *= 2;
     if (attacker.team === "enemy") {
       const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
-      damage += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+      damage += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (attacker.bonusDamage ?? 0);
     }
     const beforeHp = target.hp;
     target.hp = Math.max(0, target.hp - damage);
@@ -862,7 +862,7 @@ function resolvePrimaryPlusAdjacent(
       if (crit) dmg *= 2;
       if (attacker.team === "enemy") {
         const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
-        dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+        dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (attacker.bonusDamage ?? 0);
       }
       const before = hero.hp;
       hero.hp = Math.max(0, hero.hp - dmg);
@@ -940,7 +940,7 @@ export function resolveBossTelegraph(
     const formula = rewriteFormula(formulaSource, boss);
     let damage = roll(formula, rng).total;
     const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
-    damage += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0);
+    damage += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (boss.bonusDamage ?? 0);
 
     const guardedIdx = hero.conditions.findIndex((c) => c.id === "guarded");
     if (guardedIdx >= 0) {
