@@ -42,7 +42,8 @@ export type ChoiceRequirement =
   | { type: "minGold"; amount: number }
   | { type: "hasItem"; itemId: string }
   | { type: "livingHero" }
-  | { type: "partySizeAtLeast"; n: number };
+  | { type: "partySizeAtLeast"; n: number }
+  | { type: "hasFlag"; flagId: string };
 
 /**
  * An ability-check branch effect. The chosen hero's check resolves, then the matching

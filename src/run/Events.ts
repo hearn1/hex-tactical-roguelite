@@ -338,6 +338,10 @@ function evaluateRequirement(req: ChoiceRequirement, run: RunState): Requirement
       return run.party.length >= req.n
         ? { ok: true }
         : { ok: false, reason: `Requires a party of at least ${req.n}.` };
+    case "hasFlag":
+      return run.eventSelections[req.flagId] === "set"
+        ? { ok: true }
+        : { ok: false, reason: `Requires a prior quest achievement to be unlocked.` };
   }
 }
 

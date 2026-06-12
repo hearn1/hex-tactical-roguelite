@@ -385,6 +385,21 @@ describe("evaluateRequirements", () => {
     choice.requirements = [{ type: "partySizeAtLeast", n: 2 }];
     expect(evaluateRequirements(choice, run).ok).toBe(true);
   });
+
+  it("hasFlag passes when the flag is set in eventSelections (#400)", () => {
+    const run = makeRun(makeParty());
+    run.eventSelections["flag.sq.act1.goblin_relic.completed"] = "set";
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "hasFlag", flagId: "flag.sq.act1.goblin_relic.completed" }] };
+    expect(evaluateRequirements(choice, run).ok).toBe(true);
+  });
+
+  it("hasFlag fails with reason when the flag is absent (#400)", () => {
+    const run = makeRun(makeParty());
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "hasFlag", flagId: "flag.sq.act1.goblin_relic.completed" }] };
+    const r = evaluateRequirements(choice, run);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBeTruthy();
+  });
 });
 
 describe("resolveEventChoice", () => {
