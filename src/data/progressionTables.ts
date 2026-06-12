@@ -88,8 +88,8 @@ export const RANGER_PROGRESSION: ClassProgressionTable = [
 
 export const DRUID_PROGRESSION: ClassProgressionTable = [
   { level: 1, proficiencyBonus: 2 },
-  { level: 2, proficiencyBonus: 2, statGain: { maxHp: 1, wis: 1 } },
+  { level: 2, proficiencyBonus: 2, statGain: { maxHp: 1, wis: 1 }, featuresGranted: ["passive.druid.wild_shape"] },
   { level: 3, proficiencyBonus: 2, statGain: { maxHp: 1, wis: 1 } },
   { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, wis: 1 } },
-  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, wis: 1 } },
+  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, wis: 1 }, featuresGranted: ["passive.druid.extra_slot_l5"] },
 ];

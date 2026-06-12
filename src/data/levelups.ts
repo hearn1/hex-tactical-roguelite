@@ -552,6 +552,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.druid": {
+    2: [
+      {
+        id: "druid.learn_produce_flame",
+        name: "Produce Flame",
+        description: "Learn Produce Flame — a cantrip that hurls spectral fire for 1d8 + Wisdom damage.",
+        upgrade: { kind: "learnAction", actionId: "action.druid.produce_flame" },
+      },
+      {
+        id: "druid.learn_entangle",
+        name: "Entangle",
+        description: "Learn Entangle — root all enemies in a 2-hex area for 2 turns.",
+        upgrade: { kind: "learnAction", actionId: "action.druid.entangle" },
+      },
+    ],
+    3: [
+      {
+        id: "druid.archetype.circle_of_moon",
+        name: "Circle of the Moon",
+        description: "Wild Shape grants greater power and natural armor.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.druid.circle_of_moon" },
+      },
+      {
+        id: "druid.archetype.circle_of_land",
+        name: "Circle of the Land",
+        description: "Draw power from the terrain; recover a spell slot after each combat.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.druid.circle_of_land" },
+      },
+    ],
+    4: [
+      {
+        id: "druid.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "druid.learn_moonbeam",
+        name: "Moonbeam",
+        description: "Learn Moonbeam — a focused column of radiance dealing 2d10 + Wisdom to one target.",
+        upgrade: { kind: "learnAction", actionId: "action.druid.moonbeam" },
+      },
+    ],
+    5: [
+      {
+        id: "druid.learn_produce_flame_l5",
+        name: "Produce Flame (Cantrip)",
+        description: "Learn Produce Flame if not yet known — a reliable ranged fire cantrip.",
+        upgrade: { kind: "learnAction", actionId: "action.druid.produce_flame" },
+      },
+      {
+        id: "druid.natures_resilience",
+        name: "Nature's Resilience",
+        description: "Permanent +1 Wisdom and +2 max HP.",
+        upgrade: { kind: "stat", stats: { wis: 1, maxHp: 2 } },
+      },
+    ],
+  },
 };
 
 /**
