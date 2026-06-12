@@ -5,6 +5,7 @@ import {
   ACOLYTE_PROGRESSION,
   ARCANIST_PROGRESSION,
   SCOUT_PROGRESSION,
+  FIGHTER_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -105,6 +106,20 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     weaponProficiencies: ["simple", "martial", "finesse", "ranged"],
     progressionTable: SCOUT_PROGRESSION,
   },
+  "class.fighter": {
+    id: "class.fighter",
+    displayName: "Fighter",
+    baseStats: { maxHp: 17, armor: 14, move: 3, str: 3, dex: 1, con: 2, int: 1, wis: 1, cha: 1 },
+    hitDieSize: 10,
+    actionIds: ["action.fighter.precise_strike", "action.fighter.ranged_shot", "action.fighter.brace"],
+    startingItems: ["item.iron_sword"],
+    defaultBackgroundId: "background.caravan_guard",
+    primaryAbility: "str",
+    savingThrowProficiencies: ["str", "con"],
+    armorProficiencies: ["light", "medium", "heavy", "shield"],
+    weaponProficiencies: ["simple", "martial"],
+    progressionTable: FIGHTER_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -112,4 +127,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.acolyte": "Sable",
   "class.arcanist": "Eldra",
   "class.scout": "Nyx",
+  "class.fighter": "Brant",
 };
