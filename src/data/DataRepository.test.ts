@@ -129,6 +129,39 @@ describe("DataRepository", () => {
       expect(repo.getBackground(cls.defaultBackgroundId)).toBeDefined();
     }
   });
+
+  it("wizard class registers with correct starting actions and stats", () => {
+    const wizard = repo.getClass("class.wizard");
+    expect(wizard).toBeDefined();
+    expect(wizard!.hitDieSize).toBe(6);
+    expect(wizard!.spellSlotsMax).toBe(2);
+    expect(wizard!.spellcastingAbility).toBe("int");
+    expect(wizard!.actionIds).toContain("action.wizard.fire_bolt");
+    expect(wizard!.actionIds).toContain("action.wizard.magic_missile");
+    expect(wizard!.actionIds).toContain("action.wizard.mage_armor");
+    expect(repo.getAction("action.wizard.fire_bolt")).toBeDefined();
+    expect(repo.getAction("action.wizard.magic_missile")).toBeDefined();
+    expect(repo.getAction("action.wizard.mage_armor")).toBeDefined();
+  });
+
+  it("wizard magic missile has no accuracyStat (auto-hit)", () => {
+    const mm = repo.getAction("action.wizard.magic_missile");
+    expect(mm).toBeDefined();
+    expect(mm!.accuracyStat).toBeUndefined();
+    expect(mm!.effect).toMatchObject({ type: "damage", formula: "3d4 + 3" });
+  });
+
+  it("wizard archetypes and progression passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.wizard.evocation"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.wizard.abjuration"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.wizard.arcane_recovery"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.wizard.extra_slot_l5"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.wizard.sculpt_spells"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.wizard.empowered_evocation"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.wizard.ward_regain"]).toBeDefined();
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {
