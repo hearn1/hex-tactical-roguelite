@@ -9,6 +9,7 @@ import {
   ROGUE_PROGRESSION,
   CLERIC_PROGRESSION,
   WIZARD_PROGRESSION,
+  RANGER_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -169,6 +170,22 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellcastingAbility: "int",
     progressionTable: WIZARD_PROGRESSION,
   },
+  "class.ranger": {
+    id: "class.ranger",
+    displayName: "Ranger",
+    baseStats: { maxHp: 14, armor: 13, move: 4, str: 1, dex: 3, con: 1, int: 1, wis: 2, cha: 1 },
+    hitDieSize: 10,
+    actionIds: ["action.ranger.hunters_mark", "action.ranger.volley", "action.ranger.ensnaring_strike"],
+    startingItems: [],
+    spellSlotsMax: 1,
+    defaultBackgroundId: "background.caravan_guard",
+    primaryAbility: "dex",
+    savingThrowProficiencies: ["str", "dex"],
+    armorProficiencies: ["light", "medium"],
+    weaponProficiencies: ["simple", "martial", "ranged"],
+    spellcastingAbility: "wis",
+    progressionTable: RANGER_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -180,4 +197,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.rogue": "Vesper",
   "class.cleric": "Solenne",
   "class.wizard": "Lyra",
+  "class.ranger": "Kael",
 };
