@@ -665,6 +665,9 @@ const ACT_2_NODES: NodeDef[] = [
     layer: 7,
     encounterId: "encounter.bandit_toll",
     encounterPoolId: "pool.act_2_combat",
+    conditionalEncounterId: {
+      "flag.sq.act1.goblin_relic.completed": "encounter.sq.deserter_cache.weakened_patrol",
+    },
     nextNodeIds: ["node.a2_side1_puzzle"],
     questId: "sq.act2.deserter_cache",
     questStageId: "sq.act2.deserter_cache.stage_2",
