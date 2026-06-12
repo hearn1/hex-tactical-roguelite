@@ -118,6 +118,24 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Masters of surprise; deals bonus damage against full-HP targets.",
     passiveId: "passive.rogue.assassinate",
   },
+  "archetype.cleric.life_domain": {
+    id: "archetype.cleric.life_domain",
+    displayName: "Life Domain",
+    classId: "class.cleric",
+    chosenAtLevel: 3,
+    description: "Blessed healer; all healing spells restore +2+WIS extra HP.",
+    grantedActionId: "action.cleric.mass_cure_wounds",
+    passiveId: "passive.cleric.disciple_of_life",
+  },
+  "archetype.cleric.war_domain": {
+    id: "archetype.cleric.war_domain",
+    displayName: "War Domain",
+    classId: "class.cleric",
+    chosenAtLevel: 3,
+    description: "Blessed warrior; gains Divine Strike and may attack as a bonus action after casting a cantrip.",
+    grantedActionId: "action.cleric.divine_strike",
+    passiveId: "passive.cleric.war_priest",
+  },
 };
 
 /** Archetypes available for a given class. */

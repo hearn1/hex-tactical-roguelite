@@ -1,3 +1,4 @@
+import type { AbilityKey } from "./abilities.ts";
 import {
   ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR,
   ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK,
@@ -13,7 +14,7 @@ export type PassiveEffect =
   | { type: "damageBonus"; amount: number; condition: "below50Pct" | "always" }
   | { type: "extraAttack" }
   | { type: "resistance"; damageTypes: string[] }
-  | { type: "healBonus"; amount: number; condition: "always" }
+  | { type: "healBonus"; amount: number; addStat?: AbilityKey; condition: "always" }
   | { type: "saveAura"; bonus: number; radius: number; condition: "adjacentAlly" }
   | { type: "attackPenaltyAura"; penalty: number; appliesTo: "enemies" }
   | { type: "statCheckBonus"; bonus: number }
@@ -21,7 +22,10 @@ export type PassiveEffect =
   | { type: "halfDamageOnHit" }
   | { type: "evasion" }
   | { type: "climbCostReduction" }
-  | { type: "firstAttackBonusDice"; dice: string; condition: "targetAtFullHp" };
+  | { type: "firstAttackBonusDice"; dice: string; condition: "targetAtFullHp" }
+  | { type: "spellSlotBonus"; amount: number }
+  | { type: "actionChargeBonus"; actionId: string; amount: number }
+  | { type: "bonusAttackAfterCantrip"; usesPerCombat: number };
 
 export interface PassiveDef {
   id: string;
@@ -120,5 +124,35 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Assassinate",
     description: "Your first attack each combat against a target at full HP deals +2d6 bonus damage.",
     effect: { type: "firstAttackBonusDice", dice: "2d6", condition: "targetAtFullHp" },
+  },
+  "passive.cleric.extra_slot_l2": {
+    id: "passive.cleric.extra_slot_l2",
+    displayName: "Expanded Channels (L2)",
+    description: "Grants one additional spell slot per Long Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  "passive.cleric.extra_slot_l5": {
+    id: "passive.cleric.extra_slot_l5",
+    displayName: "Expanded Channels (L5)",
+    description: "Grants one additional spell slot per Long Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  "passive.cleric.improved_channel": {
+    id: "passive.cleric.improved_channel",
+    displayName: "Improved Channel Divinity",
+    description: "Channel Divinity can be used twice per combat instead of once.",
+    effect: { type: "actionChargeBonus", actionId: "action.cleric.channel_divinity", amount: 1 },
+  },
+  "passive.cleric.disciple_of_life": {
+    id: "passive.cleric.disciple_of_life",
+    displayName: "Disciple of Life",
+    description: "Your healing spells restore +2 additional HP, plus your Wisdom modifier.",
+    effect: { type: "healBonus", amount: 2, addStat: "wis", condition: "always" },
+  },
+  "passive.cleric.war_priest": {
+    id: "passive.cleric.war_priest",
+    displayName: "War Priest",
+    description: "Twice per combat, you may make a weapon attack as a bonus action after casting a cantrip.",
+    effect: { type: "bonusAttackAfterCantrip", usesPerCombat: 2 },
   },
 };

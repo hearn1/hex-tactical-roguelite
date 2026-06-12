@@ -635,6 +635,7 @@ export class DataRepository {
     const knownPassives = new Set([
       LEVELUP_PASSIVE_START_COMBAT_GUARDED,
       LEVELUP_PASSIVE_FIRST_HEAL_BONUS,
+      ...Object.keys(PASSIVE_REGISTRY),
     ]);
     const validateLevelUpOption = (option: LevelUpOption, where: string): void => {
       const upgrade = option.upgrade;
