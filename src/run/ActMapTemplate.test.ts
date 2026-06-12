@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { MAP_TEMPLATES, getMapTemplate } from "../data/nodes.ts";
+﻿import { describe, it, expect } from "vitest";
+import { MAP_TEMPLATES, getMapTemplate, NODE_REGISTRY } from "../data/nodes.ts";
 import type { MapTemplate, NodeDef } from "../data/nodes.ts";
 import { validateMapTemplate, availableNextNodes, visitNode, bfsReachesBoss, validateQuestNodeReferences } from "./MapGraph.ts";
 import type { MapState } from "./MapGraph.ts";
@@ -9,6 +9,10 @@ import { createRunState, buildParty, defaultPartySpecs } from "./PartySetup.ts";
 import { createInventory } from "./Inventory.ts";
 import { DEFAULT_CAMPAIGN, getActDefinition } from "../data/campaigns.ts";
 import { SIDE_QUEST_REGISTRY } from "../data/sideQuests.ts";
+import { EVENT_REGISTRY } from "../data/events.ts";
+import { resolveQuestNode } from "./QuestNodeDispatch.ts";
+import { initQuestProgress, getQuestState } from "./QuestState.ts";
+import type { QuestProgressMap } from "./QuestState.ts";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -616,5 +620,103 @@ describe("act_2_map side quest chain — sq.act2.deserter_cache (#365)", () => {
       }
     }
     expect(canReach).toBe(true);
+  });
+});
+
+// ── #390: Puzzle node traversal and quest advancement ────────────────────────
+
+describe("puzzle node map validation passes (#390)", () => {
+  it("act_1_map validates structurally with puzzle node", () => {
+    expect(validateMapTemplate(MAP_TEMPLATES.act_1_map)).toEqual([]);
+  });
+
+  it("act_1_map passes quest and event reference validation", () => {
+    expect(validateQuestNodeReferences(MAP_TEMPLATES.act_1_map, SIDE_QUEST_REGISTRY, EVENT_REGISTRY)).toEqual([]);
+  });
+
+  it("act_2_map validates structurally with puzzle node", () => {
+    expect(validateMapTemplate(MAP_TEMPLATES.act_2_map)).toEqual([]);
+  });
+
+  it("act_2_map passes quest and event reference validation", () => {
+    expect(validateQuestNodeReferences(MAP_TEMPLATES.act_2_map, SIDE_QUEST_REGISTRY, EVENT_REGISTRY)).toEqual([]);
+  });
+});
+
+describe("quest advances when puzzle node is resolved — act_1 goblin_relic (#390)", () => {
+  it("resolving node.a1_side1_puzzle advances the active quest", () => {
+    const progress: QuestProgressMap = initQuestProgress();
+    const startNode = NODE_REGISTRY["node.a1_side1_start"];
+    const puzzleNode = NODE_REGISTRY["node.a1_side1_puzzle"];
+    resolveQuestNode(startNode, progress, 1);
+    expect(getQuestState(progress, "sq.act1.goblin_relic")?.status).toBe("active");
+    const before = { ...getQuestState(progress, "sq.act1.goblin_relic")! };
+    resolveQuestNode(puzzleNode, progress, 1);
+    const after = getQuestState(progress, "sq.act1.goblin_relic")!;
+    expect(
+      after.currentStageIndex > before.currentStageIndex ||
+      after.currentStepIndex > before.currentStepIndex,
+    ).toBe(true);
+  });
+});
+
+describe("goblin_relic inscription puzzle event has valid CheckEffect (#390)", () => {
+  it("event has at least one choice with a check effect", () => {
+    const event = EVENT_REGISTRY["event.sq.goblin_relic.inscription_puzzle"];
+    expect(event).toBeDefined();
+    const checkChoice = event.choices.find((c) =>
+      c.effects.some((e) => e.type === "check"),
+    );
+    expect(checkChoice).toBeDefined();
+  });
+
+  it("check effect has stat int and dc 13", () => {
+    const event = EVENT_REGISTRY["event.sq.goblin_relic.inscription_puzzle"];
+    const checkEffect = event.choices
+      .flatMap((c) => c.effects)
+      .find((e) => e.type === "check");
+    expect(checkEffect).toBeDefined();
+    if (checkEffect?.type === "check") {
+      expect(checkEffect.check.stat).toBe("int");
+      expect(checkEffect.check.dc).toBe(13);
+    }
+  });
+});
+
+describe("validateQuestNodeReferences rejects unknown eventId (#390)", () => {
+  function puzzleTemplate(): MapTemplate {
+    return {
+      id: "test",
+      name: "Test",
+      startNodeId: "n.start",
+      bossNodeId: "n.boss",
+      nodes: [
+        { id: "n.start", type: "start", title: "S", description: "", layer: 0, nextNodeIds: ["n.puzzle", "n.boss"] },
+        {
+          id: "n.puzzle",
+          type: "side_route_node",
+          title: "Puzzle",
+          description: "",
+          layer: 1,
+          nextNodeIds: ["n.boss"],
+          questId: "sq.act1.goblin_relic",
+          questNodeRole: "advance",
+          eventId: "event.NONEXISTENT",
+        },
+        { id: "n.boss", type: "boss", title: "B", description: "", layer: 2, nextNodeIds: [] },
+      ],
+    };
+  }
+
+  it("returns an error when eventId is not in the registry", () => {
+    const errs = validateQuestNodeReferences(puzzleTemplate(), SIDE_QUEST_REGISTRY, EVENT_REGISTRY);
+    expect(errs.some((e) => e.includes("event.NONEXISTENT"))).toBe(true);
+  });
+
+  it("passes when a valid eventId is supplied", () => {
+    const t = puzzleTemplate();
+    t.nodes[1].eventId = "event.sq.goblin_relic.inscription_puzzle";
+    const errs = validateQuestNodeReferences(t, SIDE_QUEST_REGISTRY, EVENT_REGISTRY);
+    expect(errs.filter((e) => e.includes("eventId"))).toHaveLength(0);
   });
 });
