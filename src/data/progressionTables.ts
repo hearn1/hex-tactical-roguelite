@@ -69,3 +69,11 @@ export const CLERIC_PROGRESSION: ClassProgressionTable = [
   { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, wis: 1 } },
   { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, wis: 1 }, featuresGranted: ["passive.cleric.extra_slot_l5"] },
 ];
+
+export const WIZARD_PROGRESSION: ClassProgressionTable = [
+  { level: 1, proficiencyBonus: 2 },
+  { level: 2, proficiencyBonus: 2, statGain: { maxHp: 1, int: 1 }, featuresGranted: ["passive.wizard.arcane_recovery"] },
+  { level: 3, proficiencyBonus: 2, statGain: { maxHp: 1, int: 1 } },
+  { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, int: 1 } },
+  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, int: 1 }, featuresGranted: ["passive.wizard.extra_slot_l5"] },
+];
