@@ -4,6 +4,7 @@ import { computeStats } from "../combat/Stats.ts";
 import { abilityMod } from "../data/abilities.ts";
 import { syncHitDiceForPartyMember } from "./Rest.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
+import { ARCHETYPE_REGISTRY } from "../data/archetypes.ts";
 
 export const XP_THRESHOLDS = [0, 20, 50, 90, 140] as const;
 export const MAX_LEVEL = 5;
@@ -132,6 +133,17 @@ export function applyXpToPartyMember(pm: PartyMember, xp: number): LevelUpResult
           if (!featuresGranted.includes(f)) featuresGranted.push(f);
         }
       }
+
+      if (pm.archetypeId) {
+        const archetype = ARCHETYPE_REGISTRY[pm.archetypeId];
+        const archetypeEntry = archetype?.featuresByHeroLevel?.[newLevel];
+        if (archetypeEntry?.featuresGranted) {
+          for (const f of archetypeEntry.featuresGranted) {
+            if (!featuresGranted.includes(f)) featuresGranted.push(f);
+          }
+        }
+      }
+
       currentLevel = newLevel;
       levelsGained.push(currentLevel);
     } else {
