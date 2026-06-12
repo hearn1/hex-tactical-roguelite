@@ -189,4 +189,10 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     description: "Your Arcane Ward regains HP equal to twice the spell slot level each time you cast a spell.",
     effect: { type: "arcaneWardRegain", multiplier: 2 },
   },
+  "passive.ranger.extra_slot_l5": {
+    id: "passive.ranger.extra_slot_l5",
+    displayName: "Expanded Spellcasting (L5)",
+    description: "Grants one additional spell slot per Long Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
 };

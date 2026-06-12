@@ -430,6 +430,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.ranger": {
+    2: [
+      {
+        id: "ranger.fighting_style_archery",
+        name: "Archery",
+        description: "Volley and Ensnaring Strike deal +2 damage.",
+        upgrade: { kind: "action", actionIds: ["action.ranger.volley", "action.ranger.ensnaring_strike"], damageBonus: 2 },
+      },
+      {
+        id: "ranger.fighting_style_defense",
+        name: "Defense",
+        description: "Permanent +1 Armor while wearing medium armor.",
+        upgrade: { kind: "stat", stats: { armor: 1 } },
+      },
+    ],
+    3: [
+      {
+        id: "ranger.archetype.hunter",
+        name: "Hunter",
+        description: "Specialize in hunting big prey — Hail of Arrows and Colossus Slayer.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.ranger.hunter" },
+      },
+      {
+        id: "ranger.archetype.gloom_stalker",
+        name: "Gloom Stalker",
+        description: "Thrive in darkness — Umbral Sight and Dread Ambusher.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.ranger.gloom_stalker" },
+      },
+    ],
+    4: [
+      {
+        id: "ranger.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "ranger.fleet_footed",
+        name: "Fleet-Footed",
+        description: "Permanent +1 Dexterity and +1 Wisdom.",
+        upgrade: { kind: "stat", stats: { dex: 1, wis: 1 } },
+      },
+    ],
+    5: [
+      {
+        id: "ranger.extra_spell_slot",
+        name: "Expanded Spellcasting",
+        description: "Grants one additional spell slot per Long Rest.",
+        upgrade: { kind: "passive", passiveId: "passive.ranger.extra_slot_l5" },
+      },
+      {
+        id: "ranger.hunter_instincts",
+        name: "Hunter's Instincts",
+        description: "Permanent +1 Dexterity and +2 max HP.",
+        upgrade: { kind: "stat", stats: { dex: 1, maxHp: 2 } },
+      },
+    ],
+  },
   "class.arcanist": {
     2: [
       {
