@@ -25,6 +25,7 @@ export type EventEffect =
   | { type: "xp"; amount: number; target: "party" | "random_hero" | "picked_hero" }
   | { type: "buff"; modifier: RunModifier }
   | { type: "noop" }
+  | { type: "log_entry"; message: string }
   | {
       type: "quest_resolve";
       questId: string;

@@ -341,6 +341,15 @@ describe("applyEffectList — every effect type", () => {
     expect(run.gold).toBe(0);
     expect(msgs[0]).toContain("Nothing");
   });
+
+  it("log_entry appends an adventure log entry and returns the message (#401)", () => {
+    const run = makeRun(makeParty());
+    run.adventureLog = [];
+    applyEffectList([{ type: "log_entry", message: "The relic shard was claimed." }], run, rng);
+    expect(run.adventureLog).toHaveLength(1);
+    expect(run.adventureLog![0].text).toBe("The relic shard was claimed.");
+    expect(run.adventureLog![0].kind).toBe("quest_outcome");
+  });
 });
 
 describe("evaluateRequirements", () => {
