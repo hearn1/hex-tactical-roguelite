@@ -176,7 +176,14 @@ export type RunModifier =
   | { kind: "enemy_damage_bonus"; value: number }
   | { kind: "event_dc_bonus"; value: number }
   | { kind: "event_reward_multiplier"; value: number }
-  | { kind: "elite_reward_multiplier"; value: number };
+  | { kind: "elite_reward_multiplier"; value: number }
+  | {
+      kind: "boss_encounter_modifier";
+      encounterId: string;
+      hpMultiplier?: number;
+      damageBonus?: number;
+      extraTraitId?: string;
+    };
 
 /**
  * A telegraphed boss heavy attack that was "wound up" on a previous boss turn and resolves
