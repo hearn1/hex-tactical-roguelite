@@ -67,6 +67,8 @@ export const FLAIR_OVERLAYS: Record<string, FlairOverlayDef> = {
   "overlay.flair.cloistered": { id: "overlay.flair.cloistered", kind: "cloak", color: "#9a7bff" },
   "overlay.flair.evoker": { id: "overlay.flair.evoker", kind: "aura", color: "#6fe8ff" },
   "overlay.flair.enchanter": { id: "overlay.flair.enchanter", kind: "aura", color: "#ff7be0" },
+  "overlay.flair.champion": { id: "overlay.flair.champion", kind: "aura", color: "#ffe066" },
+  "overlay.flair.battle_master": { id: "overlay.flair.battle_master", kind: "accessory", color: "#ff8c42" },
 };
 
 /** Weapon/armor item id → overlay id. Trinkets have no appearance layer. */
@@ -95,6 +97,8 @@ export const ARCHETYPE_FLAIR: Record<string, string> = {
   "archetype.acolyte.cloistered": "overlay.flair.cloistered",
   "archetype.arcanist.evoker": "overlay.flair.evoker",
   "archetype.arcanist.enchanter": "overlay.flair.enchanter",
+  "archetype.fighter.champion": "overlay.flair.champion",
+  "archetype.fighter.battle_master": "overlay.flair.battle_master",
 };
 
 /** Look a hero shows when the corresponding slot is empty, keyed by class id (= hero `defId`). */
@@ -103,6 +107,7 @@ export const CLASS_DEFAULT_WEAPON: Record<string, string> = {
   "class.acolyte": "overlay.weapon.mace",
   "class.arcanist": "overlay.weapon.wand",
   "class.scout": "overlay.weapon.dagger",
+  "class.fighter": "overlay.weapon.sword",
 };
 
 export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
@@ -110,6 +115,7 @@ export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
   "class.acolyte": "overlay.armor.medium",
   "class.arcanist": "overlay.armor.light",
   "class.scout": "overlay.armor.light",
+  "class.fighter": "overlay.armor.heavy",
 };
 
 /** Gear shown for enemies that visibly carry a weapon (best-effort per the AC). */
