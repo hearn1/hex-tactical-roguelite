@@ -1,9 +1,18 @@
+import type { LevelUpOption } from "./levelups.ts";
+
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
 export const ARCHETYPE_PASSIVE_CLOISTERED_HEAL_BONUS = "archetype_passive.cloistered_heal_bonus";
 export const ARCHETYPE_PASSIVE_EVOKER_CRIT_FLOOR = "archetype_passive.evoker_crit_floor";
 export const ARCHETYPE_PASSIVE_ENCHANTER_ATTACK_DEBUFF_AURA = "archetype_passive.enchanter_attack_debuff_aura";
+
+export interface ArchetypeHeroLevelEntry {
+  /** Passive IDs auto-applied when the hero reaches this level. */
+  featuresGranted?: string[];
+  /** Optional interactive choice offered at this level (in addition to any auto-grants). */
+  choiceOffered?: LevelUpOption;
+}
 
 export interface ArchetypeDef {
   id: string;
@@ -14,6 +23,10 @@ export interface ArchetypeDef {
   grantedActionId?: string;
   /** Passive id checked by the combat engine for conditional/aura effects. */
   passiveId?: string;
+  /** Hero level at which the archetype selection is presented. Defaults to 3. */
+  chosenAtLevel?: number;
+  /** Per-level feature grants and optional choices unlocked after the archetype is chosen. */
+  featuresByHeroLevel?: Record<number, ArchetypeHeroLevelEntry>;
 }
 
 export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
@@ -24,6 +37,9 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Taunt enemies into targeting you and gain Armor when fighting shoulder-to-shoulder.",
     grantedActionId: "action.archetype_taunt",
     passiveId: ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR,
+    featuresByHeroLevel: {
+      5: { featuresGranted: ["archetype_passive.shieldbearer_unyielding"] },
+    },
   },
   "archetype.guardian.vindicator": {
     id: "archetype.guardian.vindicator",

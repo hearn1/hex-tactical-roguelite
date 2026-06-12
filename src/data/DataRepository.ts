@@ -31,6 +31,8 @@ import {
   LEVELUP_PASSIVE_FIRST_HEAL_BONUS,
 } from "./levelups.ts";
 import { ENVIRONMENT_THEMES, getNodeTypeThemeMap } from "./environmentThemes.ts";
+import { ARCHETYPE_REGISTRY } from "./archetypes.ts";
+import { PASSIVE_REGISTRY } from "./passives.ts";
 
 export interface ValidationReport {
   valid: boolean;
@@ -668,6 +670,33 @@ export class DataRepository {
     }
     for (const option of SHARED_FALLBACK_CHOICES) {
       validateLevelUpOption(option, `Level-up shared fallback option "${option.id}"`);
+    }
+
+    const allPassiveIds = new Set(Object.keys(PASSIVE_REGISTRY));
+    for (const [id, def] of Object.entries(ARCHETYPE_REGISTRY)) {
+      const chosenAt = def.chosenAtLevel ?? 3;
+      if (chosenAt < 1 || chosenAt > 5) {
+        errors.push(`Archetype "${id}": chosenAtLevel ${chosenAt} must be between 1 and 5`);
+      }
+      if (def.grantedActionId && !allActionIds.has(def.grantedActionId)) {
+        errors.push(`Archetype "${id}": grantedActionId "${def.grantedActionId}" not found in ACTION_REGISTRY`);
+      }
+      if (def.passiveId && !allPassiveIds.has(def.passiveId)) {
+        errors.push(`Archetype "${id}": passiveId "${def.passiveId}" not found in PASSIVE_REGISTRY`);
+      }
+      if (def.featuresByHeroLevel) {
+        for (const [lvlStr, entry] of Object.entries(def.featuresByHeroLevel)) {
+          const lvl = Number(lvlStr);
+          if (!Number.isInteger(lvl) || lvl < 1 || lvl > 5) {
+            errors.push(`Archetype "${id}": featuresByHeroLevel key ${lvlStr} is not a valid level (1-5)`);
+          }
+          for (const fid of entry.featuresGranted ?? []) {
+            if (!allPassiveIds.has(fid)) {
+              errors.push(`Archetype "${id}" featuresByHeroLevel L${lvlStr}: featuresGranted "${fid}" not found in PASSIVE_REGISTRY`);
+            }
+          }
+        }
+      }
     }
 
     if (errors.length > 0) {
