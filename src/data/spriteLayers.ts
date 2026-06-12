@@ -75,6 +75,8 @@ export const FLAIR_OVERLAYS: Record<string, FlairOverlayDef> = {
   "overlay.flair.war_domain": { id: "overlay.flair.war_domain", kind: "aura", color: "#ff6060" },
   "overlay.flair.evocation": { id: "overlay.flair.evocation", kind: "aura", color: "#ff9b3a" },
   "overlay.flair.abjuration": { id: "overlay.flair.abjuration", kind: "aura", color: "#6fe8ff" },
+  "overlay.flair.hunter": { id: "overlay.flair.hunter", kind: "accessory", color: "#c8b46a" },
+  "overlay.flair.gloom_stalker": { id: "overlay.flair.gloom_stalker", kind: "cloak", color: "#2a3a2a" },
 };
 
 /** Weapon/armor item id → overlay id. Trinkets have no appearance layer. */
@@ -111,6 +113,8 @@ export const ARCHETYPE_FLAIR: Record<string, string> = {
   "archetype.cleric.war_domain": "overlay.flair.war_domain",
   "archetype.wizard.evocation": "overlay.flair.evocation",
   "archetype.wizard.abjuration": "overlay.flair.abjuration",
+  "archetype.ranger.hunter": "overlay.flair.hunter",
+  "archetype.ranger.gloom_stalker": "overlay.flair.gloom_stalker",
 };
 
 /** Look a hero shows when the corresponding slot is empty, keyed by class id (= hero `defId`). */
@@ -123,6 +127,7 @@ export const CLASS_DEFAULT_WEAPON: Record<string, string> = {
   "class.rogue": "overlay.weapon.dagger",
   "class.cleric": "overlay.weapon.mace",
   "class.wizard": "overlay.weapon.staff",
+  "class.ranger": "overlay.weapon.bow",
 };
 
 export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
@@ -134,6 +139,7 @@ export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
   "class.rogue": "overlay.armor.light",
   "class.cleric": "overlay.armor.medium",
   "class.wizard": "overlay.armor.light",
+  "class.ranger": "overlay.armor.medium",
 };
 
 /** Gear shown for enemies that visibly carry a weapon (best-effort per the AC). */
