@@ -113,6 +113,7 @@ export const CLASS_DEFAULT_WEAPON: Record<string, string> = {
   "class.scout": "overlay.weapon.dagger",
   "class.fighter": "overlay.weapon.sword",
   "class.rogue": "overlay.weapon.dagger",
+  "class.cleric": "overlay.weapon.mace",
 };
 
 export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
@@ -122,6 +123,7 @@ export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
   "class.scout": "overlay.armor.light",
   "class.fighter": "overlay.armor.heavy",
   "class.rogue": "overlay.armor.light",
+  "class.cleric": "overlay.armor.medium",
 };
 
 /** Gear shown for enemies that visibly carry a weapon (best-effort per the AC). */
