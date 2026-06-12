@@ -32,7 +32,12 @@ export type LevelUpUpgrade =
   /** Archetype/subclass choice (F84). On pick: sets archetypeId and grants the archetype passive. */
   | { kind: "archetype"; archetypeId: string }
   /** Learn a new action from the class's action pool. Pushes the action id to spellsKnown. */
-  | { kind: "learnAction"; actionId: string };
+  | { kind: "learnAction"; actionId: string }
+  /**
+   * 5E Ability Score Improvement. The player distributes `points` across ability scores
+   * (each stat capped at +points per ASI). Applied to PartyMember.bonusStats on confirm.
+   */
+  | { kind: "abilityScoreImprovement"; points: number };
 
 export interface LevelUpOption {
   id: string;
@@ -100,6 +105,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         name: "Learn Second Wind",
         description: "Learn Second Wind — self-heal 1d6 + level, once per encounter.",
         upgrade: { kind: "learnAction", actionId: "action.second_wind" },
+      },
+      {
+        id: "guardian.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
       },
     ],
     5: [

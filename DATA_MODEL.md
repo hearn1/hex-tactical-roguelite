@@ -83,6 +83,24 @@ Fields:
 - `weaponProficiencies` — subset of `["simple","martial","finesse","ranged"]`.
 - `spellcastingAbility` — (optional) stat used for spell attack/DC; casters only.
 - `pactMagic` — (optional) `true` for Warlock-style short-rest spell slot recovery.
+- `progressionTable` — ordered array of `LevelEntry` describing automatic per-level gains and features; replaces hardcoded stat tables in `Leveling.ts`.
+
+### ClassProgressionTable / LevelEntry
+Defined in `src/data/progressionTables.ts`. One entry per character level (1–MAX_LEVEL).
+
+```ts
+interface LevelEntry {
+  level: number;
+  proficiencyBonus: number;       // +2 for L1-4, +3 at L5
+  spellSlotsPerLevel?: number[];  // index = spell level - 1
+  featuresGranted?: string[];     // passive IDs auto-applied on level-up
+  statGain?: Partial<UnitStats>;  // automatic bonus stats added to bonusStats
+}
+type ClassProgressionTable = LevelEntry[];
+```
+
+`featuresGranted` IDs are appended to `PartyMember.passives` (deduped) by `applyXpToPartyMember()`
+and surfaced in `LevelUpResult.featuresGranted` for UI display.
 
 ### ActionDef
 ```json
