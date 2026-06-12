@@ -1,5 +1,8 @@
 import type { UnitStats } from "../state/types.ts";
 
+export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
+export type WeaponProficiency = "simple" | "martial" | "finesse" | "ranged";
+
 export interface ClassDef {
   id: string;
   displayName: string;
@@ -18,6 +21,18 @@ export interface ClassDef {
    * the player may change it or pick "none".
    */
   defaultBackgroundId: string;
+  /** Primary ability score driving attack/spell DCs for this class (e.g. "str" for Guardian). */
+  primaryAbility?: keyof UnitStats;
+  /** Exactly two saving throw proficiencies (5E-style). */
+  savingThrowProficiencies?: [keyof UnitStats, keyof UnitStats];
+  /** Armor types this class is trained to wear. */
+  armorProficiencies?: ArmorProficiency[];
+  /** Weapon categories this class is trained to use. */
+  weaponProficiencies?: WeaponProficiency[];
+  /** Ability score used for spellcasting (casters only). */
+  spellcastingAbility?: keyof UnitStats;
+  /** True for classes that recover spell slots on a Short Rest (Warlock-style). */
+  pactMagic?: boolean;
 }
 
 export const CLASS_REGISTRY: Record<string, ClassDef> = {

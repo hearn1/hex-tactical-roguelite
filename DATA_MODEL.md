@@ -54,19 +54,35 @@ upgrade.starting_gold_1
 {
   "id": "class.guardian",
   "displayName": "Guardian",
-  "role": "Frontline Defender",
   "baseStats": {
     "maxHp": 18,
     "armor": 14,
     "move": 3,
-    "might": 3,
-    "agility": 1,
-    "spirit": 0
+    "str": 3,
+    "dex": 1,
+    "con": 2,
+    "int": 0,
+    "wis": 0,
+    "cha": 1
   },
+  "hitDieSize": 10,
   "startingItems": ["item.iron_sword", "item.wooden_shield"],
-  "actionIds": ["action.slash", "action.shield_bash", "action.guard"]
+  "actionIds": ["action.slash", "action.shield_bash", "action.guard"],
+  "defaultBackgroundId": "background.caravan_guard",
+  "primaryAbility": "str",
+  "savingThrowProficiencies": ["str", "con"],
+  "armorProficiencies": ["light", "medium", "heavy", "shield"],
+  "weaponProficiencies": ["simple", "martial"]
 }
 ```
+
+Fields:
+- `primaryAbility` — stat key driving attack/spell DC rolls (e.g. `"str"`, `"int"`, `"wis"`).
+- `savingThrowProficiencies` — exactly two stat keys representing 5E saving throw proficiencies.
+- `armorProficiencies` — subset of `["none","light","medium","heavy","shield"]`.
+- `weaponProficiencies` — subset of `["simple","martial","finesse","ranged"]`.
+- `spellcastingAbility` — (optional) stat used for spell attack/DC; casters only.
+- `pactMagic` — (optional) `true` for Warlock-style short-rest spell slot recovery.
 
 ### ActionDef
 ```json
