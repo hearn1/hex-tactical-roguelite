@@ -48,6 +48,13 @@ export interface NodeDef {
   questNodeRole?: "start" | "advance" | "complete" | "fail";
   /** Outcome hook id to fire on "complete" nodes. Must be in SideQuestDefinition.outcomeHookIds. */
   questOutcomeHookId?: string;
+  /**
+   * Flag-gated encounter overrides for this node. Maps campaignFlag key → encounterId.
+   * At runtime, `resolveNodeEncounterId` checks each flag against campaign.eventSelections;
+   * the first match wins and overrides `encounterId`. Falls back to `encounterId` when no
+   * flag matches or when no campaign context is available.
+   */
+  conditionalEncounterId?: Record<string, string>;
 }
 
 export type NodeType =

@@ -446,6 +446,13 @@ export class DataRepository {
       if (def.encounterId && !allEncounterIds.has(def.encounterId)) {
         errors.push(`Node "${id}": encounter "${def.encounterId}" not found`);
       }
+      if (def.conditionalEncounterId) {
+        for (const [flag, eid] of Object.entries(def.conditionalEncounterId)) {
+          if (!allEncounterIds.has(eid)) {
+            errors.push(`Node "${id}": conditionalEncounterId flag "${flag}" references unknown encounter "${eid}"`);
+          }
+        }
+      }
       if (def.encounterPoolId && !ENCOUNTER_POOLS[def.encounterPoolId]) {
         errors.push(`Node "${id}": encounter pool "${def.encounterPoolId}" not found`);
       }
