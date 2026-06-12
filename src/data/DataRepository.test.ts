@@ -168,6 +168,76 @@ describe("DataRepository validation rejects broken references", () => {
     enc.enemyGroups = original;
   });
 
+  it("warns when a class is missing new required proficiency fields", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const cls = repo.getClass("class.guardian")!;
+    const original = { ...cls };
+    delete (cls as Partial<typeof cls>).primaryAbility;
+    delete (cls as Partial<typeof cls>).savingThrowProficiencies;
+    delete (cls as Partial<typeof cls>).armorProficiencies;
+    delete (cls as Partial<typeof cls>).weaponProficiencies;
+    const report = repo.validate();
+    expect(report.valid).toBe(true);
+    expect(report.warnings.some((w) => w.includes("primaryAbility"))).toBe(true);
+    expect(report.warnings.some((w) => w.includes("savingThrowProficiencies"))).toBe(true);
+    expect(report.warnings.some((w) => w.includes("armorProficiencies"))).toBe(true);
+    expect(report.warnings.some((w) => w.includes("weaponProficiencies"))).toBe(true);
+    Object.assign(cls, original);
+  });
+
+  it("errors on invalid primaryAbility stat key", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const cls = repo.getClass("class.guardian")!;
+    const original = cls.primaryAbility;
+    // @ts-expect-error — deliberately invalid stat key
+    cls.primaryAbility = "luck";
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes('"luck"') && e.includes("primaryAbility"))).toBe(true);
+    cls.primaryAbility = original;
+  });
+
+  it("errors on invalid armorProficiencies value", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const cls = repo.getClass("class.guardian")!;
+    const original = cls.armorProficiencies;
+    // @ts-expect-error — deliberately invalid armor type
+    cls.armorProficiencies = ["plate"];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes('"plate"') && e.includes("armorProficiencies"))).toBe(true);
+    cls.armorProficiencies = original;
+  });
+
+  it("errors on invalid weaponProficiencies value", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const cls = repo.getClass("class.guardian")!;
+    const original = cls.weaponProficiencies;
+    // @ts-expect-error — deliberately invalid weapon type
+    cls.weaponProficiencies = ["exotic"];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes('"exotic"') && e.includes("weaponProficiencies"))).toBe(true);
+    cls.weaponProficiencies = original;
+  });
+
+  it("errors when savingThrowProficiencies does not have exactly 2 entries", () => {
+    const repo = new DataRepository();
+    repo.loadAll();
+    const cls = repo.getClass("class.guardian")!;
+    const original = cls.savingThrowProficiencies;
+    // @ts-expect-error — deliberately wrong length
+    cls.savingThrowProficiencies = ["str"];
+    const report = repo.validate();
+    expect(report.valid).toBe(false);
+    expect(report.errors.some((e) => e.includes("exactly 2 entries"))).toBe(true);
+    cls.savingThrowProficiencies = original;
+  });
+
   it("detects an invalid class default background reference", () => {
     const repo = new DataRepository();
     repo.loadAll();
