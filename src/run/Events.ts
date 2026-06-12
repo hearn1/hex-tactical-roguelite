@@ -11,6 +11,7 @@ import { enqueuePendingLevelUps } from "./LevelUp.ts";
 import { resolveCheck, checkModifierFor, formatCheckLog, type CheckResult } from "./AbilityCheck.ts";
 import { completeQuest, failQuest, getQuestState } from "./QuestState.ts";
 import { applyQuestOutcomeHook } from "./QuestOutcomeApplicator.ts";
+import { appendAdventureLog } from "./AdventureLog.ts";
 
 export function restParty(party: PartyMember[]): void {
   for (const pm of party) {
@@ -209,6 +210,13 @@ export function applyEffectList(
       messages.push(describeRunModifier(effect.modifier));
     } else if (effect.type === "noop") {
       messages.push(`Nothing happens.`);
+    } else if (effect.type === "log_entry") {
+      appendAdventureLog(run, {
+        kind: "quest_outcome",
+        text: effect.message,
+        sourceKey: `event_log:${effect.message}`,
+      });
+      messages.push(effect.message);
     } else if (effect.type === "quest_resolve") {
       if (!campaign) {
         console.warn(`quest_resolve effect for "${effect.questId}" skipped: no campaign context`);
@@ -338,6 +346,10 @@ function evaluateRequirement(req: ChoiceRequirement, run: RunState): Requirement
       return run.party.length >= req.n
         ? { ok: true }
         : { ok: false, reason: `Requires a party of at least ${req.n}.` };
+    case "hasFlag":
+      return run.eventSelections[req.flagId] === "set"
+        ? { ok: true }
+        : { ok: false, reason: `Requires a prior quest achievement to be unlocked.` };
   }
 }
 

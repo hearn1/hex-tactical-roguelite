@@ -197,6 +197,16 @@ export const ITEM_REGISTRY: Record<string, ItemDef> = {
     flavorText: "A pin bearing a luminescent moth; the first healing light each battle shines brighter.",
     hook: { type: "oncePerCombatBonus", trigger: "firstHealDone", effect: { kind: "bonusHealing", value: 2 } },
   },
+  "item.goblin_relic_shard": {
+    id: "item.goblin_relic_shard",
+    displayName: "Goblin Relic Shard",
+    slot: "trinket",
+    rarity: "rare",
+    requiresAttunement: true,
+    statBonuses: { wis: 1, con: 1 },
+    flavorText: "A fragment of the shattered relic, still humming with primal energy. The first blow it absorbs each battle dissipates into the stone.",
+    hook: { type: "oncePerCombatBonus", trigger: "firstHitTaken", effect: { kind: "damageReduction", value: 2 } },
+  },
 };
 
 const TRIGGER_LABELS: Record<string, string> = {

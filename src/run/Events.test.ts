@@ -341,6 +341,15 @@ describe("applyEffectList — every effect type", () => {
     expect(run.gold).toBe(0);
     expect(msgs[0]).toContain("Nothing");
   });
+
+  it("log_entry appends an adventure log entry and returns the message (#401)", () => {
+    const run = makeRun(makeParty());
+    run.adventureLog = [];
+    applyEffectList([{ type: "log_entry", message: "The relic shard was claimed." }], run, rng);
+    expect(run.adventureLog).toHaveLength(1);
+    expect(run.adventureLog![0].text).toBe("The relic shard was claimed.");
+    expect(run.adventureLog![0].kind).toBe("quest_outcome");
+  });
 });
 
 describe("evaluateRequirements", () => {
@@ -384,6 +393,21 @@ describe("evaluateRequirements", () => {
     expect(evaluateRequirements(choice, run).ok).toBe(false);
     choice.requirements = [{ type: "partySizeAtLeast", n: 2 }];
     expect(evaluateRequirements(choice, run).ok).toBe(true);
+  });
+
+  it("hasFlag passes when the flag is set in eventSelections (#400)", () => {
+    const run = makeRun(makeParty());
+    run.eventSelections["flag.sq.act1.goblin_relic.completed"] = "set";
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "hasFlag", flagId: "flag.sq.act1.goblin_relic.completed" }] };
+    expect(evaluateRequirements(choice, run).ok).toBe(true);
+  });
+
+  it("hasFlag fails with reason when the flag is absent (#400)", () => {
+    const run = makeRun(makeParty());
+    const choice: EventChoice = { id: "c", label: "c", description: "", effects: [{ type: "noop" }], requirements: [{ type: "hasFlag", flagId: "flag.sq.act1.goblin_relic.completed" }] };
+    const r = evaluateRequirements(choice, run);
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBeTruthy();
   });
 });
 

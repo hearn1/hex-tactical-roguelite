@@ -25,6 +25,7 @@ export type EventEffect =
   | { type: "xp"; amount: number; target: "party" | "random_hero" | "picked_hero" }
   | { type: "buff"; modifier: RunModifier }
   | { type: "noop" }
+  | { type: "log_entry"; message: string }
   | {
       type: "quest_resolve";
       questId: string;
@@ -42,7 +43,8 @@ export type ChoiceRequirement =
   | { type: "minGold"; amount: number }
   | { type: "hasItem"; itemId: string }
   | { type: "livingHero" }
-  | { type: "partySizeAtLeast"; n: number };
+  | { type: "partySizeAtLeast"; n: number }
+  | { type: "hasFlag"; flagId: string };
 
 /**
  * An ability-check branch effect. The chosen hero's check resolves, then the matching
@@ -663,6 +665,37 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
         id: "event.sq.prisoner_rescue.guard_patrol.move_in",
         label: "Move in now",
         description: "Skip the observation and press forward immediately.",
+        effects: [{ type: "noop" }],
+      },
+    ],
+  },
+
+  "event.sq.act1.goblin_relic.echo": {
+    id: "event.sq.act1.goblin_relic.echo",
+    title: "A Messenger's Promise",
+    description:
+      "A hooded courier intercepts your party on the road, bearing a satchel marked with a goblin clan seal. \"You recovered the Shattered Relic,\" she says. \"The collector sends his gratitude — and the promised reward.\"",
+    tags: ["treasure"],
+    choices: [
+      {
+        id: "event.sq.act1.goblin_relic.echo.claim",
+        label: "Claim the reward",
+        description:
+          "Accept the Goblin Relic Shard — a rare trinket imbued with the relic's primal energy.",
+        requirements: [{ type: "hasFlag", flagId: "flag.sq.act1.goblin_relic.completed" }],
+        effects: [
+          { type: "item", itemId: "item.goblin_relic_shard" },
+          {
+            type: "log_entry",
+            message:
+              "A courier delivered the Goblin Relic Shard — the promised reward for recovering the Shattered Relic in Act I.",
+          },
+        ],
+      },
+      {
+        id: "event.sq.act1.goblin_relic.echo.decline",
+        label: "Send her away",
+        description: "You have no need for the collector's gift.",
         effects: [{ type: "noop" }],
       },
     ],

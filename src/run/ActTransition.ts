@@ -90,6 +90,7 @@ export function advanceToNextAct(
   const nextRun = createRunState(campaign.party, campaign.difficulty, nextMapTemplateId);
   nextRun.gold = completedRun.gold;
   nextRun.shortRestsSinceLongRest = 0;
+  nextRun.eventSelections = { ...campaign.eventSelections };
 
   return nextRun;
 }
