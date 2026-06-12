@@ -552,6 +552,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.bard": {
+    2: [
+      {
+        id: "bard.learn_dissonant_whispers",
+        name: "Dissonant Whispers",
+        description: "Learn Dissonant Whispers — psychic damage + frightened condition.",
+        upgrade: { kind: "learnAction", actionId: "action.bard.dissonant_whispers" },
+      },
+      {
+        id: "bard.learn_healing_song_l2",
+        name: "Focused Melody",
+        description: "Permanent +1 Charisma.",
+        upgrade: { kind: "stat", stats: { cha: 1 } },
+      },
+    ],
+    3: [
+      {
+        id: "bard.archetype.college_of_lore",
+        name: "College of Lore",
+        description: "Weave cutting words into battle and steal spell knowledge from other traditions.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.bard.college_of_lore" },
+      },
+      {
+        id: "bard.archetype.college_of_valor",
+        name: "College of Valor",
+        description: "Inspire allies mid-battle; Bardic Inspiration adds to damage rolls.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.bard.college_of_valor" },
+      },
+    ],
+    4: [
+      {
+        id: "bard.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "bard.learn_hypnotic_pattern",
+        name: "Hypnotic Pattern",
+        description: "Learn Hypnotic Pattern — slows all enemies in a 2-hex area for 2 turns.",
+        upgrade: { kind: "learnAction", actionId: "action.bard.hypnotic_pattern" },
+      },
+    ],
+    5: [
+      {
+        id: "bard.captivating_presence",
+        name: "Captivating Presence",
+        description: "Permanent +1 Charisma and +2 max HP.",
+        upgrade: { kind: "stat", stats: { cha: 1, maxHp: 2 } },
+      },
+      {
+        id: "bard.learn_dissonant_whispers_l5",
+        name: "Dissonant Whispers (Advanced)",
+        description: "Learn Dissonant Whispers if not yet known — psychic damage and frightened.",
+        upgrade: { kind: "learnAction", actionId: "action.bard.dissonant_whispers" },
+      },
+    ],
+  },
   "class.druid": {
     2: [
       {

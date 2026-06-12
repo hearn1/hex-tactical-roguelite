@@ -36,7 +36,10 @@ export type PassiveEffect =
   | { type: "dreadAmbusher"; initiativeBonus: number }
   | { type: "wildShapeGrant"; chargesPerCombat: number }
   | { type: "wildShapeBonus"; acBonus: number; strBonus: number }
-  | { type: "naturalRecovery"; slotsAfterCombat: number };
+  | { type: "naturalRecovery"; slotsAfterCombat: number }
+  | { type: "jackOfAllTrades"; bonus: number }
+  | { type: "fontOfInspiration" }
+  | { type: "combatInspiration" };
 
 export interface PassiveDef {
   id: string;
@@ -213,6 +216,37 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Dread Ambusher",
     description: "+1 to initiative. On the first round of combat, make one additional attack.",
     effect: { type: "dreadAmbusher", initiativeBonus: 1 },
+  },
+  // ── Bard passives ─────────────────────────────────────────────────────
+  "passive.jack_of_all_trades": {
+    id: "passive.jack_of_all_trades",
+    displayName: "Jack of All Trades",
+    description: "Add +1 to any ability check you aren't proficient in.",
+    effect: { type: "jackOfAllTrades", bonus: 1 },
+  },
+  "passive.bard.font_of_inspiration": {
+    id: "passive.bard.font_of_inspiration",
+    displayName: "Font of Inspiration",
+    description: "Bardic Inspiration recharges after a short rest (post-combat).",
+    effect: { type: "fontOfInspiration" },
+  },
+  "passive.bard.additional_magical_secrets": {
+    id: "passive.bard.additional_magical_secrets",
+    displayName: "Additional Magical Secrets",
+    description: "Learn 1 spell from any class list at L3 and L5.",
+    effect: { type: "spellSlotBonus", amount: 0 },
+  },
+  "passive.bard.combat_inspiration": {
+    id: "passive.bard.combat_inspiration",
+    displayName: "Combat Inspiration",
+    description: "Allies may use Bardic Inspiration to add to a damage roll instead of an attack roll.",
+    effect: { type: "combatInspiration" },
+  },
+  "passive.bard.extra_attack": {
+    id: "passive.bard.extra_attack",
+    displayName: "Extra Attack (Valor)",
+    description: "You can attack twice when you take the Attack action on your turn.",
+    effect: { type: "extraAttack" },
   },
   // ── Druid passives ────────────────────────────────────────────────────
   "passive.druid.wild_shape": {
