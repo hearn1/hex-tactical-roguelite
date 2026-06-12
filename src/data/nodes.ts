@@ -48,6 +48,13 @@ export interface NodeDef {
   questNodeRole?: "start" | "advance" | "complete" | "fail";
   /** Outcome hook id to fire on "complete" nodes. Must be in SideQuestDefinition.outcomeHookIds. */
   questOutcomeHookId?: string;
+  /**
+   * Flag-gated encounter overrides for this node. Maps campaignFlag key → encounterId.
+   * At runtime, `resolveNodeEncounterId` checks each flag against campaign.eventSelections;
+   * the first match wins and overrides `encounterId`. Falls back to `encounterId` when no
+   * flag matches or when no campaign context is available.
+   */
+  conditionalEncounterId?: Record<string, string>;
 }
 
 export type NodeType =
@@ -658,6 +665,9 @@ const ACT_2_NODES: NodeDef[] = [
     layer: 7,
     encounterId: "encounter.bandit_toll",
     encounterPoolId: "pool.act_2_combat",
+    conditionalEncounterId: {
+      "flag.sq.act1.goblin_relic.completed": "encounter.sq.deserter_cache.weakened_patrol",
+    },
     nextNodeIds: ["node.a2_side1_puzzle"],
     questId: "sq.act2.deserter_cache",
     questStageId: "sq.act2.deserter_cache.stage_2",
@@ -1308,11 +1318,24 @@ export function getMapTemplate(id: string | undefined): MapTemplate {
 }
 
 /**
- * Resolves which encounter a node launches. Combat nodes with an `encounterPoolId` draw a
- * seeded pick from that pool (using the shared RNG); otherwise the fixed `encounterId` is
- * used. Returns `undefined` only for nodes that declare neither (non-combat nodes).
+ * Resolves which encounter a node launches. When `campaignFlags` is provided and the node
+ * has a `conditionalEncounterId` map, the first matching flag wins and overrides normal
+ * resolution. Otherwise, combat nodes with an `encounterPoolId` draw a seeded pick from
+ * that pool; otherwise the fixed `encounterId` is used. Returns `undefined` only for nodes
+ * that declare neither (non-combat nodes).
  */
-export function resolveNodeEncounterId(node: NodeDef, rng: () => number): string | undefined {
+export function resolveNodeEncounterId(
+  node: NodeDef,
+  rng: () => number,
+  campaignFlags?: Record<string, string>,
+): string | undefined {
+  if (node.conditionalEncounterId && campaignFlags) {
+    for (const [flag, encounterId] of Object.entries(node.conditionalEncounterId)) {
+      if (campaignFlags[flag] !== undefined) {
+        return encounterId;
+      }
+    }
+  }
   if (node.encounterPoolId) return selectEncounterFromPool(node.encounterPoolId, rng);
   return node.encounterId;
 }

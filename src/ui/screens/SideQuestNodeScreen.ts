@@ -1,6 +1,6 @@
 import type { App } from "../App.ts";
 import { gameState, createCombatFromRun } from "../../state/GameState.ts";
-import { NODE_REGISTRY } from "../../data/nodes.ts";
+import { NODE_REGISTRY, resolveNodeEncounterId } from "../../data/nodes.ts";
 import { availableNextNodes, visitNode } from "../../run/MapGraph.ts";
 import { getSideQuestById } from "../../data/sideQuests.ts";
 import { resolveQuestNode } from "../../run/QuestNodeDispatch.ts";
@@ -161,10 +161,10 @@ export class SideQuestNodeScreen {
     visitNode(run.mapState, nextId);
 
     const nextDef = NODE_REGISTRY[nextId];
-    if (nextDef?.encounterId) {
+    const resolvedBegin = nextDef ? resolveNodeEncounterId(nextDef, gameState.rng, campaign.eventSelections) : undefined;
+    if (resolvedBegin) {
       // Launch combat — reward screen will route back to "map", which redirects here.
-      const encounterId = nextDef.encounterId;
-      gameState.combat = createCombatFromRun(run, encounterId, gameState.rng, nextDef.type);
+      gameState.combat = createCombatFromRun(run, resolvedBegin, gameState.rng, nextDef!.type);
       gameState.screen = "combat";
     } else {
       // No combat — render the advance screen directly.
@@ -200,9 +200,10 @@ export class SideQuestNodeScreen {
     visitNode(run.mapState, nextId);
 
     const nextDef = NODE_REGISTRY[nextId];
-    if (nextDef?.encounterId) {
+    const resolvedAdvance = nextDef ? resolveNodeEncounterId(nextDef, gameState.rng, campaign.eventSelections) : undefined;
+    if (resolvedAdvance) {
       // Next node is a combat — launch it. MapScreen redirect will bring us back here after reward.
-      gameState.combat = createCombatFromRun(run, nextDef.encounterId, gameState.rng, nextDef.type);
+      gameState.combat = createCombatFromRun(run, resolvedAdvance, gameState.rng, nextDef!.type);
       gameState.screen = "combat";
     } else {
       gameState.screen = "side_quest_node";

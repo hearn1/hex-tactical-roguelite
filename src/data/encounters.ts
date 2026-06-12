@@ -538,6 +538,27 @@ export const ENCOUNTER_REGISTRY: Record<string, EncounterDef> = {
     rewardPoolId: "reward.uncommon",
     isFinalBoss: true,
   },
+
+  // ── Epic #172: side quest combat branch variants ─────────────────────────
+  "encounter.sq.deserter_cache.weakened_patrol": {
+    id: "encounter.sq.deserter_cache.weakened_patrol",
+    displayName: "Scattered Deserters",
+    enemyGroups: [
+      { enemyId: "enemy.goblin_skirmisher", count: 2 },
+    ],
+    tags: ["road"],
+    rewardPoolId: "reward.uncommon",
+  },
+  "encounter.sq.deserter_cache.alerted_guards": {
+    id: "encounter.sq.deserter_cache.alerted_guards",
+    displayName: "Alerted Warband",
+    enemyGroups: [
+      { enemyId: "enemy.bandit_brute", count: 2 },
+      { enemyId: "enemy.goblin_skirmisher", count: 1 },
+    ],
+    tags: ["road", "ambush"],
+    rewardPoolId: "reward.uncommon",
+  },
 };
 
 /**
