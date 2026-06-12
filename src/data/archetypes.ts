@@ -2,6 +2,8 @@ import type { LevelUpOption } from "./levelups.ts";
 
 export const ARCHETYPE_PASSIVE_WIZARD_SCULPT_SPELLS = "passive.wizard.sculpt_spells";
 export const ARCHETYPE_PASSIVE_WIZARD_WARD_REGAIN = "passive.wizard.ward_regain";
+export const ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER = "passive.ranger.colossus_slayer";
+export const ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER = "passive.ranger.dread_ambusher";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -157,6 +159,24 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Maintains a ward of magical force that absorbs damage and recharges on each spell cast.",
     grantedActionId: "action.wizard.arcane_ward",
     passiveId: ARCHETYPE_PASSIVE_WIZARD_WARD_REGAIN,
+  },
+  "archetype.ranger.hunter": {
+    id: "archetype.ranger.hunter",
+    displayName: "Hunter",
+    classId: "class.ranger",
+    chosenAtLevel: 3,
+    description: "Specializes in hunting big prey; deals extra damage to a single marked target.",
+    grantedActionId: "action.ranger.hail_of_arrows",
+    passiveId: ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER,
+  },
+  "archetype.ranger.gloom_stalker": {
+    id: "archetype.ranger.gloom_stalker",
+    displayName: "Gloom Stalker",
+    classId: "class.ranger",
+    chosenAtLevel: 3,
+    description: "Thrives in darkness; gains a bonus attack on the first round of combat.",
+    grantedActionId: "action.ranger.umbral_sight",
+    passiveId: ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
   },
 };
 

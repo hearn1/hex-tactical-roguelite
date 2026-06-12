@@ -740,4 +740,28 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     spellLevel: 1,
     effect: { type: "damage", formula: "1d6 + dex", applyCondition: { id: "rooted", duration: 2 } },
   },
+  // ── Ranger archetype actions ──────────────────────────────────────────
+  "action.ranger.hail_of_arrows": {
+    id: "action.ranger.hail_of_arrows",
+    displayName: "Hail of Arrows",
+    description: "Rain arrows down on a 3-hex area, dealing 1d6 + Dexterity to each target hit.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "dex",
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
+    effect: { type: "damage", formula: "1d6 + dex", targetMode: "aoe_radius", radius: 3 },
+  },
+  "action.ranger.umbral_sight": {
+    id: "action.ranger.umbral_sight",
+    displayName: "Umbral Sight",
+    description: "Attune to the dark — ignore disadvantage from darkness and obscurement for 3 turns.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    isCantrip: true,
+    effect: { type: "applyCondition", conditionId: "umbral_sight", duration: 3 },
+  },
 };

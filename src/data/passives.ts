@@ -6,6 +6,8 @@ import {
   ARCHETYPE_PASSIVE_CLOISTERED_HEAL_BONUS,
   ARCHETYPE_PASSIVE_EVOKER_CRIT_FLOOR,
   ARCHETYPE_PASSIVE_ENCHANTER_ATTACK_DEBUFF_AURA,
+  ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER,
+  ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
 } from "./archetypes.ts";
 
 export type PassiveEffect =
@@ -29,7 +31,9 @@ export type PassiveEffect =
   | { type: "arcaneRecovery"; slotsPerCombat: number }
   | { type: "sculptSpells" }
   | { type: "empoweredEvocation"; stat: AbilityKey }
-  | { type: "arcaneWardRegain"; multiplier: number };
+  | { type: "arcaneWardRegain"; multiplier: number }
+  | { type: "colossusSlayer"; dice: string }
+  | { type: "dreadAmbusher"; initiativeBonus: number };
 
 export interface PassiveDef {
   id: string;
@@ -194,5 +198,17 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Expanded Spellcasting (L5)",
     description: "Grants one additional spell slot per Long Rest.",
     effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  [ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER]: {
+    id: ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER,
+    displayName: "Colossus Slayer",
+    description: "Once per turn, deal +1d8 bonus damage to a target that is below its maximum HP.",
+    effect: { type: "colossusSlayer", dice: "1d8" },
+  },
+  [ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER]: {
+    id: ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
+    displayName: "Dread Ambusher",
+    description: "+1 to initiative. On the first round of combat, make one additional attack.",
+    effect: { type: "dreadAmbusher", initiativeBonus: 1 },
   },
 };
