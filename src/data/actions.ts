@@ -26,7 +26,7 @@ export interface ActionDef {
   /** Nominal spell level, metadata for display/future scaling. */
   spellLevel?: number;
   effect:
-    | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number }
+    | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number; bonusDiceOnFlanking?: string }
     | { type: "heal"; formula: string; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "applyCondition"; conditionId: string; duration: number; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "removeConditions" }
@@ -546,5 +546,38 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     accuracyStat: "str",
     isCantrip: true,
     effect: { type: "damage", formula: "1d8 + str", applyCondition: { id: "frightened", duration: 1 } },
+  },
+  // ── Rogue starting actions ─────────────────────────────────────────────
+  "action.rogue.sneak_stab": {
+    id: "action.rogue.sneak_stab",
+    displayName: "Sneak Stab",
+    description: "A swift dagger thrust that deals bonus damage when the target has an adjacent enemy.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "dex",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d6 + dex", bonusDiceOnFlanking: "1d6" },
+  },
+  "action.rogue.shortbow_shot": {
+    id: "action.rogue.shortbow_shot",
+    displayName: "Shortbow Shot",
+    description: "A quick, accurate ranged shot from a shortbow.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "dex",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d6 + dex" },
+  },
+  "action.rogue.disengage_dash": {
+    id: "action.rogue.disengage_dash",
+    displayName: "Disengage & Dash",
+    description: "Slip away and sprint: gain +2 movement this turn without provoking attacks of opportunity.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    isCantrip: true,
+    effect: { type: "applyCondition", conditionId: "hasted", duration: 1 },
   },
 };
