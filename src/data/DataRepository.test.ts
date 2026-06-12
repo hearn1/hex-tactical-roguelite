@@ -162,6 +162,66 @@ describe("DataRepository", () => {
     expect(PASSIVE_REGISTRY["passive.wizard.empowered_evocation"]).toBeDefined();
     expect(PASSIVE_REGISTRY["passive.wizard.ward_regain"]).toBeDefined();
   });
+
+  it("ranger class registers with correct starting actions and stats", () => {
+    const ranger = repo.getClass("class.ranger");
+    expect(ranger).toBeDefined();
+    expect(ranger!.hitDieSize).toBe(10);
+    expect(ranger!.spellSlotsMax).toBe(1);
+    expect(ranger!.primaryAbility).toBe("dex");
+    expect(ranger!.spellcastingAbility).toBe("wis");
+    expect(ranger!.actionIds).toContain("action.ranger.hunters_mark");
+    expect(ranger!.actionIds).toContain("action.ranger.volley");
+    expect(ranger!.actionIds).toContain("action.ranger.ensnaring_strike");
+    expect(repo.getAction("action.ranger.hunters_mark")).toBeDefined();
+    expect(repo.getAction("action.ranger.volley")).toBeDefined();
+    expect(repo.getAction("action.ranger.ensnaring_strike")).toBeDefined();
+  });
+
+  it("ranger Hunter's Mark applies hunters_mark condition, Ensnaring Strike roots on hit", () => {
+    const mark = repo.getAction("action.ranger.hunters_mark");
+    expect(mark).toBeDefined();
+    expect(mark!.isCantrip).toBe(true);
+    expect(mark!.effect).toMatchObject({ type: "applyCondition", conditionId: "hunters_mark" });
+
+    const strike = repo.getAction("action.ranger.ensnaring_strike");
+    expect(strike!.resourceType).toBe("spell_slot");
+    expect(strike!.effect).toMatchObject({ type: "damage", applyCondition: { id: "rooted" } });
+  });
+
+  it("ranger Volley is a cantrip AoE dealing 1d6+dex", () => {
+    const volley = repo.getAction("action.ranger.volley");
+    expect(volley).toBeDefined();
+    expect(volley!.isCantrip).toBe(true);
+    expect(volley!.effect).toMatchObject({ type: "damage", formula: "1d6 + dex", targetMode: "aoe_radius", radius: 2 });
+  });
+
+  it("ranger archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.ranger.hunter"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.ranger.gloom_stalker"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.ranger.colossus_slayer"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.ranger.dread_ambusher"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.ranger.extra_slot_l5"]).toBeDefined();
+    expect(repo.getAction("action.ranger.hail_of_arrows")).toBeDefined();
+    expect(repo.getAction("action.ranger.umbral_sight")).toBeDefined();
+  });
+
+  it("ranger L5 progression auto-grants extra_attack", () => {
+    const { RANGER_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = RANGER_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.extra_attack");
+  });
+
+  it("ranger archetype passives use correct effect types", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const colossus = PASSIVE_REGISTRY["passive.ranger.colossus_slayer"];
+    expect(colossus.effect).toMatchObject({ type: "colossusSlayer", dice: "1d8" });
+    const dread = PASSIVE_REGISTRY["passive.ranger.dread_ambusher"];
+    expect(dread.effect).toMatchObject({ type: "dreadAmbusher", initiativeBonus: 1 });
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {
