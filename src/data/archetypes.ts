@@ -6,6 +6,8 @@ export const ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER = "passive.ranger.colossus
 export const ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER = "passive.ranger.dread_ambusher";
 export const ARCHETYPE_PASSIVE_DRUID_COMBAT_WILD_SHAPE = "passive.druid.combat_wild_shape";
 export const ARCHETYPE_PASSIVE_DRUID_NATURAL_RECOVERY = "passive.druid.natural_recovery";
+export const ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS = "passive.bard.additional_magical_secrets";
+export const ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION = "passive.bard.combat_inspiration";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -179,6 +181,26 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Thrives in darkness; gains a bonus attack on the first round of combat.",
     grantedActionId: "action.ranger.umbral_sight",
     passiveId: ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
+  },
+  "archetype.bard.college_of_lore": {
+    id: "archetype.bard.college_of_lore",
+    classId: "class.bard",
+    chosenAtLevel: 3,
+    displayName: "College of Lore",
+    description: "Weaves cutting words into battle; steals spell knowledge from other traditions.",
+    grantedActionId: "action.bard.cutting_words",
+    passiveId: ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS,
+  },
+  "archetype.bard.college_of_valor": {
+    id: "archetype.bard.college_of_valor",
+    classId: "class.bard",
+    chosenAtLevel: 3,
+    displayName: "College of Valor",
+    description: "Inspires allies mid-battle; Bardic Inspiration adds to damage rolls.",
+    passiveId: ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION,
+    featuresByHeroLevel: {
+      5: { featuresGranted: ["passive.bard.extra_attack"] },
+    },
   },
   "archetype.druid.circle_of_moon": {
     id: "archetype.druid.circle_of_moon",

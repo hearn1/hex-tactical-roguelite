@@ -8,6 +8,8 @@ import {
   ARCHETYPE_PASSIVE_ENCHANTER_ATTACK_DEBUFF_AURA,
   ARCHETYPE_PASSIVE_RANGER_COLOSSUS_SLAYER,
   ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
+  ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS,
+  ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION,
 } from "./archetypes.ts";
 
 export type PassiveEffect =
@@ -230,14 +232,14 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     description: "Bardic Inspiration recharges after a short rest (post-combat).",
     effect: { type: "fontOfInspiration" },
   },
-  "passive.bard.additional_magical_secrets": {
-    id: "passive.bard.additional_magical_secrets",
+  [ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS]: {
+    id: ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS,
     displayName: "Additional Magical Secrets",
     description: "Learn 1 spell from any class list at L3 and L5.",
     effect: { type: "spellSlotBonus", amount: 0 },
   },
-  "passive.bard.combat_inspiration": {
-    id: "passive.bard.combat_inspiration",
+  [ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION]: {
+    id: ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION,
     displayName: "Combat Inspiration",
     description: "Allies may use Bardic Inspiration to add to a damage roll instead of an attack roll.",
     effect: { type: "combatInspiration" },

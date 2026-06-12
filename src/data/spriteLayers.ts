@@ -79,6 +79,8 @@ export const FLAIR_OVERLAYS: Record<string, FlairOverlayDef> = {
   "overlay.flair.gloom_stalker": { id: "overlay.flair.gloom_stalker", kind: "cloak", color: "#2a3a2a" },
   "overlay.flair.circle_of_moon": { id: "overlay.flair.circle_of_moon", kind: "aura", color: "#b8e0ff" },
   "overlay.flair.circle_of_land": { id: "overlay.flair.circle_of_land", kind: "cloak", color: "#7fd17a" },
+  "overlay.flair.college_of_lore": { id: "overlay.flair.college_of_lore", kind: "aura", color: "#d4a8ff" },
+  "overlay.flair.college_of_valor": { id: "overlay.flair.college_of_valor", kind: "aura", color: "#ffe066" },
 };
 
 /** Weapon/armor item id → overlay id. Trinkets have no appearance layer. */
@@ -119,6 +121,8 @@ export const ARCHETYPE_FLAIR: Record<string, string> = {
   "archetype.ranger.gloom_stalker": "overlay.flair.gloom_stalker",
   "archetype.druid.circle_of_moon": "overlay.flair.circle_of_moon",
   "archetype.druid.circle_of_land": "overlay.flair.circle_of_land",
+  "archetype.bard.college_of_lore": "overlay.flair.college_of_lore",
+  "archetype.bard.college_of_valor": "overlay.flair.college_of_valor",
 };
 
 /** Look a hero shows when the corresponding slot is empty, keyed by class id (= hero `defId`). */
