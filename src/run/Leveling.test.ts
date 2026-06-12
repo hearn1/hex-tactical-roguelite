@@ -1,6 +1,9 @@
-﻿import { describe, it, expect } from "vitest";
-import { levelForXp, nextThresholdXp, applyXp, MAX_LEVEL, XP_THRESHOLDS } from "./Leveling.ts";
+﻿import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { levelForXp, nextThresholdXp, applyXp, applyXpToPartyMember, MAX_LEVEL, XP_THRESHOLDS } from "./Leveling.ts";
 import type { UnitInstance } from "../state/types.ts";
+import type { PartyMember } from "../state/RunState.ts";
+import { CLASS_REGISTRY } from "../data/classes.ts";
+import type { ClassProgressionTable } from "../data/progressionTables.ts";
 
 function makeUnit(overrides: Partial<UnitInstance> = {}): UnitInstance {
   return {
@@ -115,5 +118,79 @@ describe("applyXp", () => {
     applyXp(unit, 1);
     expect(unit.hp).toBe(12);
     expect(unit.stats.maxHp).toBe(20);
+  });
+});
+
+function makePm(overrides: Partial<PartyMember> = {}): PartyMember {
+  return {
+    instanceId: "hero_001",
+    classId: "class.guardian",
+    displayName: "Test",
+    level: 1,
+    xp: 0,
+    hp: 18,
+    maxHp: 18,
+    bonusStats: {},
+    equippedItemIds: { weapon: null, armor: null, trinket: null },
+    ...overrides,
+  };
+}
+
+describe("featuresGranted auto-apply (applyXpToPartyMember)", () => {
+  let savedTable: ClassProgressionTable;
+
+  beforeEach(() => {
+    savedTable = CLASS_REGISTRY["class.guardian"].progressionTable;
+  });
+
+  afterEach(() => {
+    CLASS_REGISTRY["class.guardian"].progressionTable = savedTable;
+  });
+
+  it("appends featuresGranted passives to PartyMember.passives on level-up", () => {
+    CLASS_REGISTRY["class.guardian"].progressionTable = [
+      { level: 1, proficiencyBonus: 2 },
+      { level: 2, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 }, featuresGranted: ["passive.test_feature"] },
+      { level: 3, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
+      { level: 4, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
+      { level: 5, proficiencyBonus: 3, statGain: { maxHp: 2, str: 1 } },
+    ];
+    const pm = makePm({ xp: 19 });
+    const result = applyXpToPartyMember(pm, 1);
+    expect(result.leveledUp).toBe(true);
+    expect(pm.passives).toContain("passive.test_feature");
+    expect(result.featuresGranted).toEqual(["passive.test_feature"]);
+  });
+
+  it("deduplicates featuresGranted when the same passive is listed in multiple levels", () => {
+    CLASS_REGISTRY["class.guardian"].progressionTable = [
+      { level: 1, proficiencyBonus: 2 },
+      { level: 2, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 }, featuresGranted: ["passive.shared"] },
+      { level: 3, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 }, featuresGranted: ["passive.shared"] },
+      { level: 4, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
+      { level: 5, proficiencyBonus: 3, statGain: { maxHp: 2, str: 1 } },
+    ];
+    const pm = makePm({ xp: 0 });
+    applyXpToPartyMember(pm, 200);
+    expect(pm.passives?.filter((p) => p === "passive.shared")).toHaveLength(1);
+  });
+
+  it("does not add featuresGranted to result when no features are in the crossed levels", () => {
+    const pm = makePm({ xp: 19 });
+    const result = applyXpToPartyMember(pm, 1);
+    expect(result.featuresGranted).toBeUndefined();
+  });
+
+  it("does not duplicate an existing passive already on PartyMember", () => {
+    CLASS_REGISTRY["class.guardian"].progressionTable = [
+      { level: 1, proficiencyBonus: 2 },
+      { level: 2, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 }, featuresGranted: ["passive.already_has"] },
+      { level: 3, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
+      { level: 4, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
+      { level: 5, proficiencyBonus: 3, statGain: { maxHp: 2, str: 1 } },
+    ];
+    const pm = makePm({ xp: 19, passives: ["passive.already_has"] });
+    applyXpToPartyMember(pm, 1);
+    expect(pm.passives?.filter((p) => p === "passive.already_has")).toHaveLength(1);
   });
 });
