@@ -294,6 +294,87 @@ describe("DataRepository", () => {
     const wildShape = PASSIVE_REGISTRY["passive.druid.wild_shape"];
     expect(wildShape.effect).toMatchObject({ type: "wildShapeGrant", chargesPerCombat: 2 });
   });
+
+  it("bard class registers with correct starting actions and stats", () => {
+    const bard = repo.getClass("class.bard");
+    expect(bard).toBeDefined();
+    expect(bard!.hitDieSize).toBe(8);
+    expect(bard!.spellSlotsMax).toBe(2);
+    expect(bard!.primaryAbility).toBe("cha");
+    expect(bard!.spellcastingAbility).toBe("cha");
+    expect(bard!.actionIds).toContain("action.bard.vicious_mockery");
+    expect(bard!.actionIds).toContain("action.bard.inspiration");
+    expect(bard!.actionIds).toContain("action.bard.healing_song");
+    expect(repo.getAction("action.bard.vicious_mockery")).toBeDefined();
+    expect(repo.getAction("action.bard.inspiration")).toBeDefined();
+    expect(repo.getAction("action.bard.healing_song")).toBeDefined();
+  });
+
+  it("bard Vicious Mockery is a CHA cantrip that applies rattled", () => {
+    const vm = repo.getAction("action.bard.vicious_mockery");
+    expect(vm).toBeDefined();
+    expect(vm!.isCantrip).toBe(true);
+    expect(vm!.accuracyStat).toBe("cha");
+    expect(vm!.effect).toMatchObject({ type: "damage", formula: "1d4 + cha", applyCondition: { id: "rattled" } });
+  });
+
+  it("bard Bardic Inspiration is a cantrip that grants bardic_inspiration to an ally", () => {
+    const insp = repo.getAction("action.bard.inspiration");
+    expect(insp).toBeDefined();
+    expect(insp!.isCantrip).toBe(true);
+    expect(insp!.targetType).toBe("ally");
+    expect(insp!.range).toBe(2);
+    expect(insp!.effect).toMatchObject({ type: "applyCondition", conditionId: "bardic_inspiration" });
+  });
+
+  it("bard Healing Song is a spell slot AoE heal targeting allies", () => {
+    const hs = repo.getAction("action.bard.healing_song");
+    expect(hs).toBeDefined();
+    expect(hs!.resourceType).toBe("spell_slot");
+    expect(hs!.targetType).toBe("ally");
+    expect(hs!.effect).toMatchObject({ type: "heal", formula: "1d6 + cha", targetMode: "aoe_radius", radius: 2 });
+  });
+
+  it("bard archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.bard.college_of_lore"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.bard.college_of_valor"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.jack_of_all_trades"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.bard.font_of_inspiration"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.bard.additional_magical_secrets"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.bard.combat_inspiration"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.bard.extra_attack"]).toBeDefined();
+    expect(repo.getAction("action.bard.cutting_words")).toBeDefined();
+  });
+
+  it("bard L2 progression auto-grants jack_of_all_trades passive", () => {
+    const { BARD_PROGRESSION } = require("./progressionTables.ts");
+    const l2 = BARD_PROGRESSION.find((e: { level: number }) => e.level === 2);
+    expect(l2).toBeDefined();
+    expect(l2.featuresGranted).toContain("passive.jack_of_all_trades");
+  });
+
+  it("bard L5 progression auto-grants font_of_inspiration passive", () => {
+    const { BARD_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = BARD_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.bard.font_of_inspiration");
+  });
+
+  it("bard College of Valor grants extra_attack at L5", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const valor = ARCHETYPE_REGISTRY["archetype.bard.college_of_valor"];
+    expect(valor).toBeDefined();
+    expect(valor.featuresByHeroLevel?.[5]?.featuresGranted).toContain("passive.bard.extra_attack");
+  });
+
+  it("bard College of Lore grants Cutting Words action", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const lore = ARCHETYPE_REGISTRY["archetype.bard.college_of_lore"];
+    expect(lore).toBeDefined();
+    expect(lore.grantedActionId).toBe("action.bard.cutting_words");
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {

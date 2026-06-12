@@ -11,6 +11,7 @@ import {
   WIZARD_PROGRESSION,
   RANGER_PROGRESSION,
   DRUID_PROGRESSION,
+  BARD_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -203,6 +204,22 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellcastingAbility: "wis",
     progressionTable: DRUID_PROGRESSION,
   },
+  "class.bard": {
+    id: "class.bard",
+    displayName: "Bard",
+    baseStats: { maxHp: 13, armor: 12, move: 3, str: 1, dex: 2, con: 1, int: 1, wis: 1, cha: 3 },
+    hitDieSize: 8,
+    actionIds: ["action.bard.vicious_mockery", "action.bard.inspiration", "action.bard.healing_song"],
+    startingItems: [],
+    spellSlotsMax: 2,
+    defaultBackgroundId: "background.field_medic",
+    primaryAbility: "cha",
+    savingThrowProficiencies: ["dex", "cha"],
+    armorProficiencies: ["light"],
+    weaponProficiencies: ["simple", "ranged"],
+    spellcastingAbility: "cha",
+    progressionTable: BARD_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -216,4 +233,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.wizard": "Lyra",
   "class.ranger": "Kael",
   "class.druid": "Fern",
+  "class.bard": "Lyric",
 };
