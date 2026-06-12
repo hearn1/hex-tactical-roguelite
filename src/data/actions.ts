@@ -590,6 +590,31 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     isCantrip: true,
     effect: { type: "applyCondition", conditionId: "fast_hands", duration: 1 },
   },
+  // ── Cleric archetype actions ──────────────────────────────────────────
+  "action.cleric.mass_cure_wounds": {
+    id: "action.cleric.mass_cure_wounds",
+    displayName: "Mass Cure Wounds",
+    description: "A surge of healing energy restores 2d8 + Wisdom HP to all allies within range 2.",
+    source: "class",
+    targetType: "ally",
+    range: 2,
+    accuracyStat: "wis",
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 2,
+    effect: { type: "heal", formula: "2d8 + wis", targetMode: "aoe_radius", radius: 2 },
+  },
+  "action.cleric.divine_strike": {
+    id: "action.cleric.divine_strike",
+    displayName: "Divine Strike",
+    description: "Channel divine power through your weapon — deal an extra 1d8 radiant damage on a melee hit.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "wis",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d8 + wis" },
+  },
   // ── Cleric starting actions ────────────────────────────────────────────
   "action.cleric.sacred_flame": {
     id: "action.cleric.sacred_flame",
