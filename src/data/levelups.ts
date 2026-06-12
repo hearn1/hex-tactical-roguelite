@@ -250,6 +250,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.rogue": {
+    2: [
+      {
+        id: "rogue.cunning_action_disengage",
+        name: "Cunning Action: Disengage",
+        description: "Disengage & Dash costs no action — permanent +1 movement.",
+        upgrade: { kind: "stat", stats: { move: 1 } },
+      },
+      {
+        id: "rogue.cunning_action_hide",
+        name: "Cunning Action: Hide",
+        description: "Slip into cover and gain +2 AC — permanent +1 Armor.",
+        upgrade: { kind: "stat", stats: { armor: 1 } },
+      },
+    ],
+    3: [
+      {
+        id: "rogue.archetype.thief",
+        name: "Thief",
+        description: "Fast hands and quicker feet; use an item as a bonus action.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.rogue.thief" },
+      },
+      {
+        id: "rogue.archetype.assassin",
+        name: "Assassin",
+        description: "Masters of surprise; deal bonus damage against full-HP targets.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.rogue.assassin" },
+      },
+    ],
+    4: [
+      {
+        id: "rogue.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "rogue.shadow_step",
+        name: "Shadow Step",
+        description: "Permanent +1 Dexterity and +1 max HP.",
+        upgrade: { kind: "stat", stats: { dex: 1, maxHp: 1 } },
+      },
+    ],
+    5: [
+      {
+        id: "rogue.blade_mastery",
+        name: "Blade Mastery",
+        description: "Sneak Stab and Shortbow Shot deal +1 damage.",
+        upgrade: { kind: "action", actionIds: ["action.rogue.sneak_stab", "action.rogue.shortbow_shot"], damageBonus: 1 },
+      },
+      {
+        id: "rogue.vital_strike",
+        name: "Vital Strike",
+        description: "Permanent +1 Dexterity.",
+        upgrade: { kind: "stat", stats: { dex: 1 } },
+      },
+    ],
+  },
   "class.arcanist": {
     2: [
       {

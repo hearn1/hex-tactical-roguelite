@@ -6,6 +6,7 @@ import {
   ARCANIST_PROGRESSION,
   SCOUT_PROGRESSION,
   FIGHTER_PROGRESSION,
+  ROGUE_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -120,6 +121,20 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     weaponProficiencies: ["simple", "martial"],
     progressionTable: FIGHTER_PROGRESSION,
   },
+  "class.rogue": {
+    id: "class.rogue",
+    displayName: "Rogue",
+    baseStats: { maxHp: 13, armor: 13, move: 4, str: 1, dex: 3, con: 1, int: 2, wis: 1, cha: 1 },
+    hitDieSize: 8,
+    actionIds: ["action.rogue.sneak_stab", "action.rogue.shortbow_shot", "action.rogue.disengage_dash"],
+    startingItems: ["item.fine_dagger"],
+    defaultBackgroundId: "background.cutpurse",
+    primaryAbility: "dex",
+    savingThrowProficiencies: ["dex", "int"],
+    armorProficiencies: ["light"],
+    weaponProficiencies: ["simple", "finesse", "ranged"],
+    progressionTable: ROGUE_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -128,4 +143,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.arcanist": "Eldra",
   "class.scout": "Nyx",
   "class.fighter": "Brant",
+  "class.rogue": "Vesper",
 };

@@ -53,3 +53,11 @@ export const FIGHTER_PROGRESSION: ClassProgressionTable = [
   { level: 4, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
   { level: 5, proficiencyBonus: 3, statGain: { maxHp: 2, str: 1 }, featuresGranted: ["passive.extra_attack"] },
 ];
+
+export const ROGUE_PROGRESSION: ClassProgressionTable = [
+  { level: 1, proficiencyBonus: 2 },
+  { level: 2, proficiencyBonus: 2, statGain: { maxHp: 1, dex: 1 } },
+  { level: 3, proficiencyBonus: 2, statGain: { maxHp: 1, dex: 1 } },
+  { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, dex: 1 }, featuresGranted: ["passive.uncanny_dodge"] },
+  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, dex: 1 }, featuresGranted: ["passive.evasion"] },
+];
