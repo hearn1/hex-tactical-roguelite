@@ -16,6 +16,7 @@ import { SetupScreen } from "./screens/SetupScreen.ts";
 import { LevelUpScreen } from "./screens/LevelUpScreen.ts";
 import { ActTransitionScreen } from "./screens/ActTransitionScreen.ts";
 import { CampaignVictoryScreen } from "./screens/CampaignVictoryScreen.ts";
+import { SideQuestNodeScreen } from "./screens/SideQuestNodeScreen.ts";
 
 export class App {
   private root: HTMLElement;
@@ -65,6 +66,8 @@ export class App {
         return new ActTransitionScreen(this).render();
       case "campaign_victory":
         return new CampaignVictoryScreen(this).render();
+      case "side_quest_node":
+        return new SideQuestNodeScreen(this).render();
       default:
         return new MainMenu(this).render();
     }

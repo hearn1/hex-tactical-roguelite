@@ -18,7 +18,8 @@ export type ScreenId =
   | "levelup"
   | "run_summary"
   | "act_transition"
-  | "campaign_victory";
+  | "campaign_victory"
+  | "side_quest_node";
 
 export type Team = "hero" | "enemy";
 

@@ -26,6 +26,9 @@ const LAYER_COLORS: Record<string, string> = {
   camp: "#4a4",
   event: "#ca4",
   recruit: "#8c4",
+  side_route_start: "#2ac",
+  side_route_node: "#2ac",
+  side_route_return: "#2ac",
 };
 
 const NODE_RADIUS = 28;
@@ -61,6 +64,7 @@ export class MapScreen {
       { type: "event", label: "Event" },
       { type: "recruit", label: "Recruit" },
       { type: "boss", label: "Boss" },
+      { type: "side_route_start", label: "Side Quest (dashed = optional)" },
     ];
     for (const entry of entries) {
       const chip = document.createElement("span");
@@ -75,6 +79,21 @@ export class MapScreen {
   }
 
   render(): HTMLElement {
+    // If returning from combat mid-side-quest, hand off to the side quest screen.
+    {
+      const currentNode = gameState.run
+        ? NODE_REGISTRY[gameState.run.mapState.currentNodeId]
+        : undefined;
+      if (
+        currentNode?.type === "side_route_node" ||
+        currentNode?.type === "side_route_return"
+      ) {
+        gameState.screen = "side_quest_node";
+        this.app.render();
+        return document.createElement("div");
+      }
+    }
+
     const container = document.createElement("div");
     container.style.cssText = "display:flex;flex-direction:column;align-items:center;padding:20px;";
 
@@ -103,35 +122,47 @@ export class MapScreen {
 
     container.appendChild(this.buildLegend());
 
-    const mapEl = document.createElement("div");
-    mapEl.style.cssText = "position:relative;width:800px;height:500px;margin-top:10px;";
+    // Internal side quest nodes (node/return) are navigated via the side quest screen,
+    // not the main map. Only the entry (side_route_start) stays visible.
+    const HIDDEN_TYPES = new Set(["side_route_node", "side_route_return"]);
+    const visibleNodes = template.nodes.filter((n) => !HIDDEN_TYPES.has(n.type));
+    const hiddenNodeIds = new Set(
+      template.nodes.filter((n) => HIDDEN_TYPES.has(n.type)).map((n) => n.id),
+    );
 
-    const layers = buildLayers(template.nodes);
+    const layers = buildLayers(visibleNodes);
+    const mapWidth = Math.max(900, (layers.length + 1) * 90);
+    const mapHeight = 520;
+
+    const mapEl = document.createElement("div");
+    mapEl.style.cssText = `position:relative;width:${mapWidth}px;height:${mapHeight}px;margin-top:10px;overflow-x:auto;`;
+
     const mapState = gameState.run!.mapState;
     const available = availableNextNodes(mapState);
 
     const svgNS = "http://www.w3.org/2000/svg";
     const svg = document.createElementNS(svgNS, "svg");
-    svg.setAttribute("width", "800");
-    svg.setAttribute("height", "500");
+    svg.setAttribute("width", String(mapWidth));
+    svg.setAttribute("height", String(mapHeight));
     svg.style.cssText = "position:absolute;top:0;left:0;";
 
     const nodeCoords: Map<string, { x: number; y: number }> = new Map();
 
-    const layerWidth = 720 / (layers.length + 1);
+    const layerWidth = (mapWidth - 80) / (layers.length + 1);
     for (let li = 0; li < layers.length; li++) {
       const nodes = layers[li];
       const x = 40 + layerWidth * (li + 1) - layerWidth / 2;
-      const spacing = Math.min(100, 400 / (nodes.length + 1));
-      const startY = 250 - (spacing * (nodes.length - 1)) / 2;
+      const spacing = Math.min(110, (mapHeight - 80) / (nodes.length + 1));
+      const startY = mapHeight / 2 - (spacing * (nodes.length - 1)) / 2;
       for (let ni = 0; ni < nodes.length; ni++) {
         const y = startY + spacing * ni;
         nodeCoords.set(nodes[ni].id, { x, y });
       }
     }
 
-    for (const node of template.nodes) {
+    for (const node of visibleNodes) {
       for (const nextId of node.nextNodeIds) {
+        if (hiddenNodeIds.has(nextId)) continue;
         const from = nodeCoords.get(node.id);
         const to = nodeCoords.get(nextId);
         if (!from || !to) continue;
@@ -146,7 +177,7 @@ export class MapScreen {
       }
     }
 
-    for (const node of template.nodes) {
+    for (const node of visibleNodes) {
       const coords = nodeCoords.get(node.id);
       if (!coords) continue;
 
@@ -191,9 +222,14 @@ export class MapScreen {
         strokeWidth = 1;
       }
 
+      const isSideRoute =
+        node.type === "side_route_start" ||
+        node.type === "side_route_node" ||
+        node.type === "side_route_return";
       circle.setAttribute("fill", fill);
-      circle.setAttribute("stroke", stroke);
+      circle.setAttribute("stroke", isSideRoute && !isCurrent && !isAvailable ? "#1a7a8a" : stroke);
       circle.setAttribute("stroke-width", String(strokeWidth));
+      circle.setAttribute("stroke-dasharray", isSideRoute && !isCurrent ? "5,3" : "none");
       circle.setAttribute("style", `cursor:${cursor};`);
       circle.setAttribute("data-testid", `map-node-${node.id}`);
 
@@ -216,21 +252,31 @@ export class MapScreen {
       label.setAttribute("fill", isForetold && isLocked ? "#8c8" : isLocked ? "#555" : "#ddd");
       label.setAttribute("font-size", "11");
       label.setAttribute("font-weight", "bold");
-      const typeLabel = node.type.charAt(0).toUpperCase() + node.type.slice(1, 2);
-      label.textContent = typeLabel;
+      const TYPE_ABBREV: Record<string, string> = {
+        start: "St", combat: "Co", elite: "El", boss: "Bo",
+        shop: "Sh", camp: "Ca", event: "Ev", recruit: "Re", pet: "Pe",
+        shrine: "Sr",
+        side_route_start: "SQ", side_route_node: "SQ", side_route_return: "SQ",
+      };
+      label.textContent = TYPE_ABBREV[node.type] ?? node.type.slice(0, 2).toUpperCase();
       group.appendChild(label);
 
       svg.appendChild(group);
 
-      const textLabel = document.createElementNS(svgNS, "text");
-      textLabel.setAttribute("x", String(coords.x));
-      textLabel.setAttribute("y", String(coords.y + NODE_RADIUS + 16));
-      textLabel.setAttribute("text-anchor", "middle");
-      textLabel.setAttribute("fill", isForetold && isLocked ? "#8c8" : isLocked ? "#444" : "#aaa");
-      textLabel.setAttribute("font-size", "10");
-      textLabel.setAttribute("style", "pointer-events:none;");
-      textLabel.textContent = node.title.length > 18 ? node.title.slice(0, 16) + "..." : node.title;
-      svg.appendChild(textLabel);
+      // Only show title label on visible (non-locked) or foretold nodes to reduce clutter.
+      if (!isLocked || isForetold) {
+        const textLabel = document.createElementNS(svgNS, "text");
+        textLabel.setAttribute("x", String(coords.x));
+        textLabel.setAttribute("y", String(coords.y + NODE_RADIUS + 14));
+        textLabel.setAttribute("text-anchor", "middle");
+        textLabel.setAttribute("fill", isForetold && isLocked ? "#8c8" : "#aaa");
+        textLabel.setAttribute("font-size", "10");
+        textLabel.setAttribute("style", "pointer-events:none;");
+        const maxLen = 13;
+        textLabel.textContent =
+          node.title.length > maxLen ? node.title.slice(0, maxLen - 1) + "…" : node.title;
+        svg.appendChild(textLabel);
+      }
     }
 
     mapEl.appendChild(svg);
@@ -376,6 +422,13 @@ export class MapScreen {
 
     if (nodeDef.type === "shop" || nodeDef.type === "camp" || nodeDef.type === "event" || nodeDef.type === "recruit" || nodeDef.type === "pet") {
       gameState.screen = nodeDef.type;
+      this.app.render();
+      return;
+    }
+
+    if (nodeDef.type === "side_route_start") {
+      // The side quest screen handles the full chain from here.
+      gameState.screen = "side_quest_node";
       this.app.render();
       return;
     }
