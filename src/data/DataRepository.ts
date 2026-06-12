@@ -229,6 +229,8 @@ export class DataRepository {
     const allBackgroundIds = new Set(this.backgrounds.keys());
     const abilityKeys = new Set<string>(ABILITY_KEYS);
     const statKeys = new Set(["maxHp", "armor", "move", "str", "dex", "con", "int", "wis", "cha"]);
+    const validArmorProfs = new Set(["none", "light", "medium", "heavy", "shield"]);
+    const validWeaponProfs = new Set(["simple", "martial", "finesse", "ranged"]);
     const eventTags = new Set(["risk", "social", "treasure", "heal", "train", "moral"]);
     const environmentThemeIds = new Set(Object.keys(ENVIRONMENT_THEMES));
     // Combat grid is a radius-3 hex disc; referenced by both enemy trait and encounter validation.
@@ -266,6 +268,46 @@ export class DataRepository {
         errors.push(`Class "${id}": default background "${def.defaultBackgroundId}" not found`);
       }
       if (![6, 8, 10, 12].includes(def.hitDieSize)) errors.push(`Class "${id}": hitDieSize must be a standard die`);
+
+      if (def.primaryAbility === undefined) {
+        warnings.push(`Class "${id}": missing required field primaryAbility`);
+      } else if (!statKeys.has(def.primaryAbility)) {
+        errors.push(`Class "${id}": primaryAbility "${def.primaryAbility}" is not a valid stat`);
+      }
+      if (def.savingThrowProficiencies === undefined) {
+        warnings.push(`Class "${id}": missing required field savingThrowProficiencies`);
+      } else {
+        if (def.savingThrowProficiencies.length !== 2) {
+          errors.push(`Class "${id}": savingThrowProficiencies must have exactly 2 entries`);
+        }
+        for (const s of def.savingThrowProficiencies) {
+          if (!statKeys.has(s)) {
+            errors.push(`Class "${id}": savingThrowProficiencies entry "${s}" is not a valid stat`);
+          }
+        }
+      }
+      if (def.armorProficiencies === undefined) {
+        warnings.push(`Class "${id}": missing required field armorProficiencies`);
+      } else {
+        for (const a of def.armorProficiencies) {
+          if (!validArmorProfs.has(a)) {
+            errors.push(`Class "${id}": armorProficiencies contains unrecognized value "${a}"`);
+          }
+        }
+      }
+      if (def.weaponProficiencies === undefined) {
+        warnings.push(`Class "${id}": missing required field weaponProficiencies`);
+      } else {
+        for (const w of def.weaponProficiencies) {
+          if (!validWeaponProfs.has(w)) {
+            errors.push(`Class "${id}": weaponProficiencies contains unrecognized value "${w}"`);
+          }
+        }
+      }
+      if (def.spellcastingAbility !== undefined && !statKeys.has(def.spellcastingAbility)) {
+        errors.push(`Class "${id}": spellcastingAbility "${def.spellcastingAbility}" is not a valid stat`);
+      }
+
       const stats = def.baseStats;
       if (stats.maxHp <= 0) errors.push(`Class "${id}": maxHp must be > 0`);
       if (stats.armor < 0) errors.push(`Class "${id}": armor must be >= 0`);

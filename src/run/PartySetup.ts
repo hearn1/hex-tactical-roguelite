@@ -117,6 +117,9 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
       abilityScores: spec.abilityScores ? { ...spec.abilityScores } : undefined,
       // Effect is applied at run start by applyBackgrounds, not here. "none" → undefined.
       backgroundId: spec.backgroundId ?? undefined,
+      savingThrowProficiencies: def?.savingThrowProficiencies ? [...def.savingThrowProficiencies] : undefined,
+      armorProficiencies: def?.armorProficiencies ? [...def.armorProficiencies] : undefined,
+      weaponProficiencies: def?.weaponProficiencies ? [...def.weaponProficiencies] : undefined,
       spellsKnown: [],
       preparedActionIds: [],
     };
