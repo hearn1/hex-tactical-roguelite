@@ -44,6 +44,12 @@ export interface PartyMember {
   spellSlotsMax?: number;
   /** Spell slots remaining; persists across combats in the same run. Restored by Long Rest. */
   spellSlotsRemaining?: number;
+  /** Saving throw proficiencies copied from the class at character creation. */
+  savingThrowProficiencies?: string[];
+  /** Armor proficiencies copied from the class at character creation. */
+  armorProficiencies?: string[];
+  /** Weapon proficiencies copied from the class at character creation. */
+  weaponProficiencies?: string[];
   /**
    * Hero is dead/defeated for the rest of this run. Persists in party record for summary/UI
    * continuity but the hero does not enter future combats or receive healing/rest benefits.
