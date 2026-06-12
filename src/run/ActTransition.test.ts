@@ -167,6 +167,15 @@ describe("advanceToNextAct carry-forward (#316)", () => {
     expect(nextRun.party[1].deadForRun).toBeFalsy();
     expect(nextRun.party[1].hp).toBeGreaterThan(0);
   });
+
+  it("propagates campaign eventSelections (flags) into next-act RunState (#399)", () => {
+    const campaign = freshCampaign(1);
+    campaign.eventSelections["flag.sq.act1.goblin_relic.completed"] = "set";
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    const nextRun = advanceToNextAct(campaign, run);
+    expect(nextRun.eventSelections["flag.sq.act1.goblin_relic.completed"]).toBe("set");
+  });
 });
 
 // ── #318: Final-act routing ───────────────────────────────────────────────────
