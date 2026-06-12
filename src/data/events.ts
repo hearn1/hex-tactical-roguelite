@@ -492,6 +492,100 @@ export const EVENT_REGISTRY: Record<string, EventDef> = {
       },
     ],
   },
+
+  // ── Side quest puzzle events (Epic #171) ──────────────────────────────────
+
+  "event.sq.goblin_relic.inscription_puzzle": {
+    id: "event.sq.goblin_relic.inscription_puzzle",
+    title: "Carved Inscription",
+    description: "A stone slab near the relic bears carved runes. Deciphering them might reveal something useful.",
+    tags: ["train"],
+    choices: [
+      {
+        id: "event.sq.goblin_relic.inscription_puzzle.study",
+        label: "Study the runes",
+        description: "Intelligence check (DC 13). Success: gold and XP. Partial: some XP. Failure: nothing.",
+        effects: [
+          {
+            type: "check",
+            check: { stat: "int", dc: 13, partialWithin: 3 },
+            onSuccess: [
+              { type: "gold", amount: 20 },
+              { type: "xp", amount: 15, target: "picked_hero" },
+            ],
+            onPartial: [{ type: "xp", amount: 10, target: "picked_hero" }],
+            onFailure: [{ type: "noop" }],
+          },
+        ],
+      },
+      {
+        id: "event.sq.goblin_relic.inscription_puzzle.ignore",
+        label: "Ignore it",
+        description: "Move on without engaging the runes.",
+        effects: [{ type: "noop" }],
+      },
+    ],
+  },
+
+  "event.sq.deserter_cache.locked_chest": {
+    id: "event.sq.deserter_cache.locked_chest",
+    title: "Locked Supply Cache",
+    description: "A heavy iron lock secures a chest left behind in the deserters' camp.",
+    tags: ["treasure", "risk"],
+    choices: [
+      {
+        id: "event.sq.deserter_cache.locked_chest.pick",
+        label: "Pick the lock",
+        description: "Dexterity check (DC 12). Success: gold and a potion. Partial: some gold. Failure: trap triggers, a hero is hurt.",
+        effects: [
+          {
+            type: "check",
+            check: { stat: "dex", dc: 12, partialWithin: 2 },
+            onSuccess: [
+              { type: "gold", amount: 30 },
+              { type: "potion", potionId: "potion.healing" },
+            ],
+            onPartial: [{ type: "gold", amount: 15 }],
+            onFailure: [{ type: "hp_damage", amount: 4, target: "random_hero" }],
+          },
+        ],
+      },
+      {
+        id: "event.sq.deserter_cache.locked_chest.leave",
+        label: "Leave it",
+        description: "Don't risk the trap.",
+        effects: [{ type: "noop" }],
+      },
+    ],
+  },
+
+  "event.sq.prisoner_rescue.guard_patrol": {
+    id: "event.sq.prisoner_rescue.guard_patrol",
+    title: "Patrol Pattern",
+    description: "Guards move in irregular loops around the prison block. Reading their rhythm could save your party from a confrontation.",
+    tags: ["risk"],
+    choices: [
+      {
+        id: "event.sq.prisoner_rescue.guard_patrol.watch",
+        label: "Watch and plan",
+        description: "Wisdom check (DC 11). Success: first strike bonus damage. Failure: nothing.",
+        effects: [
+          {
+            type: "check",
+            check: { stat: "wis", dc: 11 },
+            onSuccess: [{ type: "buff", modifier: { kind: "first_hit_bonus_damage", amount: 3 } }],
+            onFailure: [{ type: "noop" }],
+          },
+        ],
+      },
+      {
+        id: "event.sq.prisoner_rescue.guard_patrol.move_in",
+        label: "Move in now",
+        description: "Skip the observation and press forward immediately.",
+        effects: [{ type: "noop" }],
+      },
+    ],
+  },
 };
 
 /** Id of the shared pool used by event nodes that do not declare their own `eventPoolId`. */

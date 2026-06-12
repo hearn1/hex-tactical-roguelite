@@ -1,6 +1,7 @@
 import { NODE_REGISTRY } from "../data/nodes.ts";
 import type { MapTemplate, NodeDef, NodeType } from "../data/nodes.ts";
 import type { SideQuestDefinition } from "../data/sideQuests.ts";
+import type { EventDef } from "../data/events.ts";
 
 export interface MapState {
   currentNodeId: string;
@@ -178,10 +179,15 @@ export function validateMapTemplate(template: MapTemplate): string[] {
 export function validateQuestNodeReferences(
   template: MapTemplate,
   questRegistry: Record<string, SideQuestDefinition>,
+  eventRegistry?: Record<string, EventDef>,
 ): string[] {
   const errors: string[] = [];
 
   for (const node of template.nodes) {
+    if (node.eventId && eventRegistry && !eventRegistry[node.eventId]) {
+      errors.push(`Node "${node.id}" references unknown eventId "${node.eventId}"`);
+    }
+
     if (!node.questId) continue;
 
     const quest = questRegistry[node.questId];
