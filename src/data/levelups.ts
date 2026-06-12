@@ -366,6 +366,70 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.wizard": {
+    2: [
+      {
+        id: "wizard.learn_fireball",
+        name: "Learn Fireball",
+        description: "Learn Fireball — explosive AoE blast dealing 2d6 + Intelligence to all enemies in radius 2.",
+        upgrade: { kind: "learnAction", actionId: "action.fireball" },
+      },
+      {
+        id: "wizard.learn_lightning_bolt",
+        name: "Learn Lightning Bolt",
+        description: "Learn Lightning Bolt — line damage striking all enemies in a 4-hex line.",
+        upgrade: { kind: "learnAction", actionId: "action.lightning_bolt" },
+      },
+    ],
+    3: [
+      {
+        id: "wizard.archetype.evocation",
+        name: "School of Evocation",
+        description: "Sculpt damaging spells to spare allies in the blast, and empower evocations at L5.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.wizard.evocation" },
+      },
+      {
+        id: "wizard.archetype.abjuration",
+        name: "School of Abjuration",
+        description: "Maintain a magical ward that absorbs damage and recharges when you cast spells.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.wizard.abjuration" },
+      },
+    ],
+    4: [
+      {
+        id: "wizard.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "wizard.learn_haste",
+        name: "Learn Haste",
+        description: "Learn Haste — grant an ally +2 movement for 1 round.",
+        upgrade: { kind: "learnAction", actionId: "action.haste" },
+      },
+      {
+        id: "wizard.learn_slow",
+        name: "Learn Slow",
+        description: "Learn Slow — slows all enemies within radius 2 for 2 rounds.",
+        upgrade: { kind: "learnAction", actionId: "action.slow" },
+      },
+    ],
+    5: [
+      {
+        id: "wizard.learn_counterspell",
+        name: "Learn Counterspell",
+        description: "Learn Counterspell — cancel a telegraphed enemy action or apply Counterspelled.",
+        upgrade: { kind: "learnAction", actionId: "action.counterspell" },
+      },
+      {
+        id: "wizard.arcane_mastery",
+        name: "Arcane Mastery",
+        description: "Permanent +1 Intelligence and +1 max HP.",
+        upgrade: { kind: "stat", stats: { int: 1, maxHp: 1 } },
+      },
+    ],
+  },
   "class.arcanist": {
     2: [
       {

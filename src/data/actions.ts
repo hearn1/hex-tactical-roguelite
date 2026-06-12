@@ -651,6 +651,16 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     spellLevel: 1,
     effect: { type: "applyCondition", conditionId: "mage_armored", duration: 999 },
   },
+  "action.wizard.arcane_recovery": {
+    id: "action.wizard.arcane_recovery",
+    displayName: "Arcane Recovery",
+    description: "Channel residual magic to regain 1 expended spell slot. Once per combat.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "spell_slot_recovered", duration: 1 },
+  },
   // ── Cleric starting actions ────────────────────────────────────────────
   "action.cleric.sacred_flame": {
     id: "action.cleric.sacred_flame",

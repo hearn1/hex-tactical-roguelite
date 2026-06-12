@@ -25,7 +25,11 @@ export type PassiveEffect =
   | { type: "firstAttackBonusDice"; dice: string; condition: "targetAtFullHp" }
   | { type: "spellSlotBonus"; amount: number }
   | { type: "actionChargeBonus"; actionId: string; amount: number }
-  | { type: "bonusAttackAfterCantrip"; usesPerCombat: number };
+  | { type: "bonusAttackAfterCantrip"; usesPerCombat: number }
+  | { type: "arcaneRecovery"; slotsPerCombat: number }
+  | { type: "sculptSpells" }
+  | { type: "empoweredEvocation"; stat: AbilityKey }
+  | { type: "arcaneWardRegain"; multiplier: number };
 
 export interface PassiveDef {
   id: string;
@@ -154,5 +158,35 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "War Priest",
     description: "Twice per combat, you may make a weapon attack as a bonus action after casting a cantrip.",
     effect: { type: "bonusAttackAfterCantrip", usesPerCombat: 2 },
+  },
+  "passive.wizard.arcane_recovery": {
+    id: "passive.wizard.arcane_recovery",
+    displayName: "Arcane Recovery",
+    description: "Once per combat, regain 1 expended spell slot as a free action.",
+    effect: { type: "arcaneRecovery", slotsPerCombat: 1 },
+  },
+  "passive.wizard.extra_slot_l5": {
+    id: "passive.wizard.extra_slot_l5",
+    displayName: "Arcane Reserves (L5)",
+    description: "Grants one additional spell slot per Long Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  "passive.wizard.sculpt_spells": {
+    id: "passive.wizard.sculpt_spells",
+    displayName: "Sculpt Spells",
+    description: "Allied targets within an AoE spell automatically succeed the saving throw, taking no damage.",
+    effect: { type: "sculptSpells" },
+  },
+  "passive.wizard.empowered_evocation": {
+    id: "passive.wizard.empowered_evocation",
+    displayName: "Empowered Evocation",
+    description: "Add your Intelligence modifier to one damage roll of any Evocation spell you cast.",
+    effect: { type: "empoweredEvocation", stat: "int" },
+  },
+  "passive.wizard.ward_regain": {
+    id: "passive.wizard.ward_regain",
+    displayName: "Arcane Ward Regain",
+    description: "Your Arcane Ward regains HP equal to twice the spell slot level each time you cast a spell.",
+    effect: { type: "arcaneWardRegain", multiplier: 2 },
   },
 };
