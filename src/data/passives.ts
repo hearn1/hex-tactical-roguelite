@@ -109,4 +109,16 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     description: "When an AoE effect allows a DEX save, you take no damage on a success and half on a failure.",
     effect: { type: "evasion" },
   },
+  "passive.rogue.second_story_work": {
+    id: "passive.rogue.second_story_work",
+    displayName: "Second-Story Work",
+    description: "Climbing costs no extra movement — traverse elevated terrain without penalty.",
+    effect: { type: "climbCostReduction" },
+  },
+  "passive.rogue.assassinate": {
+    id: "passive.rogue.assassinate",
+    displayName: "Assassinate",
+    description: "Your first attack each combat against a target at full HP deals +2d6 bonus damage.",
+    effect: { type: "firstAttackBonusDice", dice: "2d6", condition: "targetAtFullHp" },
+  },
 };

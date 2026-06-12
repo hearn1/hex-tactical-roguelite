@@ -580,4 +580,14 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     isCantrip: true,
     effect: { type: "applyCondition", conditionId: "hasted", duration: 1 },
   },
+  "action.rogue.fast_hands": {
+    id: "action.rogue.fast_hands",
+    displayName: "Fast Hands",
+    description: "Use an equipped consumable item as a free action this turn without spending your main action.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    isCantrip: true,
+    effect: { type: "applyCondition", conditionId: "fast_hands", duration: 1 },
+  },
 };

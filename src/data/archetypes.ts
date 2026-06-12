@@ -101,6 +101,23 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     grantedActionId: "action.fighter.menacing_attack",
     passiveId: "passive.fighter.combat_superiority",
   },
+  "archetype.rogue.thief": {
+    id: "archetype.rogue.thief",
+    displayName: "Thief",
+    classId: "class.rogue",
+    chosenAtLevel: 3,
+    description: "Fast hands and quicker feet; can use an item as a bonus action.",
+    grantedActionId: "action.rogue.fast_hands",
+    passiveId: "passive.rogue.second_story_work",
+  },
+  "archetype.rogue.assassin": {
+    id: "archetype.rogue.assassin",
+    displayName: "Assassin",
+    classId: "class.rogue",
+    chosenAtLevel: 3,
+    description: "Masters of surprise; deals bonus damage against full-HP targets.",
+    passiveId: "passive.rogue.assassinate",
+  },
 };
 
 /** Archetypes available for a given class. */
