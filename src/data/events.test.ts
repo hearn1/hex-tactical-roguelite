@@ -98,3 +98,37 @@ describe("event content pack (F25 / #56)", () => {
     }
   });
 });
+
+describe("cross-act goblin relic echo event (#402)", () => {
+  const EVENT_ID = "event.sq.act1.goblin_relic.echo";
+
+  it("is registered in EVENT_REGISTRY", () => {
+    expect(EVENT_REGISTRY[EVENT_ID]).toBeDefined();
+    expect(EVENT_REGISTRY[EVENT_ID].id).toBe(EVENT_ID);
+  });
+
+  it("claim choice requires flag.sq.act1.goblin_relic.completed", () => {
+    const claimChoice = EVENT_REGISTRY[EVENT_ID].choices.find(
+      (c) => c.id === "event.sq.act1.goblin_relic.echo.claim",
+    );
+    expect(claimChoice).toBeDefined();
+    const flagReq = claimChoice!.requirements?.find((r) => r.type === "hasFlag");
+    expect(flagReq).toBeDefined();
+    expect((flagReq as { type: "hasFlag"; flagId: string }).flagId).toBe(
+      "flag.sq.act1.goblin_relic.completed",
+    );
+  });
+
+  it("claim choice awards item.goblin_relic_shard and a log_entry", () => {
+    const claimChoice = EVENT_REGISTRY[EVENT_ID].choices.find(
+      (c) => c.id === "event.sq.act1.goblin_relic.echo.claim",
+    );
+    expect(claimChoice!.effects.some((e) => e.type === "item" && (e as { type: "item"; itemId: string }).itemId === "item.goblin_relic_shard")).toBe(true);
+    expect(claimChoice!.effects.some((e) => e.type === "log_entry")).toBe(true);
+  });
+
+  it("item.goblin_relic_shard exists in ITEM_REGISTRY", () => {
+    expect(ITEM_REGISTRY["item.goblin_relic_shard"]).toBeDefined();
+    expect(ITEM_REGISTRY["item.goblin_relic_shard"].rarity).toBe("rare");
+  });
+});
