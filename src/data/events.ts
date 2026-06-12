@@ -25,6 +25,13 @@ export type EventEffect =
   | { type: "xp"; amount: number; target: "party" | "random_hero" | "picked_hero" }
   | { type: "buff"; modifier: RunModifier }
   | { type: "noop" }
+  | {
+      type: "quest_resolve";
+      questId: string;
+      resolution: "complete" | "fail";
+      /** Fired via applyQuestOutcomeHook; must exist in QUEST_OUTCOME_HOOK_REGISTRY. */
+      outcomeHookId: string;
+    }
   | CheckEffect;
 
 /**
