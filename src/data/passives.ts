@@ -67,4 +67,10 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     description: "Reduce incoming damage by 1 while you have at least 1 Armor.",
     effect: { type: "armorBonus", amount: 1, condition: "always" },
   },
+  "passive.extra_attack": {
+    id: "passive.extra_attack",
+    displayName: "Extra Attack",
+    description: "You can attack twice whenever you take the Attack action on your turn.",
+    effect: { type: "extraAttack" },
+  },
 };

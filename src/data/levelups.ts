@@ -192,6 +192,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.fighter": {
+    2: [
+      {
+        id: "fighter.fighting_style_dueling",
+        name: "Dueling",
+        description: "Precise Strike and Ranged Shot deal +2 damage.",
+        upgrade: { kind: "action", actionIds: ["action.fighter.precise_strike", "action.fighter.ranged_shot"], damageBonus: 2 },
+      },
+      {
+        id: "fighter.fighting_style_defense",
+        name: "Defense",
+        description: "Permanent +1 Armor.",
+        upgrade: { kind: "stat", stats: { armor: 1 } },
+      },
+    ],
+    3: [
+      {
+        id: "fighter.archetype.champion",
+        name: "Champion",
+        description: "Hone your physical prowess — critical hits on 19-20.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.fighter.champion" },
+      },
+      {
+        id: "fighter.archetype.battle_master",
+        name: "Battle Master",
+        description: "Learn combat maneuvers powered by superiority dice.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.fighter.battle_master" },
+      },
+    ],
+    4: [
+      {
+        id: "fighter.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "fighter.iron_constitution",
+        name: "Iron Constitution",
+        description: "Permanent +2 max HP and +1 Constitution.",
+        upgrade: { kind: "stat", stats: { maxHp: 2, con: 1 } },
+      },
+    ],
+    5: [
+      {
+        id: "fighter.battle_hardened",
+        name: "Battle Hardened",
+        description: "Permanent +2 max HP.",
+        upgrade: { kind: "stat", stats: { maxHp: 2 } },
+      },
+      {
+        id: "fighter.combat_reflexes",
+        name: "Combat Reflexes",
+        description: "Permanent +1 Strength.",
+        upgrade: { kind: "stat", stats: { str: 1 } },
+      },
+    ],
+  },
   "class.arcanist": {
     2: [
       {

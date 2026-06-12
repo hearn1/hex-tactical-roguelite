@@ -51,5 +51,5 @@ export const FIGHTER_PROGRESSION: ClassProgressionTable = [
   { level: 2, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
   { level: 3, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
   { level: 4, proficiencyBonus: 2, statGain: { maxHp: 2, str: 1 } },
-  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 2, str: 1 } },
+  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 2, str: 1 }, featuresGranted: ["passive.extra_attack"] },
 ];
