@@ -44,6 +44,10 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     actionIds: ["action.slash", "action.shield_bash", "action.guard"],
     startingItems: ["item.iron_sword", "item.wooden_shield"],
     defaultBackgroundId: "background.caravan_guard",
+    primaryAbility: "str",
+    savingThrowProficiencies: ["str", "con"],
+    armorProficiencies: ["light", "medium", "heavy", "shield"],
+    weaponProficiencies: ["simple", "martial"],
   },
   "class.acolyte": {
     id: "class.acolyte",
@@ -54,6 +58,11 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     startingItems: ["item.padded_armor"],
     spellSlotsMax: 2,
     defaultBackgroundId: "background.field_medic",
+    primaryAbility: "wis",
+    savingThrowProficiencies: ["wis", "cha"],
+    armorProficiencies: ["light", "medium", "shield"],
+    weaponProficiencies: ["simple"],
+    spellcastingAbility: "wis",
   },
   "class.arcanist": {
     id: "class.arcanist",
@@ -64,6 +73,11 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     startingItems: ["item.apprentice_wand"],
     spellSlotsMax: 2,
     defaultBackgroundId: "background.hedge_scholar",
+    primaryAbility: "int",
+    savingThrowProficiencies: ["int", "wis"],
+    armorProficiencies: ["none"],
+    weaponProficiencies: ["simple"],
+    spellcastingAbility: "int",
   },
   "class.scout": {
     id: "class.scout",
@@ -73,6 +87,10 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     actionIds: ["action.precise_stab", "action.shortbow_shot", "action.cunning_step"],
     startingItems: ["item.fine_dagger"],
     defaultBackgroundId: "background.cutpurse",
+    primaryAbility: "dex",
+    savingThrowProficiencies: ["dex", "int"],
+    armorProficiencies: ["light"],
+    weaponProficiencies: ["simple", "martial", "finesse", "ranged"],
   },
 };
 
