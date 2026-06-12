@@ -17,7 +17,11 @@ export type PassiveEffect =
   | { type: "saveAura"; bonus: number; radius: number; condition: "adjacentAlly" }
   | { type: "attackPenaltyAura"; penalty: number; appliesTo: "enemies" }
   | { type: "statCheckBonus"; bonus: number }
-  | { type: "superiorityDice"; dieSize: number; count: number };
+  | { type: "superiorityDice"; dieSize: number; count: number }
+  | { type: "halfDamageOnHit" }
+  | { type: "evasion" }
+  | { type: "climbCostReduction" }
+  | { type: "firstAttackBonusDice"; dice: string; condition: "targetAtFullHp" };
 
 export interface PassiveDef {
   id: string;
@@ -92,5 +96,17 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Combat Superiority",
     description: "You have a pool of 3 superiority dice (d8). Spend one die to fuel combat maneuvers.",
     effect: { type: "superiorityDice", dieSize: 8, count: 3 },
+  },
+  "passive.uncanny_dodge": {
+    id: "passive.uncanny_dodge",
+    displayName: "Uncanny Dodge",
+    description: "When struck by an attacker you can see, halve the incoming damage once per round.",
+    effect: { type: "halfDamageOnHit" },
+  },
+  "passive.evasion": {
+    id: "passive.evasion",
+    displayName: "Evasion",
+    description: "When an AoE effect allows a DEX save, you take no damage on a success and half on a failure.",
+    effect: { type: "evasion" },
   },
 };
