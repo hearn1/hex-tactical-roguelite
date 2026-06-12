@@ -26,7 +26,7 @@ export interface ActionDef {
   /** Nominal spell level, metadata for display/future scaling. */
   spellLevel?: number;
   effect:
-    | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number; bonusDiceOnFlanking?: string }
+    | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number; bonusDiceOnFlanking?: string; pushDistance?: number }
     | { type: "heal"; formula: string; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "applyCondition"; conditionId: string; duration: number; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "removeConditions" }
@@ -671,6 +671,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     effect: { type: "applyCondition", conditionId: "spell_slot_recovered", duration: 1 },
   },
   // ── Cleric starting actions ────────────────────────────────────────────
+
   "action.cleric.sacred_flame": {
     id: "action.cleric.sacred_flame",
     displayName: "Sacred Flame",
@@ -763,5 +764,99 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     range: 0,
     isCantrip: true,
     effect: { type: "applyCondition", conditionId: "umbral_sight", duration: 3 },
+  },
+  // ── Druid L2-L5 actions ───────────────────────────────────────────────
+  "action.druid.wild_shape": {
+    id: "action.druid.wild_shape",
+    displayName: "Wild Shape",
+    description: "Assume a simplified beast form: gain +4 temporary HP and +1 AC for 3 turns. 2 charges per combat.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    charges: 2,
+    effect: { type: "applyCondition", conditionId: "wild_shape", duration: 3 },
+  },
+  "action.druid.produce_flame": {
+    id: "action.druid.produce_flame",
+    displayName: "Produce Flame",
+    description: "Hurl a handful of spectral flame at a foe, dealing 1d8 + Wisdom fire damage.",
+    source: "class",
+    targetType: "enemy",
+    range: 3,
+    accuracyStat: "wis",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d8 + wis" },
+  },
+  "action.druid.entangle": {
+    id: "action.druid.entangle",
+    displayName: "Entangle",
+    description: "Summon writhing vines in a 2-hex area, rooting all enemies caught within for 2 turns.",
+    source: "class",
+    targetType: "enemy",
+    range: 3,
+    accuracyStat: "wis",
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
+    effect: { type: "damage", formula: "0", targetMode: "aoe_radius", radius: 2, applyCondition: { id: "rooted", duration: 2 } },
+  },
+  "action.druid.moonbeam": {
+    id: "action.druid.moonbeam",
+    displayName: "Moonbeam",
+    description: "Call down a column of silver radiance, dealing 2d10 + Wisdom radiant damage to a single foe.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    accuracyStat: "wis",
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 2,
+    effect: { type: "damage", formula: "2d10 + wis" },
+  },
+  "action.druid.land_stride": {
+    id: "action.druid.land_stride",
+    displayName: "Land Stride",
+    description: "Call upon the land's power — ignore difficult terrain and minor hazards for 3 turns.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    isCantrip: true,
+    effect: { type: "applyCondition", conditionId: "land_stride", duration: 3 },
+  },
+  // ── Druid starting actions ────────────────────────────────────────────
+  "action.druid.shillelagh": {
+    id: "action.druid.shillelagh",
+    displayName: "Shillelagh",
+    description: "Imbue a club or staff with nature's power, striking for 1d8 + Wisdom melee damage.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "wis",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d8 + wis" },
+  },
+  "action.druid.thunderwave": {
+    id: "action.druid.thunderwave",
+    displayName: "Thunderwave",
+    description: "Release a thunderous blast — deal 2d8 thunder damage to all adjacent foes and push each 1 hex away.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
+    effect: { type: "damage", formula: "2d8", targetMode: "aoe_around_caster", pushDistance: 1 },
+  },
+  "action.druid.healing_rune": {
+    id: "action.druid.healing_rune",
+    displayName: "Healing Rune",
+    description: "Inscribe a healing rune on an ally tile; the ally heals 1d6 + Wisdom at the start of their next turn.",
+    source: "class",
+    targetType: "ally",
+    range: 2,
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
+    effect: { type: "applyCondition", conditionId: "healing_rune", duration: 1 },
   },
 };

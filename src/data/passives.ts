@@ -33,7 +33,10 @@ export type PassiveEffect =
   | { type: "empoweredEvocation"; stat: AbilityKey }
   | { type: "arcaneWardRegain"; multiplier: number }
   | { type: "colossusSlayer"; dice: string }
-  | { type: "dreadAmbusher"; initiativeBonus: number };
+  | { type: "dreadAmbusher"; initiativeBonus: number }
+  | { type: "wildShapeGrant"; chargesPerCombat: number }
+  | { type: "wildShapeBonus"; acBonus: number; strBonus: number }
+  | { type: "naturalRecovery"; slotsAfterCombat: number };
 
 export interface PassiveDef {
   id: string;
@@ -210,5 +213,30 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Dread Ambusher",
     description: "+1 to initiative. On the first round of combat, make one additional attack.",
     effect: { type: "dreadAmbusher", initiativeBonus: 1 },
+  },
+  // ── Druid passives ────────────────────────────────────────────────────
+  "passive.druid.wild_shape": {
+    id: "passive.druid.wild_shape",
+    displayName: "Wild Shape",
+    description: "Twice per combat, assume a beast form: gain +4 temporary HP and +1 AC for 3 turns.",
+    effect: { type: "wildShapeGrant", chargesPerCombat: 2 },
+  },
+  "passive.druid.extra_slot_l5": {
+    id: "passive.druid.extra_slot_l5",
+    displayName: "Expanded Spellcasting (L5)",
+    description: "Grants one additional spell slot per Long Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  "passive.druid.combat_wild_shape": {
+    id: "passive.druid.combat_wild_shape",
+    displayName: "Combat Wild Shape",
+    description: "While Wild Shape is active, gain an additional +2 AC and +2 STR.",
+    effect: { type: "wildShapeBonus", acBonus: 2, strBonus: 2 },
+  },
+  "passive.druid.natural_recovery": {
+    id: "passive.druid.natural_recovery",
+    displayName: "Natural Recovery",
+    description: "After each combat, recover 1 expended spell slot from the land's ambient magic.",
+    effect: { type: "naturalRecovery", slotsAfterCombat: 1 },
   },
 };

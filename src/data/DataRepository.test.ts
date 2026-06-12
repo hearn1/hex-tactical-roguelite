@@ -222,6 +222,78 @@ describe("DataRepository", () => {
     const dread = PASSIVE_REGISTRY["passive.ranger.dread_ambusher"];
     expect(dread.effect).toMatchObject({ type: "dreadAmbusher", initiativeBonus: 1 });
   });
+
+  it("druid class registers with correct starting actions and stats", () => {
+    const druid = repo.getClass("class.druid");
+    expect(druid).toBeDefined();
+    expect(druid!.hitDieSize).toBe(8);
+    expect(druid!.spellSlotsMax).toBe(2);
+    expect(druid!.primaryAbility).toBe("wis");
+    expect(druid!.spellcastingAbility).toBe("wis");
+    expect(druid!.actionIds).toContain("action.druid.shillelagh");
+    expect(druid!.actionIds).toContain("action.druid.thunderwave");
+    expect(druid!.actionIds).toContain("action.druid.healing_rune");
+    expect(repo.getAction("action.druid.shillelagh")).toBeDefined();
+    expect(repo.getAction("action.druid.thunderwave")).toBeDefined();
+    expect(repo.getAction("action.druid.healing_rune")).toBeDefined();
+  });
+
+  it("druid Shillelagh is a WIS cantrip melee; Thunderwave is a spell slot AoE with push", () => {
+    const shillelagh = repo.getAction("action.druid.shillelagh");
+    expect(shillelagh).toBeDefined();
+    expect(shillelagh!.isCantrip).toBe(true);
+    expect(shillelagh!.accuracyStat).toBe("wis");
+    expect(shillelagh!.effect).toMatchObject({ type: "damage", formula: "1d8 + wis" });
+
+    const thunderwave = repo.getAction("action.druid.thunderwave");
+    expect(thunderwave!.resourceType).toBe("spell_slot");
+    expect(thunderwave!.effect).toMatchObject({ type: "damage", formula: "2d8", targetMode: "aoe_around_caster", pushDistance: 1 });
+  });
+
+  it("druid Healing Rune places a healing condition on an ally at range 2", () => {
+    const rune = repo.getAction("action.druid.healing_rune");
+    expect(rune).toBeDefined();
+    expect(rune!.targetType).toBe("ally");
+    expect(rune!.range).toBe(2);
+    expect(rune!.effect).toMatchObject({ type: "applyCondition", conditionId: "healing_rune", duration: 1 });
+  });
+
+  it("druid archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.druid.circle_of_moon"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.druid.circle_of_land"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.druid.wild_shape"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.druid.extra_slot_l5"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.druid.combat_wild_shape"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.druid.natural_recovery"]).toBeDefined();
+    expect(repo.getAction("action.druid.wild_shape")).toBeDefined();
+    expect(repo.getAction("action.druid.land_stride")).toBeDefined();
+  });
+
+  it("druid L2 progression auto-grants wild_shape passive", () => {
+    const { DRUID_PROGRESSION } = require("./progressionTables.ts");
+    const l2 = DRUID_PROGRESSION.find((e: { level: number }) => e.level === 2);
+    expect(l2).toBeDefined();
+    expect(l2.featuresGranted).toContain("passive.druid.wild_shape");
+  });
+
+  it("druid L5 progression auto-grants extra_slot_l5 passive", () => {
+    const { DRUID_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = DRUID_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.druid.extra_slot_l5");
+  });
+
+  it("druid archetype passive effect types are correct", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const combatWS = PASSIVE_REGISTRY["passive.druid.combat_wild_shape"];
+    expect(combatWS.effect).toMatchObject({ type: "wildShapeBonus", acBonus: 2, strBonus: 2 });
+    const natRec = PASSIVE_REGISTRY["passive.druid.natural_recovery"];
+    expect(natRec.effect).toMatchObject({ type: "naturalRecovery", slotsAfterCombat: 1 });
+    const wildShape = PASSIVE_REGISTRY["passive.druid.wild_shape"];
+    expect(wildShape.effect).toMatchObject({ type: "wildShapeGrant", chargesPerCombat: 2 });
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {

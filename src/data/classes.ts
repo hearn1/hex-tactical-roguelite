@@ -10,6 +10,7 @@ import {
   CLERIC_PROGRESSION,
   WIZARD_PROGRESSION,
   RANGER_PROGRESSION,
+  DRUID_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -186,6 +187,22 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellcastingAbility: "wis",
     progressionTable: RANGER_PROGRESSION,
   },
+  "class.druid": {
+    id: "class.druid",
+    displayName: "Druid",
+    baseStats: { maxHp: 13, armor: 12, move: 3, str: 1, dex: 1, con: 1, int: 1, wis: 3, cha: 2 },
+    hitDieSize: 8,
+    actionIds: ["action.druid.shillelagh", "action.druid.thunderwave", "action.druid.healing_rune"],
+    startingItems: [],
+    spellSlotsMax: 2,
+    defaultBackgroundId: "background.field_medic",
+    primaryAbility: "wis",
+    savingThrowProficiencies: ["int", "wis"],
+    armorProficiencies: ["light", "medium"],
+    weaponProficiencies: ["simple"],
+    spellcastingAbility: "wis",
+    progressionTable: DRUID_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -198,4 +215,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.cleric": "Solenne",
   "class.wizard": "Lyra",
   "class.ranger": "Kael",
+  "class.druid": "Fern",
 };
