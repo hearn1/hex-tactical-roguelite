@@ -2,13 +2,22 @@ import type { EncounterDef } from "../data/encounters.ts";
 import type { RunModifier } from "../state/types.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { REWARD_REGISTRY } from "../data/rewards.ts";
+import { CLASS_LOOT_HOOK_REGISTRY } from "../data/classLoot.ts";
 import { roll } from "../core/dice.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 
 export type RewardCard =
-  | { kind: "item"; itemId: string }
+  | { kind: "item"; itemId: string; matchedClassIds?: string[] }
   | { kind: "potion"; potionId: string }
   | { kind: "gold"; amount: number };
+
+export interface RewardGenerationContext {
+  partyClassIds: string[];
+  ownedItemIds: string[];
+  equippedItemIds: string[];
+  rewardPoolId?: string;
+  nodeType?: string;
+}
 
 export interface CombatReward {
   xpPerHero: number;
@@ -85,7 +94,82 @@ function getExtraItemChance(encounter: EncounterDef): number {
   return 0;
 }
 
-export function generateReward(encounter: EncounterDef, rng: () => number): CombatReward {
+interface WeightedCandidate {
+  id: string;
+  weight: number;
+  matchedClassIds: string[];
+}
+
+function buildClassWeightedPool(
+  pool: string[],
+  ownedIds: string[],
+  context: RewardGenerationContext,
+): WeightedCandidate[] {
+  const poolSet = new Set(pool);
+  const ownedSet = new Set(ownedIds);
+  const weights = new Map<string, number>();
+  const matched = new Map<string, Set<string>>();
+
+  for (const id of pool) {
+    weights.set(id, 1);
+    matched.set(id, new Set());
+  }
+
+  for (const classId of context.partyClassIds) {
+    for (const entry of CLASS_LOOT_HOOK_REGISTRY[classId] ?? []) {
+      if (ownedSet.has(entry.itemId) || !ITEM_REGISTRY[entry.itemId]) continue;
+      if (poolSet.has(entry.itemId)) {
+        weights.set(entry.itemId, (weights.get(entry.itemId) ?? 1) + entry.weight);
+        matched.get(entry.itemId)!.add(classId);
+      } else {
+        // Off-pool: 10% weight contribution so class items can occasionally surface
+        const offPoolWeight = Math.max(1, Math.floor(entry.weight * 0.1));
+        weights.set(entry.itemId, (weights.get(entry.itemId) ?? 0) + offPoolWeight);
+        if (!matched.has(entry.itemId)) matched.set(entry.itemId, new Set());
+        matched.get(entry.itemId)!.add(classId);
+      }
+    }
+  }
+
+  return [...weights.entries()]
+    .filter(([id]) => !ownedSet.has(id))
+    .map(([id, weight]) => ({ id, weight, matchedClassIds: [...matched.get(id)!] }));
+}
+
+function pickClassWeighted(
+  pool: string[],
+  ownedIds: string[],
+  context: RewardGenerationContext | undefined,
+  rng: () => number,
+): { itemId: string; matchedClassIds: string[] } {
+  if (!context || context.partyClassIds.length === 0) {
+    const available = excludingOwned(pool, ownedIds);
+    const itemPool = available.length > 0 ? available : pool;
+    return { itemId: itemPool[Math.floor(rng() * itemPool.length)], matchedClassIds: [] };
+  }
+
+  const candidates = buildClassWeightedPool(pool, ownedIds, context);
+  if (candidates.length === 0) {
+    // All items owned: fall back to unfiltered pool
+    const fallback = pool[Math.floor(rng() * pool.length)];
+    return { itemId: fallback, matchedClassIds: [] };
+  }
+
+  const total = candidates.reduce((s, c) => s + c.weight, 0);
+  let r = rng() * total;
+  for (const c of candidates) {
+    r -= c.weight;
+    if (r <= 0) return { itemId: c.id, matchedClassIds: c.matchedClassIds };
+  }
+  const last = candidates[candidates.length - 1];
+  return { itemId: last.id, matchedClassIds: last.matchedClassIds };
+}
+
+export function generateReward(
+  encounter: EncounterDef,
+  rng: () => number,
+  context?: RewardGenerationContext,
+): CombatReward {
   const numEnemies = encounter.enemyGroups.reduce((sum, g) => sum + g.count, 0);
 
   const xpPerHero = 5 * numEnemies;
@@ -93,28 +177,24 @@ export function generateReward(encounter: EncounterDef, rng: () => number): Comb
   const goldRoll = roll(goldFormula, rng);
   const gold = goldRoll.total + 3 * numEnemies;
 
+  const ownedIds = context ? [...context.ownedItemIds, ...context.equippedItemIds] : [];
   const pool = getPoolForEncounter(encounter);
-  const available = excludingOwned(pool, []);
-  const itemPool = available.length > 0 ? available : pool;
-  const itemId = itemPool[Math.floor(rng() * itemPool.length)];
+  const { itemId, matchedClassIds } = pickClassWeighted(pool, ownedIds, context, rng);
 
   const potionId = pickWeighted(POTION_WEIGHTS, rng);
 
   const goldAmount = 5 + roll("1d4", rng).total;
 
   const cards: RewardCard[] = [
-    { kind: "item", itemId },
+    { kind: "item", itemId, matchedClassIds: matchedClassIds.length > 0 ? matchedClassIds : undefined },
     { kind: "potion", potionId },
     { kind: "gold", amount: goldAmount },
   ];
 
   const extraChance = getExtraItemChance(encounter);
   if (extraChance > 0 && rng() < extraChance) {
-    const extraPool = excludingOwned(UNCOMMON_ITEM_POOL, []);
-    if (extraPool.length > 0) {
-      const extraId = extraPool[Math.floor(rng() * extraPool.length)];
-      cards.push({ kind: "item", itemId: extraId });
-    }
+    const { itemId: extraId, matchedClassIds: extraMatched } = pickClassWeighted(UNCOMMON_ITEM_POOL, ownedIds, context, rng);
+    cards.push({ kind: "item", itemId: extraId, matchedClassIds: extraMatched.length > 0 ? extraMatched : undefined });
   }
 
   const campSupplies = 1 + Math.floor(rng() * 2);
@@ -162,32 +242,3 @@ export function applyDifficultyToXp(xp: number, difficulty: string): number {
   return Math.floor(xp * config.rewardXpMultiplier);
 }
 
-export function generateRewardWithInventory(
-  encounter: EncounterDef,
-  rng: () => number,
-  ownedItemIds: string[],
-): CombatReward {
-  const numEnemies = encounter.enemyGroups.reduce((sum, g) => sum + g.count, 0);
-
-  const xpPerHero = 5 * numEnemies;
-  const goldRoll = roll("2d6", rng);
-  const gold = goldRoll.total + 3 * numEnemies;
-
-  const available = excludingOwned(COMMON_ITEM_POOL, ownedItemIds);
-  const itemPool = available.length > 0 ? available : COMMON_ITEM_POOL;
-  const itemId = itemPool[Math.floor(rng() * itemPool.length)];
-
-  const potionId = pickWeighted(POTION_WEIGHTS, rng);
-
-  const goldAmount = 5 + roll("1d4", rng).total;
-
-  const cards: RewardCard[] = [
-    { kind: "item", itemId },
-    { kind: "potion", potionId },
-    { kind: "gold", amount: goldAmount },
-  ];
-
-  const campSupplies = 1 + Math.floor(rng() * 2);
-
-  return { xpPerHero, gold, campSupplies, cards };
-}

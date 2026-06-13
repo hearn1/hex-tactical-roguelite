@@ -34,6 +34,7 @@ import { ENVIRONMENT_THEMES, getNodeTypeThemeMap } from "./environmentThemes.ts"
 import { ARCHETYPE_REGISTRY } from "./archetypes.ts";
 import { PASSIVE_REGISTRY } from "./passives.ts";
 import { SPELL_POOL_REGISTRY, FEATURE_POOL_REGISTRY } from "./spellPools.ts";
+import { CLASS_LOOT_HOOK_REGISTRY } from "./classLoot.ts";
 
 export interface ValidationReport {
   valid: boolean;
@@ -748,6 +749,31 @@ export class DataRepository {
             }
           }
         }
+      }
+    }
+
+    // ── ClassLootHook integrity checks (epic #191 / #491) ────────────────────
+    const allClassIds = new Set(this.classes.keys());
+    for (const [classId, entries] of Object.entries(CLASS_LOOT_HOOK_REGISTRY)) {
+      if (!allClassIds.has(classId)) {
+        errors.push(`ClassLootHook "${classId}": class not found in CLASS_REGISTRY`);
+        continue;
+      }
+      if (entries.length === 0) {
+        warnings.push(`ClassLootHook "${classId}": has no loot entries`);
+      }
+      const seenItems = new Set<string>();
+      for (const entry of entries) {
+        if (!allItemIds.has(entry.itemId)) {
+          errors.push(`ClassLootHook "${classId}": item "${entry.itemId}" not found in ITEM_REGISTRY`);
+        }
+        if (entry.weight <= 0) {
+          errors.push(`ClassLootHook "${classId}": item "${entry.itemId}" has non-positive weight ${entry.weight}`);
+        }
+        if (seenItems.has(entry.itemId)) {
+          warnings.push(`ClassLootHook "${classId}": item "${entry.itemId}" is listed more than once`);
+        }
+        seenItems.add(entry.itemId);
       }
     }
 

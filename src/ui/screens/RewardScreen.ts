@@ -2,6 +2,7 @@ import type { App } from "../App.ts";
 import { gameState, routeAfterXp, syncPartyFromCombat } from "../../state/GameState.ts";
 import type { CombatReward, RewardCard } from "../../run/RewardManager.ts";
 import { generateReward, applyGoldModifiers, applyXpModifiers, applyEliteRewardMultiplier, applyDifficultyToReward, applyDifficultyToXp } from "../../run/RewardManager.ts";
+import type { RewardGenerationContext } from "../../run/RewardManager.ts";
 import { applyXp } from "../../run/Leveling.ts";
 import { enqueuePendingLevelUps } from "../../run/LevelUp.ts";
 import { ITEM_REGISTRY, describeItem } from "../../data/items.ts";
@@ -11,6 +12,7 @@ import { CLASS_REGISTRY } from "../../data/classes.ts";
 import type { UnitInstance } from "../../state/types.ts";
 import { visitNode } from "../../run/MapGraph.ts";
 import { NODE_REGISTRY } from "../../data/nodes.ts";
+import { ENCOUNTER_REGISTRY } from "../../data/encounters.ts";
 import { ensureRunRestState } from "../../run/Rest.ts";
 import { isActComplete, isFinalAct } from "../../run/ActTransition.ts";
 import type { ScreenId } from "../../state/types.ts";
@@ -50,7 +52,16 @@ export class RewardScreen {
 
     if (!rewardCache) {
       const numEnemies = cs.units.filter((u) => u.team === "enemy").length;
-      const encounterPlaceholder = {
+
+      const resolvedEncounter = run && run.mapState.currentNodeId
+        ? (() => {
+            const nd = NODE_REGISTRY[run.mapState.currentNodeId];
+            const encId = nd?.encounterId;
+            return encId ? (ENCOUNTER_REGISTRY[encId] ?? null) : null;
+          })()
+        : null;
+
+      const encounterForReward = resolvedEncounter ?? {
         id: "encounter._reward",
         displayName: "Combat",
         enemyGroups: cs.units.filter((u) => u.team === "enemy").map((u) => ({
@@ -59,7 +70,19 @@ export class RewardScreen {
         })),
       };
 
-      rewardCache = generateReward(encounterPlaceholder, gameState.rng);
+      const rewardContext: RewardGenerationContext | undefined = run
+        ? {
+            partyClassIds: run.party.filter((pm) => !pm.deadForRun).map((pm) => pm.classId),
+            ownedItemIds: run.inventory.items,
+            equippedItemIds: run.party
+              .filter((pm) => !pm.deadForRun)
+              .flatMap((pm) => Object.values(pm.equippedItemIds).filter((id): id is string => id !== null)),
+            rewardPoolId: encounterForReward.rewardPoolId,
+            nodeType: NODE_REGISTRY[run.mapState.currentNodeId]?.type,
+          }
+        : undefined;
+
+      rewardCache = generateReward(encounterForReward, gameState.rng, rewardContext);
       if (run) {
         rewardCache.gold = applyGoldModifiers(rewardCache.gold, run.runModifiers);
         rewardCache.gold = applyDifficultyToReward(rewardCache.gold, run.difficulty);
@@ -171,7 +194,16 @@ export class RewardScreen {
     if (card.kind === "item") {
       const itemDef = ITEM_REGISTRY[card.itemId];
       const desc = itemDef ? describeItem(card.itemId) : "";
-      el.innerHTML = `<div style="font-weight:bold;color:#8cf;">Item</div><div style="font-size:13px;margin-top:4px;">${itemDef?.displayName ?? card.itemId}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">${desc}</div>`;
+      const synergy = card.matchedClassIds && card.matchedClassIds.length > 0
+        ? card.matchedClassIds
+            .map((cid) => CLASS_REGISTRY[cid]?.displayName ?? cid)
+            .sort()
+            .join(", ")
+        : null;
+      const synergyHtml = synergy
+        ? `<div style="font-size:10px;color:#fa8;margin-top:3px;">Good for ${synergy}</div>`
+        : "";
+      el.innerHTML = `<div style="font-weight:bold;color:#8cf;">Item</div><div style="font-size:13px;margin-top:4px;">${itemDef?.displayName ?? card.itemId}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">${desc}</div>${synergyHtml}`;
     } else if (card.kind === "potion") {
       const potionDef = POTION_REGISTRY[card.potionId];
       el.innerHTML = `<div style="font-weight:bold;color:#8f8;">Potion</div><div style="font-size:13px;margin-top:4px;">${potionDef?.displayName ?? card.potionId}</div>`;
