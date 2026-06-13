@@ -14,6 +14,7 @@ import {
   BARD_PROGRESSION,
   WARLOCK_PROGRESSION,
   PALADIN_PROGRESSION,
+  BARBARIAN_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -255,6 +256,20 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellcastingAbility: "cha",
     progressionTable: PALADIN_PROGRESSION,
   },
+  "class.barbarian": {
+    id: "class.barbarian",
+    displayName: "Barbarian",
+    baseStats: { maxHp: 19, armor: 13, move: 4, str: 4, dex: 1, con: 3, int: 1, wis: 1, cha: 1 },
+    hitDieSize: 12,
+    actionIds: ["action.barbarian.rage", "action.barbarian.reckless_attack", "action.barbarian.brutal_strike"],
+    startingItems: [],
+    defaultBackgroundId: "background.caravan_guard",
+    primaryAbility: "str",
+    savingThrowProficiencies: ["str", "con"],
+    armorProficiencies: ["light", "medium"],
+    weaponProficiencies: ["simple", "martial"],
+    progressionTable: BARBARIAN_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -271,4 +286,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.bard": "Lyric",
   "class.warlock": "Vex",
   "class.paladin": "Vael",
+  "class.barbarian": "Krag",
 };
