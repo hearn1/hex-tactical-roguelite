@@ -8,6 +8,15 @@ import { snapshotQuestOutcomesForAct } from "./QuestState.ts";
 
 export const CAMPAIGN_TOTAL_ACTS = 4;
 
+/**
+ * Completed runs that have already been archived by {@link advanceToNextAct}. Guards
+ * against a transition being applied twice for the same act (e.g. a double-clicked
+ * "Continue" button firing before the screen re-renders), which would otherwise
+ * double-archive the act and skip the next one. Kept module-private and keyed on the
+ * run object so {@link CampaignState} stays serializable.
+ */
+const archivedRuns = new WeakSet<RunState>();
+
 /** True when the current act's boss has been defeated. */
 export function isActComplete(run: RunState): boolean {
   return run.mapState.bossDefeated;
@@ -77,6 +86,18 @@ export function advanceToNextAct(
   completedRun: RunState,
   rng: () => number = Math.random,
 ): RunState {
+  // Idempotency guard: a second call for the same completed run must not re-archive the
+  // act or advance the counter again. Return a fresh run for the already-current act so
+  // the caller still gets a usable RunState without corrupting campaign state.
+  if (archivedRuns.has(completedRun)) {
+    return createRunState(
+      campaign.party,
+      campaign.difficulty,
+      templateIdForAct(campaign.currentActNumber, rng),
+    );
+  }
+  archivedRuns.add(completedRun);
+
   campaign.completedActs.push(buildActSummary(campaign, completedRun));
 
   campaign.party = completedRun.party.map((pm) => ({ ...pm }));

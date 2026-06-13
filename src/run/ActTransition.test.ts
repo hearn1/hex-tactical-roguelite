@@ -176,6 +176,16 @@ describe("advanceToNextAct carry-forward (#316)", () => {
     const nextRun = advanceToNextAct(campaign, run);
     expect(nextRun.eventSelections["flag.sq.act1.goblin_relic.completed"]).toBe("set");
   });
+
+  it("is idempotent — calling twice for the same run does not double-archive or skip an act (#496)", () => {
+    const campaign = freshCampaign(1);
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    advanceToNextAct(campaign, run);
+    advanceToNextAct(campaign, run);
+    expect(campaign.completedActs).toHaveLength(1);
+    expect(campaign.currentActNumber).toBe(2);
+  });
 });
 
 // ── #318: Final-act routing ───────────────────────────────────────────────────
