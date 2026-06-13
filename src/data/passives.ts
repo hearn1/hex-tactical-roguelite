@@ -67,7 +67,17 @@ export type PassiveEffect =
   | { type: "deflectMissiles"; stat: AbilityKey }
   | { type: "openHandTechnique" }
   | { type: "wholenessOfBody" }
-  | { type: "shadowArts" };
+  | { type: "shadowArts" }
+  // ── Feature pool passive effect types (epic #190) ──────────────────────
+  | { type: "secondWind" }
+  | { type: "actionSurge"; usesPerCombat: number }
+  | { type: "indomitable"; usesPerCombat: number }
+  | { type: "auraOfProtection"; stat: AbilityKey; radius: number }
+  | { type: "divineHealth" }
+  | { type: "fastMovement"; bonus: number }
+  | { type: "brutalCritical" }
+  | { type: "stillnessOfMind" }
+  | { type: "improvedSneakAttack"; dice: string };
 
 export interface PassiveDef {
   id: string;
@@ -515,5 +525,70 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Shadow Arts",
     description: "Spend 2 Ki points to weave shadow into a spell-like effect — cast Darkness or Silence centered on yourself.",
     effect: { type: "shadowArts" },
+  },
+  // ── Fighter feature pool passives (epic #190) ─────────────────────────
+  "passive.fighter.second_wind": {
+    id: "passive.fighter.second_wind",
+    displayName: "Second Wind",
+    description: "Once per combat, use a bonus action to heal yourself for 1d10 + Fighter level HP.",
+    effect: { type: "secondWind" },
+  },
+  "passive.fighter.action_surge": {
+    id: "passive.fighter.action_surge",
+    displayName: "Action Surge",
+    description: "Once per combat, take one additional action on your turn.",
+    effect: { type: "actionSurge", usesPerCombat: 1 },
+  },
+  "passive.fighter.indomitable": {
+    id: "passive.fighter.indomitable",
+    displayName: "Indomitable",
+    description: "Once per long rest, reroll a failed saving throw, using the new roll.",
+    effect: { type: "indomitable", usesPerCombat: 1 },
+  },
+  // ── Paladin feature pool passives (epic #190) ─────────────────────────
+  "passive.paladin.aura_of_protection": {
+    id: "passive.paladin.aura_of_protection",
+    displayName: "Aura of Protection",
+    description: "Allies within 2 hexes add your Charisma modifier to their saving throws.",
+    effect: { type: "auraOfProtection", stat: "cha", radius: 2 },
+  },
+  "passive.paladin.divine_health": {
+    id: "passive.paladin.divine_health",
+    displayName: "Divine Health",
+    description: "Divine magic flowing through you makes you immune to disease and resistant to poison.",
+    effect: { type: "divineHealth" },
+  },
+  // ── Barbarian feature pool passives (epic #190) ───────────────────────
+  "passive.barbarian.fast_movement": {
+    id: "passive.barbarian.fast_movement",
+    displayName: "Fast Movement",
+    description: "Your speed increases by 1 hex while you are not wearing heavy armor.",
+    effect: { type: "fastMovement", bonus: 1 },
+  },
+  "passive.barbarian.brutal_critical": {
+    id: "passive.barbarian.brutal_critical",
+    displayName: "Brutal Critical",
+    description: "When you score a critical hit with a melee attack, roll one additional weapon damage die.",
+    effect: { type: "brutalCritical" },
+  },
+  // ── Monk feature pool passives (epic #190) ────────────────────────────
+  "passive.monk.stillness_of_mind": {
+    id: "passive.monk.stillness_of_mind",
+    displayName: "Stillness of Mind",
+    description: "As an action, end one effect causing you to be Charmed or Frightened.",
+    effect: { type: "stillnessOfMind" },
+  },
+  "passive.monk.fast_movement": {
+    id: "passive.monk.fast_movement",
+    displayName: "Unarmored Movement",
+    description: "Your movement speed increases by 1 hex while not wearing armor or wielding a shield.",
+    effect: { type: "fastMovement", bonus: 1 },
+  },
+  // ── Rogue feature pool passives (epic #190) ───────────────────────────
+  "passive.rogue.improved_sneak": {
+    id: "passive.rogue.improved_sneak",
+    displayName: "Improved Sneak Attack",
+    description: "Your Sneak Attack deals an extra 1d6 bonus damage when conditions are met.",
+    effect: { type: "improvedSneakAttack", dice: "1d6" },
   },
 };
