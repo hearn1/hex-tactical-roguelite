@@ -854,6 +854,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.sorcerer": {
+    2: [
+      {
+        id: "sorcerer.empowered_spell",
+        name: "Metamagic: Empowered Spell",
+        description: "Spend 1 Sorcery Point to reroll up to 3 damage dice from a spell, keeping the new result.",
+        upgrade: { kind: "passive", passiveId: "passive.sorcerer.empowered_spell" },
+      },
+      {
+        id: "sorcerer.quickened_spell",
+        name: "Metamagic: Quickened Spell",
+        description: "Spend 2 Sorcery Points to cast a 1-action spell as a free action this turn.",
+        upgrade: { kind: "passive", passiveId: "passive.sorcerer.quickened_spell" },
+      },
+    ],
+    3: [
+      {
+        id: "sorcerer.archetype.draconic",
+        name: "Draconic Bloodline",
+        description: "Dragon ancestry toughens your skin and empowers elemental magic — Draconic Resilience and Tides of Chaos.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.sorcerer.draconic" },
+      },
+      {
+        id: "sorcerer.archetype.wild_magic",
+        name: "Wild Magic",
+        description: "Uncontrolled power surges — Wild Magic Surge passive and the Tides of Chaos action.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.sorcerer.wild_magic" },
+      },
+    ],
+    4: [
+      {
+        id: "sorcerer.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "sorcerer.heightened_spell",
+        name: "Metamagic: Heightened Spell",
+        description: "Spend 3 Sorcery Points to impose disadvantage on a target's first saving throw against your spell.",
+        upgrade: { kind: "passive", passiveId: "passive.sorcerer.heightened_spell" },
+      },
+    ],
+    5: [
+      {
+        id: "sorcerer.learn_spell_l5",
+        name: "Learn a Spell",
+        description: "Learn Chromatic Orb (if not already known) — a versatile multi-element ranged spell.",
+        upgrade: { kind: "learnAction", actionId: "action.sorcerer.chromatic_orb" },
+      },
+      {
+        id: "sorcerer.arcane_crescendo",
+        name: "Arcane Crescendo",
+        description: "Permanent +1 Charisma and +1 max HP.",
+        upgrade: { kind: "stat", stats: { cha: 1, maxHp: 1 } },
+      },
+    ],
+  },
 };
 
 /**
