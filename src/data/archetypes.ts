@@ -10,6 +10,8 @@ export const ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS = "passive.bard.a
 export const ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION = "passive.bard.combat_inspiration";
 export const ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING = "passive.warlock.dark_ones_blessing";
 export const ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND = "passive.warlock.awakened_mind";
+export const ARCHETYPE_PASSIVE_PALADIN_DEVOTION_AURA = "passive.paladin.devotion_aura";
+export const ARCHETYPE_PASSIVE_PALADIN_RELENTLESS_AVENGER = "passive.paladin.relentless_avenger";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -203,6 +205,24 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     featuresByHeroLevel: {
       5: { featuresGranted: ["passive.bard.extra_attack"] },
     },
+  },
+  "archetype.paladin.devotion": {
+    id: "archetype.paladin.devotion",
+    classId: "class.paladin",
+    chosenAtLevel: 3,
+    displayName: "Oath of Devotion",
+    description: "Pure-hearted champion; aura grants nearby allies +1 to saves.",
+    grantedActionId: "action.paladin.holy_nimbus",
+    passiveId: ARCHETYPE_PASSIVE_PALADIN_DEVOTION_AURA,
+  },
+  "archetype.paladin.vengeance": {
+    id: "archetype.paladin.vengeance",
+    classId: "class.paladin",
+    chosenAtLevel: 3,
+    displayName: "Oath of Vengeance",
+    description: "Relentless hunter; curses prey and pursues them across the battlefield.",
+    grantedActionId: "action.paladin.vow_of_enmity",
+    passiveId: ARCHETYPE_PASSIVE_PALADIN_RELENTLESS_AVENGER,
   },
   "archetype.druid.circle_of_moon": {
     id: "archetype.druid.circle_of_moon",

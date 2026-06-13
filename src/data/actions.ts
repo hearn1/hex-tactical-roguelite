@@ -1026,4 +1026,27 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     isCantrip: true,
     effect: { type: "applyCondition", conditionId: "sacred_weapon", duration: 1 },
   },
+  // ── Paladin archetype actions ─────────────────────────────────────────
+  "action.paladin.holy_nimbus": {
+    id: "action.paladin.holy_nimbus",
+    displayName: "Holy Nimbus",
+    description: "Surround yourself in radiant light — enemies that start their turn within 2 hexes take 5 radiant damage for 3 turns.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 2,
+    effect: { type: "applyCondition", conditionId: "holy_nimbus", duration: 3 },
+  },
+  "action.paladin.vow_of_enmity": {
+    id: "action.paladin.vow_of_enmity",
+    displayName: "Vow of Enmity",
+    description: "Swear an oath against a foe; gain advantage on all attacks against that target for this combat.",
+    source: "class",
+    targetType: "enemy",
+    range: 4,
+    isCantrip: true,
+    effect: { type: "applyCondition", conditionId: "vow_of_enmity", duration: 99 },
+  },
 };

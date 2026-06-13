@@ -48,7 +48,8 @@ export type PassiveEffect =
   | { type: "forceReroll"; usesPerCombat: number }
   | { type: "repellingBlast" }
   | { type: "pactBlade" }
-  | { type: "pactTome"; cantripsGranted: number };
+  | { type: "pactTome"; cantripsGranted: number }
+  | { type: "relentlessAvenger"; moveBonus: number };
 
 export interface PassiveDef {
   id: string;
@@ -332,6 +333,18 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     effect: { type: "forceReroll", usesPerCombat: 1 },
   },
   // ── Paladin passives ──────────────────────────────────────────────────
+  "passive.paladin.devotion_aura": {
+    id: "passive.paladin.devotion_aura",
+    displayName: "Devotion Aura",
+    description: "Allies within 2 hexes gain +1 to saving throws.",
+    effect: { type: "saveAura", bonus: 1, radius: 2, condition: "adjacentAlly" },
+  },
+  "passive.paladin.relentless_avenger": {
+    id: "passive.paladin.relentless_avenger",
+    displayName: "Relentless Avenger",
+    description: "When you hit a target cursed by Vow of Enmity, gain +1 movement for the rest of your turn.",
+    effect: { type: "relentlessAvenger", moveBonus: 1 },
+  },
   "passive.paladin.loh_pool_extended": {
     id: "passive.paladin.loh_pool_extended",
     displayName: "Expanded Lay on Hands",
