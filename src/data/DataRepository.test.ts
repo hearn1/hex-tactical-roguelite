@@ -978,3 +978,122 @@ describe("DataRepository validation rejects broken references", () => {
     choice.effects = original;
   });
 });
+
+describe("Sorcerer class content (epic #188)", () => {
+  let repo: DataRepository;
+
+  beforeEach(() => {
+    repo = new DataRepository();
+    repo.loadAll();
+  });
+
+  it("sorcerer class registers with correct starting actions and stats", () => {
+    const sorcerer = repo.getClass("class.sorcerer");
+    expect(sorcerer).toBeDefined();
+    expect(sorcerer!.hitDieSize).toBe(6);
+    expect(sorcerer!.spellSlotsMax).toBe(2);
+    expect(sorcerer!.sorceryPointsMax).toBe(2);
+    expect(sorcerer!.primaryAbility).toBe("cha");
+    expect(sorcerer!.spellcastingAbility).toBe("cha");
+    expect(sorcerer!.savingThrowProficiencies).toEqual(["con", "cha"]);
+    expect(sorcerer!.actionIds).toContain("action.sorcerer.chromatic_orb");
+    expect(sorcerer!.actionIds).toContain("action.sorcerer.twin_bolt");
+    expect(sorcerer!.actionIds).toContain("action.sorcerer.wild_surge");
+    expect(repo.getAction("action.sorcerer.chromatic_orb")).toBeDefined();
+    expect(repo.getAction("action.sorcerer.twin_bolt")).toBeDefined();
+    expect(repo.getAction("action.sorcerer.wild_surge")).toBeDefined();
+  });
+
+  it("Chromatic Orb is a spell-slot ranged-3 damage action using CHA", () => {
+    const orb = repo.getAction("action.sorcerer.chromatic_orb");
+    expect(orb).toBeDefined();
+    expect(orb!.resourceType).toBe("spell_slot");
+    expect(orb!.range).toBe(3);
+    expect(orb!.accuracyStat).toBe("cha");
+    expect(orb!.effect).toMatchObject({ type: "damage", formula: "3d8 + cha" });
+  });
+
+  it("Twin Bolt is a CHA cantrip with sorceryPointCost 1 hitting primary plus adjacent", () => {
+    const tb = repo.getAction("action.sorcerer.twin_bolt");
+    expect(tb).toBeDefined();
+    expect(tb!.isCantrip).toBe(true);
+    expect(tb!.sorceryPointCost).toBe(1);
+    expect(tb!.accuracyStat).toBe("cha");
+    expect(tb!.effect).toMatchObject({ type: "damage", formula: "1d8 + cha", targetMode: "primary_plus_adjacent" });
+  });
+
+  it("Wild Surge is a CHA cantrip ranged-3 dealing 1d10+cha", () => {
+    const ws = repo.getAction("action.sorcerer.wild_surge");
+    expect(ws).toBeDefined();
+    expect(ws!.isCantrip).toBe(true);
+    expect(ws!.range).toBe(3);
+    expect(ws!.accuracyStat).toBe("cha");
+    expect(ws!.effect).toMatchObject({ type: "damage", formula: "1d10 + cha" });
+  });
+
+  it("sorcerer archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.sorcerer.draconic"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.sorcerer.wild_magic"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.draconic_resilience"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.elemental_affinity"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.wild_magic_surge"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.empowered_spell"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.quickened_spell"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.heightened_spell"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.extra_sp_l2"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.extra_sp_l5"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.sorcerer.extra_slot_l5"]).toBeDefined();
+    expect(repo.getAction("action.sorcerer.tides_of_chaos")).toBeDefined();
+  });
+
+  it("Draconic Bloodline grants draconic_resilience passive and elemental_affinity at L5", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const draconic = ARCHETYPE_REGISTRY["archetype.sorcerer.draconic"];
+    expect(draconic).toBeDefined();
+    expect(draconic.passiveId).toBe("passive.sorcerer.draconic_resilience");
+    expect(draconic.featuresByHeroLevel?.[5]?.featuresGranted).toContain("passive.sorcerer.elemental_affinity");
+  });
+
+  it("Wild Magic grants tides_of_chaos action and wild_magic_surge passive", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const wildMagic = ARCHETYPE_REGISTRY["archetype.sorcerer.wild_magic"];
+    expect(wildMagic).toBeDefined();
+    expect(wildMagic.grantedActionId).toBe("action.sorcerer.tides_of_chaos");
+    expect(wildMagic.passiveId).toBe("passive.sorcerer.wild_magic_surge");
+  });
+
+  it("sorcerer L2 progression auto-grants extra_sp_l2 passive", () => {
+    const { SORCERER_PROGRESSION } = require("./progressionTables.ts");
+    const l2 = SORCERER_PROGRESSION.find((e: { level: number }) => e.level === 2);
+    expect(l2).toBeDefined();
+    expect(l2.featuresGranted).toContain("passive.sorcerer.extra_sp_l2");
+  });
+
+  it("sorcerer L5 progression auto-grants extra_slot_l5 and extra_sp_l5", () => {
+    const { SORCERER_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = SORCERER_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.sorcerer.extra_slot_l5");
+    expect(l5.featuresGranted).toContain("passive.sorcerer.extra_sp_l5");
+  });
+
+  it("sorcerer SP and spell-slot passives use correct effect types", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const extraSp = PASSIVE_REGISTRY["passive.sorcerer.extra_sp_l2"];
+    expect(extraSp.effect).toMatchObject({ type: "sorceryPointBonus", amount: 2 });
+    const extraSlot = PASSIVE_REGISTRY["passive.sorcerer.extra_slot_l5"];
+    expect(extraSlot.effect).toMatchObject({ type: "spellSlotBonus", amount: 1 });
+    const empowered = PASSIVE_REGISTRY["passive.sorcerer.empowered_spell"];
+    expect(empowered.effect).toMatchObject({ type: "empoweredSpell", usesPerCast: 1 });
+    const wildSurge = PASSIVE_REGISTRY["passive.sorcerer.wild_magic_surge"];
+    expect(wildSurge.effect).toMatchObject({ type: "wildMagicSurge", chance: 1 });
+  });
+
+  it("DataRepository.validate() passes with all Sorcerer content registered", () => {
+    const report = repo.validate();
+    expect(report.valid).toBe(true);
+    expect(report.errors).toHaveLength(0);
+  });
+});
