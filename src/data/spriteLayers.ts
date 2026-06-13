@@ -89,6 +89,8 @@ export const FLAIR_OVERLAYS: Record<string, FlairOverlayDef> = {
   "overlay.flair.totem_bear": { id: "overlay.flair.totem_bear", kind: "aura", color: "#8b5e3c" },
   "overlay.flair.draconic": { id: "overlay.flair.draconic", kind: "aura", color: "#ff8c42" },
   "overlay.flair.wild_magic": { id: "overlay.flair.wild_magic", kind: "aura", color: "#d060ff" },
+  "overlay.flair.open_hand": { id: "overlay.flair.open_hand", kind: "aura", color: "#c8e8ff" },
+  "overlay.flair.shadow": { id: "overlay.flair.shadow", kind: "cloak", color: "#1a1a2e" },
 };
 
 /** Weapon/armor item id → overlay id. Trinkets have no appearance layer. */
@@ -139,6 +141,8 @@ export const ARCHETYPE_FLAIR: Record<string, string> = {
   "archetype.barbarian.totem_bear": "overlay.flair.totem_bear",
   "archetype.sorcerer.draconic": "overlay.flair.draconic",
   "archetype.sorcerer.wild_magic": "overlay.flair.wild_magic",
+  "archetype.monk.open_hand": "overlay.flair.open_hand",
+  "archetype.monk.shadow": "overlay.flair.shadow",
 };
 
 /** Look a hero shows when the corresponding slot is empty, keyed by class id (= hero `defId`). */

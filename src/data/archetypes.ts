@@ -16,6 +16,8 @@ export const ARCHETYPE_PASSIVE_BARBARIAN_FRENZY = "passive.barbarian.frenzy";
 export const ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM = "passive.barbarian.bear_totem";
 export const ARCHETYPE_PASSIVE_SORCERER_DRACONIC_RESILIENCE = "passive.sorcerer.draconic_resilience";
 export const ARCHETYPE_PASSIVE_SORCERER_WILD_MAGIC_SURGE = "passive.sorcerer.wild_magic_surge";
+export const ARCHETYPE_PASSIVE_MONK_OPEN_HAND_TECHNIQUE = "passive.monk.open_hand_technique";
+export const ARCHETYPE_PASSIVE_MONK_SHADOW_ARTS = "passive.monk.shadow_arts";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -299,6 +301,26 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Uncontrolled power surges; spells may trigger random bonus effects.",
     grantedActionId: "action.sorcerer.tides_of_chaos",
     passiveId: ARCHETYPE_PASSIVE_SORCERER_WILD_MAGIC_SURGE,
+  },
+  "archetype.monk.open_hand": {
+    id: "archetype.monk.open_hand",
+    classId: "class.monk",
+    chosenAtLevel: 3,
+    displayName: "Way of the Open Hand",
+    description: "Masters unarmed strikes; can push or knock down enemies after Flurry of Blows.",
+    passiveId: ARCHETYPE_PASSIVE_MONK_OPEN_HAND_TECHNIQUE,
+    featuresByHeroLevel: {
+      5: { featuresGranted: ["passive.monk.wholeness_of_body"] },
+    },
+  },
+  "archetype.monk.shadow": {
+    id: "archetype.monk.shadow",
+    classId: "class.monk",
+    chosenAtLevel: 3,
+    displayName: "Way of Shadow",
+    description: "Weaves through shadows; can teleport to dim hexes and silence enemies.",
+    grantedActionId: "action.monk.shadow_step",
+    passiveId: ARCHETYPE_PASSIVE_MONK_SHADOW_ARTS,
   },
 };
 
