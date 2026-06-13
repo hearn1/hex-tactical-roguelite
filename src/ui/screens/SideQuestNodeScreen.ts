@@ -224,7 +224,7 @@ export class SideQuestNodeScreen {
 
     const questDef = returnDef.questId ? getSideQuestById(returnDef.questId) : undefined;
     const hookId = returnDef.questOutcomeHookId ?? questDef?.outcomeHookIds[0];
-    if (hookId) applyQuestOutcomeHook(hookId, campaign);
+    if (hookId) applyQuestOutcomeHook(hookId, campaign, run);
 
     appendAdventureLogOnce(run, `sq_node:${nodeId}`, {
       kind: "node_visit",
@@ -259,7 +259,7 @@ export class SideQuestNodeScreen {
     const hookId = nodeDef.questOutcomeHookId ?? questDef?.outcomeHookIds.find(
       (id) => id.includes("failed") || id.includes("abandoned"),
     );
-    if (hookId) applyQuestOutcomeHook(hookId, campaign);
+    if (hookId) applyQuestOutcomeHook(hookId, campaign, run);
 
     run.mapState.nodesCleared++;
     const mainPathNodeId = nodeDef.returnNodeId;

@@ -233,7 +233,7 @@ export function applyEffectList(
           } else {
             failQuest(campaign.questProgress, questId, actNumber, outcomeHookId);
           }
-          const hookResult = applyQuestOutcomeHook(outcomeHookId, campaign);
+          const hookResult = applyQuestOutcomeHook(outcomeHookId, campaign, run);
           if (hookResult.applied) {
             messages.push(`Quest resolved: ${questId} → ${resolution}`);
           }

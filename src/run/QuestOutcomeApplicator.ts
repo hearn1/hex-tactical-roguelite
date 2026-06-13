@@ -3,7 +3,7 @@
 
 import type { CampaignState } from "../state/CampaignState.ts";
 import type { InventoryState } from "./Inventory.ts";
-import type { PartyMember } from "../state/RunState.ts";
+import type { PartyMember, RunState } from "../state/RunState.ts";
 import type { QuestConsequenceDef, QuestRewardDef } from "../data/questOutcomeHooks.ts";
 import { getQuestOutcomeHook } from "../data/questOutcomeHooks.ts";
 
@@ -54,10 +54,19 @@ function applyReward(
 // Internal: consequence application
 // ---------------------------------------------------------------------------
 
-function applyConsequence(consequence: QuestConsequenceDef, campaign: CampaignState): void {
+function applyConsequence(
+  consequence: QuestConsequenceDef,
+  campaign: CampaignState,
+  run?: Pick<RunState, "runModifiers">,
+): void {
   switch (consequence.kind) {
     case "run_modifier":
-      campaign.runModifiers.push(consequence.modifier);
+      // Run modifiers (boss/enemy combat effects) must land on the live run, since combat
+      // reads run.runModifiers (createCombatFromRun). campaign.runModifiers is only a
+      // carry-forward snapshot rebuilt at act transitions, so writing there would never
+      // reach the boss/encounter the quest is meant to modify. Fall back to the campaign
+      // only when no run is supplied (pure-campaign callers/tests).
+      (run ?? campaign).runModifiers.push(consequence.modifier);
       break;
     case "campaign_flag":
       campaign.eventSelections[consequence.flagId] = "set";
@@ -97,10 +106,15 @@ export interface ApplyQuestOutcomeResult {
  *
  * The hook must be registered in QUEST_OUTCOME_HOOK_REGISTRY (questOutcomeHooks.ts).
  * Unknown hook ids are silently ignored and return `{ applied: false, reason: "no_hook" }`.
+ *
+ * Pass the live `run` so `run_modifier` consequences (boss/enemy combat effects) reach the
+ * run modifiers combat actually reads. Omitting it routes them to campaign.runModifiers,
+ * which is only kept for backward-compatible pure-campaign callers/tests.
  */
 export function applyQuestOutcomeHook(
   hookId: string,
   campaign: CampaignState,
+  run?: Pick<RunState, "runModifiers">,
 ): ApplyQuestOutcomeResult {
   if (hasQuestOutcomeHookApplied(hookId, campaign)) {
     return { applied: false, reason: "already_applied" };
@@ -115,7 +129,7 @@ export function applyQuestOutcomeHook(
     applyReward(reward, campaign.inventory, campaign.party);
   }
   for (const consequence of hookDef.consequences) {
-    applyConsequence(consequence, campaign);
+    applyConsequence(consequence, campaign, run);
   }
 
   campaign.appliedQuestOutcomeHookIds.push(hookId);

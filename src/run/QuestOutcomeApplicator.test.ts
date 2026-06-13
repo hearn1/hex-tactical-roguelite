@@ -5,6 +5,7 @@ import { applyQuestOutcomeHook, hasQuestOutcomeHookApplied } from "./QuestOutcom
 import { createCampaignState } from "../state/CampaignState.ts";
 import { createInventory } from "./Inventory.ts";
 import type { PartyMember } from "../state/RunState.ts";
+import type { RunModifier } from "../state/types.ts";
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -255,5 +256,48 @@ describe("applyQuestOutcomeHook — persistence across act transitions (#370)", 
     expect(campaign.appliedQuestOutcomeHookIds).toContain(
       "outcome.sq.act2.deserter_cache.failed",
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// #497 — run_modifier consequences must reach the live run (combat reads run.runModifiers,
+// not campaign.runModifiers). Without the run argument the boss/enemy modifiers granted by
+// a side quest never affected combat.
+// ---------------------------------------------------------------------------
+
+describe("applyQuestOutcomeHook — run_modifier routing (#497)", () => {
+  it("routes a boss_encounter_modifier onto the live run, not the campaign", () => {
+    const campaign = makeCampaign();
+    const run = { runModifiers: [] as RunModifier[] };
+    applyQuestOutcomeHook("outcome.sq.act1.goblin_relic.completed", campaign, run);
+    expect(
+      run.runModifiers.some(
+        (m) =>
+          m.kind === "boss_encounter_modifier" &&
+          m.encounterId === "encounter.boss_ogre_hexbreaker",
+      ),
+    ).toBe(true);
+    expect(campaign.runModifiers.some((m) => m.kind === "boss_encounter_modifier")).toBe(false);
+  });
+
+  it("still applies non-run-modifier consequences (flags) to the campaign", () => {
+    const campaign = makeCampaign();
+    const run = { runModifiers: [] as RunModifier[] };
+    applyQuestOutcomeHook("outcome.sq.act1.goblin_relic.completed", campaign, run);
+    expect(campaign.eventSelections["flag.sq.act1.goblin_relic.completed"]).toBe("set");
+  });
+
+  it("is idempotent: re-applying with a run does not duplicate the modifier", () => {
+    const campaign = makeCampaign();
+    const run = { runModifiers: [] as RunModifier[] };
+    applyQuestOutcomeHook("outcome.sq.act1.goblin_relic.completed", campaign, run);
+    applyQuestOutcomeHook("outcome.sq.act1.goblin_relic.completed", campaign, run);
+    expect(run.runModifiers.filter((m) => m.kind === "boss_encounter_modifier")).toHaveLength(1);
+  });
+
+  it("falls back to campaign.runModifiers when no run is supplied (back-compat)", () => {
+    const campaign = makeCampaign();
+    applyQuestOutcomeHook("outcome.sq.act1.goblin_relic.completed", campaign);
+    expect(campaign.runModifiers.some((m) => m.kind === "boss_encounter_modifier")).toBe(true);
   });
 });
