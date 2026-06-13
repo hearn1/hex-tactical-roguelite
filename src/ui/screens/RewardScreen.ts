@@ -194,7 +194,16 @@ export class RewardScreen {
     if (card.kind === "item") {
       const itemDef = ITEM_REGISTRY[card.itemId];
       const desc = itemDef ? describeItem(card.itemId) : "";
-      el.innerHTML = `<div style="font-weight:bold;color:#8cf;">Item</div><div style="font-size:13px;margin-top:4px;">${itemDef?.displayName ?? card.itemId}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">${desc}</div>`;
+      const synergy = card.matchedClassIds && card.matchedClassIds.length > 0
+        ? card.matchedClassIds
+            .map((cid) => CLASS_REGISTRY[cid]?.displayName ?? cid)
+            .sort()
+            .join(", ")
+        : null;
+      const synergyHtml = synergy
+        ? `<div style="font-size:10px;color:#fa8;margin-top:3px;">Good for ${synergy}</div>`
+        : "";
+      el.innerHTML = `<div style="font-weight:bold;color:#8cf;">Item</div><div style="font-size:13px;margin-top:4px;">${itemDef?.displayName ?? card.itemId}</div><div style="font-size:10px;color:#aaa;margin-top:2px;">${desc}</div>${synergyHtml}`;
     } else if (card.kind === "potion") {
       const potionDef = POTION_REGISTRY[card.potionId];
       el.innerHTML = `<div style="font-weight:bold;color:#8f8;">Potion</div><div style="font-size:13px;margin-top:4px;">${potionDef?.displayName ?? card.potionId}</div>`;
