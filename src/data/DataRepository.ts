@@ -33,6 +33,7 @@ import {
 import { ENVIRONMENT_THEMES, getNodeTypeThemeMap } from "./environmentThemes.ts";
 import { ARCHETYPE_REGISTRY } from "./archetypes.ts";
 import { PASSIVE_REGISTRY } from "./passives.ts";
+import { SPELL_POOL_REGISTRY, FEATURE_POOL_REGISTRY } from "./spellPools.ts";
 
 export interface ValidationReport {
   valid: boolean;
@@ -698,6 +699,52 @@ export class DataRepository {
           for (const fid of entry.featuresGranted ?? []) {
             if (!allPassiveIds.has(fid)) {
               errors.push(`Archetype "${id}" featuresByHeroLevel L${lvlStr}: featuresGranted "${fid}" not found in PASSIVE_REGISTRY`);
+            }
+          }
+        }
+      }
+    }
+
+    // ── SpellPool integrity checks (epic #190 / #469) ───────────────────────
+    for (const [classId, spellIds] of Object.entries(SPELL_POOL_REGISTRY)) {
+      if (!this.classes.has(classId)) {
+        errors.push(`SpellPool "${classId}": class not found in CLASS_REGISTRY`);
+      }
+      for (const aid of spellIds) {
+        if (!allActionIds.has(aid)) {
+          errors.push(`SpellPool "${classId}": action "${aid}" not found in ACTION_REGISTRY`);
+        } else {
+          const def = this.actions.get(aid)!;
+          if (def.source !== "class") {
+            errors.push(`SpellPool "${classId}": action "${aid}" has source "${def.source}" — spell pool entries must have source "class"`);
+          }
+        }
+      }
+    }
+
+    // ── FeaturePool integrity checks (epic #190 / #469) ─────────────────────
+    for (const [classId, passiveIds] of Object.entries(FEATURE_POOL_REGISTRY)) {
+      if (!this.classes.has(classId)) {
+        errors.push(`FeaturePool "${classId}": class not found in CLASS_REGISTRY`);
+      }
+      for (const pid of passiveIds) {
+        if (!allPassiveIds.has(pid)) {
+          errors.push(`FeaturePool "${classId}": passive "${pid}" not found in PASSIVE_REGISTRY`);
+        }
+      }
+    }
+
+    // ── learnFromPool choice cross-reference checks (epic #190 / #469) ──────
+    for (const [classId, byLevel] of Object.entries(LEVELUP_CHOICES)) {
+      for (const [level, options] of Object.entries(byLevel)) {
+        for (const option of options) {
+          if (option.upgrade.kind === "learnFromPool") {
+            const { poolType } = option.upgrade;
+            const registry = poolType === "spell" ? SPELL_POOL_REGISTRY : FEATURE_POOL_REGISTRY;
+            if (!registry[classId]) {
+              errors.push(
+                `Level-up "${classId}" L${level} option "${option.id}": learnFromPool poolType "${poolType}" but "${classId}" has no ${poolType === "spell" ? "SpellPool" : "FeaturePool"} entry`,
+              );
             }
           }
         }
