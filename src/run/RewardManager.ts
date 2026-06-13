@@ -6,9 +6,17 @@ import { roll } from "../core/dice.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 
 export type RewardCard =
-  | { kind: "item"; itemId: string }
+  | { kind: "item"; itemId: string; matchedClassIds?: string[] }
   | { kind: "potion"; potionId: string }
   | { kind: "gold"; amount: number };
+
+export interface RewardGenerationContext {
+  partyClassIds: string[];
+  ownedItemIds: string[];
+  equippedItemIds: string[];
+  rewardPoolId?: string;
+  nodeType?: string;
+}
 
 export interface CombatReward {
   xpPerHero: number;
@@ -85,7 +93,11 @@ function getExtraItemChance(encounter: EncounterDef): number {
   return 0;
 }
 
-export function generateReward(encounter: EncounterDef, rng: () => number): CombatReward {
+export function generateReward(
+  encounter: EncounterDef,
+  rng: () => number,
+  context?: RewardGenerationContext,
+): CombatReward {
   const numEnemies = encounter.enemyGroups.reduce((sum, g) => sum + g.count, 0);
 
   const xpPerHero = 5 * numEnemies;
@@ -93,8 +105,9 @@ export function generateReward(encounter: EncounterDef, rng: () => number): Comb
   const goldRoll = roll(goldFormula, rng);
   const gold = goldRoll.total + 3 * numEnemies;
 
+  const ownedIds = context ? [...context.ownedItemIds, ...context.equippedItemIds] : [];
   const pool = getPoolForEncounter(encounter);
-  const available = excludingOwned(pool, []);
+  const available = excludingOwned(pool, ownedIds);
   const itemPool = available.length > 0 ? available : pool;
   const itemId = itemPool[Math.floor(rng() * itemPool.length)];
 
@@ -110,7 +123,7 @@ export function generateReward(encounter: EncounterDef, rng: () => number): Comb
 
   const extraChance = getExtraItemChance(encounter);
   if (extraChance > 0 && rng() < extraChance) {
-    const extraPool = excludingOwned(UNCOMMON_ITEM_POOL, []);
+    const extraPool = excludingOwned(UNCOMMON_ITEM_POOL, ownedIds);
     if (extraPool.length > 0) {
       const extraId = extraPool[Math.floor(rng() * extraPool.length)];
       cards.push({ kind: "item", itemId: extraId });
@@ -162,32 +175,3 @@ export function applyDifficultyToXp(xp: number, difficulty: string): number {
   return Math.floor(xp * config.rewardXpMultiplier);
 }
 
-export function generateRewardWithInventory(
-  encounter: EncounterDef,
-  rng: () => number,
-  ownedItemIds: string[],
-): CombatReward {
-  const numEnemies = encounter.enemyGroups.reduce((sum, g) => sum + g.count, 0);
-
-  const xpPerHero = 5 * numEnemies;
-  const goldRoll = roll("2d6", rng);
-  const gold = goldRoll.total + 3 * numEnemies;
-
-  const available = excludingOwned(COMMON_ITEM_POOL, ownedItemIds);
-  const itemPool = available.length > 0 ? available : COMMON_ITEM_POOL;
-  const itemId = itemPool[Math.floor(rng() * itemPool.length)];
-
-  const potionId = pickWeighted(POTION_WEIGHTS, rng);
-
-  const goldAmount = 5 + roll("1d4", rng).total;
-
-  const cards: RewardCard[] = [
-    { kind: "item", itemId },
-    { kind: "potion", potionId },
-    { kind: "gold", amount: goldAmount },
-  ];
-
-  const campSupplies = 1 + Math.floor(rng() * 2);
-
-  return { xpPerHero, gold, campSupplies, cards };
-}
