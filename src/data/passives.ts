@@ -331,4 +331,17 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     description: "Once per combat, force an enemy to reroll an attack roll targeting you (psychic interference).",
     effect: { type: "forceReroll", usesPerCombat: 1 },
   },
+  // ── Paladin passives ──────────────────────────────────────────────────
+  "passive.paladin.loh_pool_extended": {
+    id: "passive.paladin.loh_pool_extended",
+    displayName: "Expanded Lay on Hands",
+    description: "Your Lay on Hands pool grows — gain one additional use.",
+    effect: { type: "actionChargeBonus", actionId: "action.paladin.lay_on_hands", amount: 1 },
+  },
+  "passive.paladin.extra_slot_l5": {
+    id: "passive.paladin.extra_slot_l5",
+    displayName: "Expanded Divine Power (L5)",
+    description: "Grants one additional spell slot per Long Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
 };
