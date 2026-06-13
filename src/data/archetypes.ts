@@ -14,6 +14,8 @@ export const ARCHETYPE_PASSIVE_PALADIN_DEVOTION_AURA = "passive.paladin.devotion
 export const ARCHETYPE_PASSIVE_PALADIN_RELENTLESS_AVENGER = "passive.paladin.relentless_avenger";
 export const ARCHETYPE_PASSIVE_BARBARIAN_FRENZY = "passive.barbarian.frenzy";
 export const ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM = "passive.barbarian.bear_totem";
+export const ARCHETYPE_PASSIVE_SORCERER_DRACONIC_RESILIENCE = "passive.sorcerer.draconic_resilience";
+export const ARCHETYPE_PASSIVE_SORCERER_WILD_MAGIC_SURGE = "passive.sorcerer.wild_magic_surge";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -277,6 +279,26 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Alien patron grants psychic defenses and unsettling awareness.",
     grantedActionId: "action.warlock.entropic_ward",
     passiveId: ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND,
+  },
+  "archetype.sorcerer.draconic": {
+    id: "archetype.sorcerer.draconic",
+    classId: "class.sorcerer",
+    chosenAtLevel: 3,
+    displayName: "Draconic Bloodline",
+    description: "Dragon ancestry toughens the skin and empowers elemental magic.",
+    passiveId: ARCHETYPE_PASSIVE_SORCERER_DRACONIC_RESILIENCE,
+    featuresByHeroLevel: {
+      5: { featuresGranted: ["passive.sorcerer.elemental_affinity"] },
+    },
+  },
+  "archetype.sorcerer.wild_magic": {
+    id: "archetype.sorcerer.wild_magic",
+    classId: "class.sorcerer",
+    chosenAtLevel: 3,
+    displayName: "Wild Magic",
+    description: "Uncontrolled power surges; spells may trigger random bonus effects.",
+    grantedActionId: "action.sorcerer.tides_of_chaos",
+    passiveId: ARCHETYPE_PASSIVE_SORCERER_WILD_MAGIC_SURGE,
   },
 };
 
