@@ -119,6 +119,7 @@ export function describeRunModifier(mod: RunModifier): string {
     case "elite_reward_multiplier":
       return `Elite rewards boosted (x${mod.value}) for the run.`;
   }
+  return "A run modifier is active.";
 }
 
 /**

@@ -34,7 +34,7 @@ function makeRun(runModifiers: RunModifier[] = []): RunState {
     gold: 0,
     party: [makePartyMember()],
     inventory: createInventory(),
-    mapState: { nodes: [], connections: [], currentNodeId: null, visitedNodeIds: [], availableNodeIds: [] },
+    mapState: { currentNodeId: "node.start", visitedNodeIds: [], nodesCleared: 0, elitesDefeated: 0, bossDefeated: false },
     runStatus: "active",
     shopStates: {},
     campStates: {},
