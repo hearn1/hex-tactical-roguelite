@@ -60,7 +60,14 @@ export type PassiveEffect =
   | { type: "heightenedSpell"; spCost: number }
   | { type: "draconicResilience" }
   | { type: "elementalAffinity"; stat: AbilityKey }
-  | { type: "wildMagicSurge"; chance: number };
+  | { type: "wildMagicSurge"; chance: number }
+  | { type: "kiPointBonus"; amount: number }
+  | { type: "slowFall" }
+  | { type: "patientDefense" }
+  | { type: "deflectMissiles"; stat: AbilityKey }
+  | { type: "openHandTechnique" }
+  | { type: "wholenessOfBody" }
+  | { type: "shadowArts" };
 
 export interface PassiveDef {
   id: string;
@@ -453,5 +460,60 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Wild Magic Surge",
     description: "After casting a spell, a 1-in-6 chance triggers a random surge (push all, heal 1d4, deal 2d6 to self, invisible for 1 turn, etc.).",
     effect: { type: "wildMagicSurge", chance: 1 },
+  },
+  // ── Monk passives ─────────────────────────────────────────────────────
+  "passive.monk.ki_bonus_l2": {
+    id: "passive.monk.ki_bonus_l2",
+    displayName: "Ki Mastery (L2)",
+    description: "Your ki disciplines deepen — your Ki point pool grows by 1.",
+    effect: { type: "kiPointBonus", amount: 1 },
+  },
+  "passive.monk.ki_bonus_l4": {
+    id: "passive.monk.ki_bonus_l4",
+    displayName: "Ki Mastery (L4)",
+    description: "Your ki disciplines deepen further — your Ki point pool grows by 1.",
+    effect: { type: "kiPointBonus", amount: 1 },
+  },
+  "passive.monk.ki_bonus_l5": {
+    id: "passive.monk.ki_bonus_l5",
+    displayName: "Ki Mastery (L5)",
+    description: "Your ki disciplines reach new heights — your Ki point pool grows by 1.",
+    effect: { type: "kiPointBonus", amount: 1 },
+  },
+  "passive.slow_fall": {
+    id: "passive.slow_fall",
+    displayName: "Slow Fall",
+    description: "Your body moves with practiced grace — you take only half damage from falling.",
+    effect: { type: "slowFall" },
+  },
+  "passive.monk.patient_defense": {
+    id: "passive.monk.patient_defense",
+    displayName: "Patient Defense",
+    description: "Spend 1 Ki point to assume a Dodge stance — attackers have disadvantage against you until your next turn.",
+    effect: { type: "patientDefense" },
+  },
+  "passive.monk.deflect_missiles": {
+    id: "passive.monk.deflect_missiles",
+    displayName: "Deflect Missiles",
+    description: "Spend 1 Ki point when hit by a ranged attack to reduce the incoming damage by 1d10 + DEX.",
+    effect: { type: "deflectMissiles", stat: "dex" },
+  },
+  "passive.monk.open_hand_technique": {
+    id: "passive.monk.open_hand_technique",
+    displayName: "Open Hand Technique",
+    description: "After landing a Flurry of Blows, choose one: push the target 1 hex, or force a CON save or the target falls prone.",
+    effect: { type: "openHandTechnique" },
+  },
+  "passive.monk.wholeness_of_body": {
+    id: "passive.monk.wholeness_of_body",
+    displayName: "Wholeness of Body",
+    description: "Once per long rest, flood your body with healing ki as a free action — restore HP equal to 3× your Monk level.",
+    effect: { type: "wholenessOfBody" },
+  },
+  "passive.monk.shadow_arts": {
+    id: "passive.monk.shadow_arts",
+    displayName: "Shadow Arts",
+    description: "Spend 2 Ki points to weave shadow into a spell-like effect — cast Darkness or Silence centered on yourself.",
+    effect: { type: "shadowArts" },
   },
 };

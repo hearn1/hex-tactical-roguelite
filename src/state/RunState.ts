@@ -48,6 +48,10 @@ export interface PartyMember {
   sorceryPointsMax?: number;
   /** Sorcery Points remaining; restored by Long Rest. */
   sorceryPointsRemaining?: number;
+  /** Ki point pool restored on Short Rest (Monk only). */
+  kiPointsMax?: number;
+  /** Ki points remaining; restored after each combat (short rest). */
+  kiPointsRemaining?: number;
   /** Saving throw proficiencies copied from the class at character creation. */
   savingThrowProficiencies?: string[];
   /** Armor proficiencies copied from the class at character creation. */

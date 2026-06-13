@@ -158,6 +158,7 @@ export const CLASS_DEFAULT_WEAPON: Record<string, string> = {
   "class.paladin": "overlay.weapon.sword",
   "class.barbarian": "overlay.weapon.sword",
   "class.sorcerer": "overlay.weapon.wand",
+  "class.monk": "overlay.weapon.dagger",
 };
 
 export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
@@ -176,6 +177,7 @@ export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
   "class.paladin": "overlay.armor.heavy",
   "class.barbarian": "overlay.armor.medium",
   "class.sorcerer": "overlay.armor.light",
+  "class.monk": "overlay.armor.light",
 };
 
 /** Gear shown for enemies that visibly carry a weapon (best-effort per the AC). */
