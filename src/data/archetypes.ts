@@ -12,6 +12,8 @@ export const ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING = "passive.warlock.dar
 export const ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND = "passive.warlock.awakened_mind";
 export const ARCHETYPE_PASSIVE_PALADIN_DEVOTION_AURA = "passive.paladin.devotion_aura";
 export const ARCHETYPE_PASSIVE_PALADIN_RELENTLESS_AVENGER = "passive.paladin.relentless_avenger";
+export const ARCHETYPE_PASSIVE_BARBARIAN_FRENZY = "passive.barbarian.frenzy";
+export const ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM = "passive.barbarian.bear_totem";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -223,6 +225,23 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Relentless hunter; curses prey and pursues them across the battlefield.",
     grantedActionId: "action.paladin.vow_of_enmity",
     passiveId: ARCHETYPE_PASSIVE_PALADIN_RELENTLESS_AVENGER,
+  },
+  "archetype.barbarian.berserker": {
+    id: "archetype.barbarian.berserker",
+    classId: "class.barbarian",
+    chosenAtLevel: 3,
+    displayName: "Path of the Berserker",
+    description: "Channels battle madness into a bonus attack while raging; risks exhaustion after combat.",
+    grantedActionId: "action.barbarian.frenzied_strike",
+    passiveId: ARCHETYPE_PASSIVE_BARBARIAN_FRENZY,
+  },
+  "archetype.barbarian.totem_bear": {
+    id: "archetype.barbarian.totem_bear",
+    classId: "class.barbarian",
+    chosenAtLevel: 3,
+    displayName: "Path of the Totem (Bear)",
+    description: "Bears the spirit of the bear; resists all damage types while raging.",
+    passiveId: ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM,
   },
   "archetype.druid.circle_of_moon": {
     id: "archetype.druid.circle_of_moon",

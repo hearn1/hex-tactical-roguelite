@@ -1,5 +1,7 @@
 import type { AbilityKey } from "./abilities.ts";
 import {
+  ARCHETYPE_PASSIVE_BARBARIAN_FRENZY,
+  ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM,
   ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR,
   ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK,
   ARCHETYPE_PASSIVE_BEACON_SAVE_AURA,
@@ -49,7 +51,9 @@ export type PassiveEffect =
   | { type: "repellingBlast" }
   | { type: "pactBlade" }
   | { type: "pactTome"; cantripsGranted: number }
-  | { type: "relentlessAvenger"; moveBonus: number };
+  | { type: "relentlessAvenger"; moveBonus: number }
+  | { type: "dangerSense" }
+  | { type: "frenziedAttack"; usesPerCombat: number };
 
 export interface PassiveDef {
   id: string;
@@ -331,6 +335,37 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Awakened Mind",
     description: "Once per combat, force an enemy to reroll an attack roll targeting you (psychic interference).",
     effect: { type: "forceReroll", usesPerCombat: 1 },
+  },
+  // ── Barbarian passives ────────────────────────────────────────────────
+  [ARCHETYPE_PASSIVE_BARBARIAN_FRENZY]: {
+    id: ARCHETYPE_PASSIVE_BARBARIAN_FRENZY,
+    displayName: "Frenzy",
+    description: "While raging, make one bonus melee attack per turn. After combat ends, suffer exhaustion (−1 to attack rolls) until a long rest.",
+    effect: { type: "frenziedAttack", usesPerCombat: 1 },
+  },
+  [ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM]: {
+    id: ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM,
+    displayName: "Bear Totem",
+    description: "The bear's spirit flows through you — while raging, gain resistance to all damage types.",
+    effect: { type: "resistance", damageTypes: ["all"] },
+  },
+  "passive.barbarian.danger_sense": {
+    id: "passive.barbarian.danger_sense",
+    displayName: "Danger Sense",
+    description: "Your primal instincts alert you to hidden threats — gain advantage on Dexterity saving throws.",
+    effect: { type: "dangerSense" },
+  },
+  "passive.barbarian.extra_rage_l2": {
+    id: "passive.barbarian.extra_rage_l2",
+    displayName: "Relentless Fury (L2)",
+    description: "Your rage burns longer — Rage gains one additional use per combat.",
+    effect: { type: "actionChargeBonus", actionId: "action.barbarian.rage", amount: 1 },
+  },
+  "passive.barbarian.extra_rage_l5": {
+    id: "passive.barbarian.extra_rage_l5",
+    displayName: "Relentless Fury (L5)",
+    description: "Your rage burns longer — Rage gains one additional use per combat.",
+    effect: { type: "actionChargeBonus", actionId: "action.barbarian.rage", amount: 1 },
   },
   // ── Paladin passives ──────────────────────────────────────────────────
   "passive.paladin.devotion_aura": {

@@ -523,6 +523,92 @@ describe("DataRepository", () => {
     expect(l5.featuresGranted).toContain("passive.extra_attack");
     expect(l5.featuresGranted).toContain("passive.paladin.extra_slot_l5");
   });
+
+  it("barbarian class registers with correct starting actions and stats", () => {
+    const barbarian = repo.getClass("class.barbarian");
+    expect(barbarian).toBeDefined();
+    expect(barbarian!.hitDieSize).toBe(12);
+    expect(barbarian!.primaryAbility).toBe("str");
+    expect(barbarian!.savingThrowProficiencies).toEqual(["str", "con"]);
+    expect(barbarian!.spellSlotsMax).toBeUndefined();
+    expect(barbarian!.actionIds).toContain("action.barbarian.rage");
+    expect(barbarian!.actionIds).toContain("action.barbarian.reckless_attack");
+    expect(barbarian!.actionIds).toContain("action.barbarian.brutal_strike");
+    expect(repo.getAction("action.barbarian.rage")).toBeDefined();
+    expect(repo.getAction("action.barbarian.reckless_attack")).toBeDefined();
+    expect(repo.getAction("action.barbarian.brutal_strike")).toBeDefined();
+  });
+
+  it("barbarian Rage is a limited-charge self-buff that applies the raged condition", () => {
+    const rage = repo.getAction("action.barbarian.rage");
+    expect(rage).toBeDefined();
+    expect(rage!.charges).toBe(2);
+    expect(rage!.targetType).toBe("self");
+    expect(rage!.effect).toMatchObject({ type: "applyCondition", conditionId: "raged", duration: 3 });
+  });
+
+  it("barbarian Reckless Attack is a STR cantrip melee dealing 1d8+str", () => {
+    const ra = repo.getAction("action.barbarian.reckless_attack");
+    expect(ra).toBeDefined();
+    expect(ra!.isCantrip).toBe(true);
+    expect(ra!.range).toBe(1);
+    expect(ra!.accuracyStat).toBe("str");
+    expect(ra!.effect).toMatchObject({ type: "damage", formula: "1d8 + str" });
+  });
+
+  it("barbarian Brutal Strike is a STR cantrip melee dealing 1d12+str", () => {
+    const bs = repo.getAction("action.barbarian.brutal_strike");
+    expect(bs).toBeDefined();
+    expect(bs!.isCantrip).toBe(true);
+    expect(bs!.accuracyStat).toBe("str");
+    expect(bs!.effect).toMatchObject({ type: "damage", formula: "1d12 + str" });
+  });
+
+  it("barbarian archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.barbarian.berserker"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.barbarian.totem_bear"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.barbarian.danger_sense"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.barbarian.frenzy"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.barbarian.bear_totem"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.barbarian.extra_rage_l2"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.barbarian.extra_rage_l5"]).toBeDefined();
+    expect(repo.getAction("action.barbarian.frenzied_strike")).toBeDefined();
+  });
+
+  it("barbarian Berserker grants frenzied_strike and frenzy passive", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const berserker = ARCHETYPE_REGISTRY["archetype.barbarian.berserker"];
+    expect(berserker.grantedActionId).toBe("action.barbarian.frenzied_strike");
+    expect(berserker.passiveId).toBe("passive.barbarian.frenzy");
+  });
+
+  it("barbarian Totem Bear passive grants resistance to all damage types", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const bearTotem = PASSIVE_REGISTRY["passive.barbarian.bear_totem"];
+    expect(bearTotem.effect).toMatchObject({ type: "resistance", damageTypes: ["all"] });
+  });
+
+  it("barbarian L2 progression auto-grants danger_sense passive", () => {
+    const { BARBARIAN_PROGRESSION } = require("./progressionTables.ts");
+    const l2 = BARBARIAN_PROGRESSION.find((e: { level: number }) => e.level === 2);
+    expect(l2).toBeDefined();
+    expect(l2.featuresGranted).toContain("passive.barbarian.danger_sense");
+  });
+
+  it("barbarian L5 progression auto-grants extra_attack", () => {
+    const { BARBARIAN_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = BARBARIAN_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.extra_attack");
+  });
+
+  it("barbarian frenzy passive uses frenziedAttack effect type", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const frenzy = PASSIVE_REGISTRY["passive.barbarian.frenzy"];
+    expect(frenzy.effect).toMatchObject({ type: "frenziedAttack", usesPerCombat: 1 });
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {

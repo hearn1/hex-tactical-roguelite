@@ -117,3 +117,11 @@ export const PALADIN_PROGRESSION: ClassProgressionTable = [
   { level: 4, proficiencyBonus: 2, statGain: { maxHp: 2, cha: 1 } },
   { level: 5, proficiencyBonus: 3, statGain: { maxHp: 2, str: 1 }, featuresGranted: ["passive.extra_attack", "passive.paladin.extra_slot_l5"] },
 ];
+
+export const BARBARIAN_PROGRESSION: ClassProgressionTable = [
+  { level: 1, proficiencyBonus: 2 },
+  { level: 2, proficiencyBonus: 2, statGain: { maxHp: 3, str: 1 }, featuresGranted: ["passive.barbarian.danger_sense"] },
+  { level: 3, proficiencyBonus: 2, statGain: { maxHp: 3, str: 1 } },
+  { level: 4, proficiencyBonus: 2, statGain: { maxHp: 3, str: 1 } },
+  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 3, str: 1 }, featuresGranted: ["passive.extra_attack"] },
+];

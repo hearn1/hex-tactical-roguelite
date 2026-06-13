@@ -668,6 +668,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.barbarian": {
+    2: [
+      {
+        id: "barbarian.extra_rage_l2",
+        name: "Relentless Fury",
+        description: "Gain one additional Rage use per combat.",
+        upgrade: { kind: "passive", passiveId: "passive.barbarian.extra_rage_l2" },
+      },
+      {
+        id: "barbarian.brutal_strength",
+        name: "Brutal Strength",
+        description: "Permanent +2 Strength.",
+        upgrade: { kind: "stat", stats: { str: 2 } },
+      },
+    ],
+    3: [
+      {
+        id: "barbarian.archetype.berserker",
+        name: "Path of the Berserker",
+        description: "Channel battle madness into a bonus attack while raging; risks exhaustion after combat.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.barbarian.berserker" },
+      },
+      {
+        id: "barbarian.archetype.totem_bear",
+        name: "Path of the Totem (Bear)",
+        description: "Bear the spirit of the bear — resist all damage types while raging.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.barbarian.totem_bear" },
+      },
+    ],
+    4: [
+      {
+        id: "barbarian.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "barbarian.iron_body",
+        name: "Iron Body",
+        description: "Permanent +2 max HP and +1 Constitution.",
+        upgrade: { kind: "stat", stats: { maxHp: 2, con: 1 } },
+      },
+    ],
+    5: [
+      {
+        id: "barbarian.extra_rage_l5",
+        name: "Relentless Fury (L5)",
+        description: "Gain one additional Rage use per combat.",
+        upgrade: { kind: "passive", passiveId: "passive.barbarian.extra_rage_l5" },
+      },
+      {
+        id: "barbarian.primal_resilience",
+        name: "Primal Resilience",
+        description: "Permanent +1 Strength and +2 max HP.",
+        upgrade: { kind: "stat", stats: { str: 1, maxHp: 2 } },
+      },
+    ],
+  },
   "class.druid": {
     2: [
       {
