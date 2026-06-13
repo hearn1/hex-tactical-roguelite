@@ -13,6 +13,7 @@ import {
   DRUID_PROGRESSION,
   BARD_PROGRESSION,
   WARLOCK_PROGRESSION,
+  PALADIN_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -238,6 +239,22 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellcastingAbility: "cha",
     progressionTable: WARLOCK_PROGRESSION,
   },
+  "class.paladin": {
+    id: "class.paladin",
+    displayName: "Paladin",
+    baseStats: { maxHp: 16, armor: 15, move: 3, str: 3, dex: 1, con: 2, int: 1, wis: 1, cha: 2 },
+    hitDieSize: 10,
+    actionIds: ["action.paladin.divine_smite", "action.paladin.lay_on_hands", "action.paladin.sacred_weapon"],
+    startingItems: [],
+    spellSlotsMax: 1,
+    defaultBackgroundId: "background.caravan_guard",
+    primaryAbility: "str",
+    savingThrowProficiencies: ["wis", "cha"],
+    armorProficiencies: ["light", "medium", "heavy", "shield"],
+    weaponProficiencies: ["simple", "martial"],
+    spellcastingAbility: "cha",
+    progressionTable: PALADIN_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -253,4 +270,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.druid": "Fern",
   "class.bard": "Lyric",
   "class.warlock": "Vex",
+  "class.paladin": "Vael",
 };

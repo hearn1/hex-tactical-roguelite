@@ -610,6 +610,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.paladin": {
+    2: [
+      {
+        id: "paladin.fighting_style_dueling",
+        name: "Dueling",
+        description: "Divine Smite and Sacred Weapon deal +2 damage.",
+        upgrade: { kind: "action", actionIds: ["action.paladin.divine_smite", "action.paladin.sacred_weapon"], damageBonus: 2 },
+      },
+      {
+        id: "paladin.fighting_style_defense",
+        name: "Defense",
+        description: "Permanent +1 Armor from a defensive fighting style.",
+        upgrade: { kind: "stat", stats: { armor: 1 } },
+      },
+    ],
+    3: [
+      {
+        id: "paladin.archetype.devotion",
+        name: "Oath of Devotion",
+        description: "Pure-hearted champion — Holy Nimbus and a save-fortifying aura for nearby allies.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.paladin.devotion" },
+      },
+      {
+        id: "paladin.archetype.vengeance",
+        name: "Oath of Vengeance",
+        description: "Relentless hunter — Vow of Enmity and a speed bonus when striking cursed prey.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.paladin.vengeance" },
+      },
+    ],
+    4: [
+      {
+        id: "paladin.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "paladin.iron_will",
+        name: "Iron Will",
+        description: "Permanent +1 Wisdom and +2 max HP.",
+        upgrade: { kind: "stat", stats: { wis: 1, maxHp: 2 } },
+      },
+    ],
+    5: [
+      {
+        id: "paladin.divine_resolve",
+        name: "Divine Resolve",
+        description: "Permanent +1 Charisma and +2 max HP.",
+        upgrade: { kind: "stat", stats: { cha: 1, maxHp: 2 } },
+      },
+      {
+        id: "paladin.sacred_bastion",
+        name: "Sacred Bastion",
+        description: "Permanent +1 Strength and +1 Armor.",
+        upgrade: { kind: "stat", stats: { str: 1, armor: 1 } },
+      },
+    ],
+  },
   "class.druid": {
     2: [
       {
