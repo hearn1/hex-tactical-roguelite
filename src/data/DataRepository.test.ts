@@ -1097,3 +1097,117 @@ describe("Sorcerer class content (epic #188)", () => {
     expect(report.errors).toHaveLength(0);
   });
 });
+
+describe("Monk class content (epic #189)", () => {
+  let repo: DataRepository;
+
+  beforeEach(() => {
+    repo = new DataRepository();
+    repo.loadAll();
+  });
+
+  it("monk class registers with correct starting actions and stats", () => {
+    const monk = repo.getClass("class.monk");
+    expect(monk).toBeDefined();
+    expect(monk!.hitDieSize).toBe(8);
+    expect(monk!.kiPointsMax).toBe(2);
+    expect(monk!.primaryAbility).toBe("dex");
+    expect(monk!.savingThrowProficiencies).toEqual(["str", "dex"]);
+    expect(monk!.actionIds).toContain("action.monk.flurry_of_blows");
+    expect(monk!.actionIds).toContain("action.monk.stunning_strike");
+    expect(monk!.actionIds).toContain("action.monk.step_of_wind");
+    expect(repo.getAction("action.monk.flurry_of_blows")).toBeDefined();
+    expect(repo.getAction("action.monk.stunning_strike")).toBeDefined();
+    expect(repo.getAction("action.monk.step_of_wind")).toBeDefined();
+  });
+
+  it("Flurry of Blows costs 1 Ki, is melee DEX, hits primary plus adjacent", () => {
+    const flurry = repo.getAction("action.monk.flurry_of_blows");
+    expect(flurry).toBeDefined();
+    expect(flurry!.kiPointCost).toBe(1);
+    expect(flurry!.range).toBe(1);
+    expect(flurry!.accuracyStat).toBe("dex");
+    expect(flurry!.effect).toMatchObject({ type: "damage", formula: "1d4 + dex", targetMode: "primary_plus_adjacent" });
+  });
+
+  it("Stunning Strike costs 1 Ki and applies stunned condition on CON save", () => {
+    const ss = repo.getAction("action.monk.stunning_strike");
+    expect(ss).toBeDefined();
+    expect(ss!.kiPointCost).toBe(1);
+    expect(ss!.range).toBe(1);
+    expect(ss!.effect).toMatchObject({ type: "damage", applyCondition: { id: "stunned", duration: 1, save: { stat: "con" } } });
+  });
+
+  it("Step of the Wind costs 1 Ki and targets self", () => {
+    const sow = repo.getAction("action.monk.step_of_wind");
+    expect(sow).toBeDefined();
+    expect(sow!.kiPointCost).toBe(1);
+    expect(sow!.targetType).toBe("self");
+    expect(sow!.effect).toMatchObject({ type: "applyCondition", conditionId: "step_of_wind" });
+  });
+
+  it("monk archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.monk.open_hand"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.monk.shadow"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.monk.open_hand_technique"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.monk.wholeness_of_body"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.monk.shadow_arts"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.monk.ki_bonus_l2"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.monk.patient_defense"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.monk.deflect_missiles"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.slow_fall"]).toBeDefined();
+    expect(repo.getAction("action.monk.shadow_step")).toBeDefined();
+  });
+
+  it("Way of the Open Hand grants open_hand_technique and wholeness_of_body at L5", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const openHand = ARCHETYPE_REGISTRY["archetype.monk.open_hand"];
+    expect(openHand).toBeDefined();
+    expect(openHand.passiveId).toBe("passive.monk.open_hand_technique");
+    expect(openHand.featuresByHeroLevel?.[5]?.featuresGranted).toContain("passive.monk.wholeness_of_body");
+  });
+
+  it("Way of Shadow grants shadow_step action and shadow_arts passive", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const shadow = ARCHETYPE_REGISTRY["archetype.monk.shadow"];
+    expect(shadow).toBeDefined();
+    expect(shadow.grantedActionId).toBe("action.monk.shadow_step");
+    expect(shadow.passiveId).toBe("passive.monk.shadow_arts");
+  });
+
+  it("monk L2 progression auto-grants ki_bonus_l2 passive", () => {
+    const { MONK_PROGRESSION } = require("./progressionTables.ts");
+    const l2 = MONK_PROGRESSION.find((e: { level: number }) => e.level === 2);
+    expect(l2).toBeDefined();
+    expect(l2.featuresGranted).toContain("passive.monk.ki_bonus_l2");
+  });
+
+  it("monk L4 progression auto-grants slow_fall passive", () => {
+    const { MONK_PROGRESSION } = require("./progressionTables.ts");
+    const l4 = MONK_PROGRESSION.find((e: { level: number }) => e.level === 4);
+    expect(l4).toBeDefined();
+    expect(l4.featuresGranted).toContain("passive.slow_fall");
+  });
+
+  it("monk L5 progression auto-grants extra_attack passive", () => {
+    const { MONK_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = MONK_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.extra_attack");
+  });
+
+  it("monk Ki passives use kiPointBonus effect type", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(PASSIVE_REGISTRY["passive.monk.ki_bonus_l2"].effect).toMatchObject({ type: "kiPointBonus", amount: 1 });
+    expect(PASSIVE_REGISTRY["passive.monk.ki_bonus_l4"].effect).toMatchObject({ type: "kiPointBonus", amount: 1 });
+    expect(PASSIVE_REGISTRY["passive.monk.ki_bonus_l5"].effect).toMatchObject({ type: "kiPointBonus", amount: 1 });
+  });
+
+  it("DataRepository.validate() passes with all Monk content registered", () => {
+    const report = repo.validate();
+    expect(report.valid).toBe(true);
+    expect(report.errors).toHaveLength(0);
+  });
+});
