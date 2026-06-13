@@ -655,13 +655,17 @@ export class DataRepository {
           if (!statKeys.has(key)) errors.push(`${where}: invalid stat "${key}"`);
         }
       }
+      // learnFromPool and learnAction and abilityScoreImprovement and archetype
+      // are validated elsewhere or require no inline field checks here.
     };
     for (const [classId, byLevel] of Object.entries(LEVELUP_CHOICES)) {
       if (!this.classes.has(classId)) {
         errors.push(`Level-up table "${classId}": class not found`);
       }
       for (const [level, options] of Object.entries(byLevel)) {
-        if (options.length < 2) {
+        // A single learnFromPool option is valid — it expands to many choices at runtime.
+        const hasPoolChoice = options.some((o) => o.upgrade.kind === "learnFromPool");
+        if (!hasPoolChoice && options.length < 2) {
           errors.push(`Level-up table "${classId}" level ${level}: must offer at least 2 options`);
         }
         for (const option of options) {

@@ -37,7 +37,14 @@ export type LevelUpUpgrade =
    * 5E Ability Score Improvement. The player distributes `points` across ability scores
    * (each stat capped at +points per ASI). Applied to PartyMember.bonusStats on confirm.
    */
-  | { kind: "abilityScoreImprovement"; points: number };
+  | { kind: "abilityScoreImprovement"; points: number }
+  /**
+   * Dynamic pool choice. At display time the UI looks up SPELL_POOL_REGISTRY[classId] or
+   * FEATURE_POOL_REGISTRY[classId], filters out already-known entries, and presents the
+   * first `count` remaining options.  A level whose only option is learnFromPool is valid
+   * because the pool expands to many choices at runtime.
+   */
+  | { kind: "learnFromPool"; poolType: "spell" | "feature"; count: number };
 
 export interface LevelUpOption {
   id: string;
@@ -234,6 +241,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         description: "Permanent +2 max HP and +1 Constitution.",
         upgrade: { kind: "stat", stats: { maxHp: 2, con: 1 } },
       },
+      {
+        id: "fighter.learn_feature_from_pool_l4",
+        name: "Fighter Feature",
+        description: "Learn a martial feature from the Fighter feature pool.",
+        upgrade: { kind: "learnFromPool", poolType: "feature", count: 1 },
+      },
     ],
     5: [
       {
@@ -291,6 +304,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         name: "Shadow Step",
         description: "Permanent +1 Dexterity and +1 max HP.",
         upgrade: { kind: "stat", stats: { dex: 1, maxHp: 1 } },
+      },
+      {
+        id: "rogue.learn_feature_from_pool_l4",
+        name: "Rogue Feature",
+        description: "Learn a martial feature from the Rogue feature pool.",
+        upgrade: { kind: "learnFromPool", poolType: "feature", count: 1 },
       },
     ],
     5: [
@@ -350,6 +369,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         description: "Learn Bless — grant +2 to an ally's next attack or heal.",
         upgrade: { kind: "learnAction", actionId: "action.bless" },
       },
+      {
+        id: "cleric.learn_from_pool_l4",
+        name: "Learn a Cleric Spell",
+        description: "Choose one spell from the Cleric spell pool to add to your prepared spells.",
+        upgrade: { kind: "learnFromPool", poolType: "spell", count: 1 },
+      },
     ],
     5: [
       {
@@ -369,16 +394,10 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
   "class.wizard": {
     2: [
       {
-        id: "wizard.learn_fireball",
-        name: "Learn Fireball",
-        description: "Learn Fireball — explosive AoE blast dealing 2d6 + Intelligence to all enemies in radius 2.",
-        upgrade: { kind: "learnAction", actionId: "action.fireball" },
-      },
-      {
-        id: "wizard.learn_lightning_bolt",
-        name: "Learn Lightning Bolt",
-        description: "Learn Lightning Bolt — line damage striking all enemies in a 4-hex line.",
-        upgrade: { kind: "learnAction", actionId: "action.lightning_bolt" },
+        id: "wizard.learn_from_pool_l2",
+        name: "Learn a Spell",
+        description: "Choose one spell from the Wizard spell pool to add to your spellbook.",
+        upgrade: { kind: "learnFromPool", poolType: "spell", count: 1 },
       },
     ],
     3: [
@@ -471,6 +490,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         name: "Fleet-Footed",
         description: "Permanent +1 Dexterity and +1 Wisdom.",
         upgrade: { kind: "stat", stats: { dex: 1, wis: 1 } },
+      },
+      {
+        id: "ranger.learn_from_pool_l4",
+        name: "Learn a Ranger Spell",
+        description: "Choose one spell from the Ranger spell pool to add to your nature-magic repertoire.",
+        upgrade: { kind: "learnFromPool", poolType: "spell", count: 1 },
       },
     ],
     5: [
@@ -594,6 +619,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         description: "Learn Hypnotic Pattern — slows all enemies in a 2-hex area for 2 turns.",
         upgrade: { kind: "learnAction", actionId: "action.bard.hypnotic_pattern" },
       },
+      {
+        id: "bard.learn_from_pool_l4",
+        name: "Learn a Bard Spell",
+        description: "Choose one spell from the Bard spell pool to expand your magical repertoire.",
+        upgrade: { kind: "learnFromPool", poolType: "spell", count: 1 },
+      },
     ],
     5: [
       {
@@ -651,6 +682,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         name: "Iron Will",
         description: "Permanent +1 Wisdom and +2 max HP.",
         upgrade: { kind: "stat", stats: { wis: 1, maxHp: 2 } },
+      },
+      {
+        id: "paladin.learn_feature_from_pool_l4",
+        name: "Paladin Feature",
+        description: "Learn a divine feature from the Paladin feature pool.",
+        upgrade: { kind: "learnFromPool", poolType: "feature", count: 1 },
       },
     ],
     5: [
@@ -710,6 +747,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         description: "Permanent +2 max HP and +1 Constitution.",
         upgrade: { kind: "stat", stats: { maxHp: 2, con: 1 } },
       },
+      {
+        id: "barbarian.learn_feature_from_pool_l4",
+        name: "Barbarian Feature",
+        description: "Learn a primal feature from the Barbarian feature pool.",
+        upgrade: { kind: "learnFromPool", poolType: "feature", count: 1 },
+      },
     ],
     5: [
       {
@@ -767,6 +810,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         name: "Moonbeam",
         description: "Learn Moonbeam — a focused column of radiance dealing 2d10 + Wisdom to one target.",
         upgrade: { kind: "learnAction", actionId: "action.druid.moonbeam" },
+      },
+      {
+        id: "druid.learn_from_pool_l4",
+        name: "Learn a Druid Spell",
+        description: "Choose one spell from the Druid spell pool to add to your prepared spells.",
+        upgrade: { kind: "learnFromPool", poolType: "spell", count: 1 },
       },
     ],
     5: [
@@ -838,6 +887,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         description: "Eldritch Blast pushes its target 1 hex away from you on a hit.",
         upgrade: { kind: "passive", passiveId: "passive.warlock.repelling_blast" },
       },
+      {
+        id: "warlock.learn_from_pool_l4",
+        name: "Learn an Eldritch Invocation",
+        description: "Choose one spell from your Warlock's eldritch spell pool.",
+        upgrade: { kind: "learnFromPool", poolType: "spell", count: 1 },
+      },
     ],
     5: [
       {
@@ -896,6 +951,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         description: "Spend 3 Sorcery Points to impose disadvantage on a target's first saving throw against your spell.",
         upgrade: { kind: "passive", passiveId: "passive.sorcerer.heightened_spell" },
       },
+      {
+        id: "sorcerer.learn_from_pool_l4",
+        name: "Learn a Sorcerer Spell",
+        description: "Choose one spell from the Sorcerer spell pool — your innate power expands.",
+        upgrade: { kind: "learnFromPool", poolType: "spell", count: 1 },
+      },
     ],
     5: [
       {
@@ -953,6 +1014,12 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
         name: "Deeper Ki Reservoir",
         description: "Your ki pool expands — gain 1 additional Ki point.",
         upgrade: { kind: "passive", passiveId: "passive.monk.ki_bonus_l4" },
+      },
+      {
+        id: "monk.learn_feature_from_pool_l4",
+        name: "Monk Feature",
+        description: "Learn a ki feature from the Monk feature pool.",
+        upgrade: { kind: "learnFromPool", poolType: "feature", count: 1 },
       },
     ],
     5: [
