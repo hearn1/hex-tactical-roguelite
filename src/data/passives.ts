@@ -49,7 +49,8 @@ export type PassiveEffect =
   | { type: "repellingBlast" }
   | { type: "pactBlade" }
   | { type: "pactTome"; cantripsGranted: number }
-  | { type: "relentlessAvenger"; moveBonus: number };
+  | { type: "relentlessAvenger"; moveBonus: number }
+  | { type: "dangerSense" };
 
 export interface PassiveDef {
   id: string;
@@ -331,6 +332,25 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Awakened Mind",
     description: "Once per combat, force an enemy to reroll an attack roll targeting you (psychic interference).",
     effect: { type: "forceReroll", usesPerCombat: 1 },
+  },
+  // ── Barbarian passives ────────────────────────────────────────────────
+  "passive.barbarian.danger_sense": {
+    id: "passive.barbarian.danger_sense",
+    displayName: "Danger Sense",
+    description: "Your primal instincts alert you to hidden threats — gain advantage on Dexterity saving throws.",
+    effect: { type: "dangerSense" },
+  },
+  "passive.barbarian.extra_rage_l2": {
+    id: "passive.barbarian.extra_rage_l2",
+    displayName: "Relentless Fury (L2)",
+    description: "Your rage burns longer — Rage gains one additional use per combat.",
+    effect: { type: "actionChargeBonus", actionId: "action.barbarian.rage", amount: 1 },
+  },
+  "passive.barbarian.extra_rage_l5": {
+    id: "passive.barbarian.extra_rage_l5",
+    displayName: "Relentless Fury (L5)",
+    description: "Your rage burns longer — Rage gains one additional use per combat.",
+    effect: { type: "actionChargeBonus", actionId: "action.barbarian.rage", amount: 1 },
   },
   // ── Paladin passives ──────────────────────────────────────────────────
   "passive.paladin.devotion_aura": {
