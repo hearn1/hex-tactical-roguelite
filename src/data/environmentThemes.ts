@@ -186,6 +186,10 @@ const NODE_TYPE_THEME_MAP: Record<NodeType, CombatEnvironmentThemeId> = {
   event: "event",
   recruit: "camp",
   pet: "camp",
+  shrine: "event",
+  side_route_start: "forest",
+  side_route_node: "forest",
+  side_route_return: "forest",
 };
 
 export function nodeTypeToEnvironmentTheme(

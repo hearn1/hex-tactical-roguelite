@@ -171,7 +171,7 @@ export function resolveAction(
   if (action.effect.type === "counterTelegraph") {
     const range = effectiveRange(action, attacker);
     const telegraphMatches = state.bossTelegraph && state.bossTelegraph.sourceId === target.instanceId;
-    if (telegraphMatches && distance(attacker.pos, target.pos) <= range) {
+    if (state.bossTelegraph && telegraphMatches && distance(attacker.pos, target.pos) <= range) {
       const telegraphAction = ACTION_REGISTRY[state.bossTelegraph.actionId];
       const actionName = telegraphAction?.displayName ?? "telegraphed action";
       state.bossTelegraph = null;

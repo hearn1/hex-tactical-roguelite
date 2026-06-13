@@ -41,6 +41,10 @@ const CONDITION_DESCRIPTIONS: Record<ConditionId, string> = {
   sanctuary: "Next attack against it is negated.",
   hasted: "Extra movement.",
   counterspelled: "Cancels a boss's telegraphed action.",
+  divinely_inspired: "Guided by a higher power.",
+  rooted: "Held fast — cannot move.",
+  hunters_mark: "Marked prey takes extra damage.",
+  umbral_sight: "Sees clearly through the dark.",
 };
 
 export function aiBehaviorHint(aiTag: EnemyDef["aiTag"]): string {

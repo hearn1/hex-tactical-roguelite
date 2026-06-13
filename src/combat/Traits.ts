@@ -163,7 +163,8 @@ export function handleEnemyStartTurnTraits(
 
   // cooldown
   const lastResolved = getTelegraphLastResolvedRound(state, unit, telegraphTrait.id);
-  if (lastResolved !== undefined && state.round - lastResolved < cadence.cooldownTurns) return false;
+  // cadence.cooldownTurns is guaranteed positive here by resolveTelegraphCadence (mode === "cooldown").
+  if (lastResolved !== undefined && state.round - lastResolved < cadence.cooldownTurns!) return false;
   windUpTelegraph(unit, state, telegraphTrait);
   return true;
 }
