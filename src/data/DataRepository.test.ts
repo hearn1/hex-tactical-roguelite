@@ -442,6 +442,87 @@ describe("DataRepository", () => {
     const agonizing = PASSIVE_REGISTRY["passive.warlock.agonizing_blast"];
     expect(agonizing.effect).toMatchObject({ type: "empoweredEvocation", stat: "cha" });
   });
+
+  it("paladin class registers with correct starting actions and stats", () => {
+    const paladin = repo.getClass("class.paladin");
+    expect(paladin).toBeDefined();
+    expect(paladin!.hitDieSize).toBe(10);
+    expect(paladin!.spellSlotsMax).toBe(1);
+    expect(paladin!.primaryAbility).toBe("str");
+    expect(paladin!.spellcastingAbility).toBe("cha");
+    expect(paladin!.savingThrowProficiencies).toEqual(["wis", "cha"]);
+    expect(paladin!.actionIds).toContain("action.paladin.divine_smite");
+    expect(paladin!.actionIds).toContain("action.paladin.lay_on_hands");
+    expect(paladin!.actionIds).toContain("action.paladin.sacred_weapon");
+    expect(repo.getAction("action.paladin.divine_smite")).toBeDefined();
+    expect(repo.getAction("action.paladin.lay_on_hands")).toBeDefined();
+    expect(repo.getAction("action.paladin.sacred_weapon")).toBeDefined();
+  });
+
+  it("paladin Divine Smite is a spell_slot melee damage action with 2d8", () => {
+    const smite = repo.getAction("action.paladin.divine_smite");
+    expect(smite).toBeDefined();
+    expect(smite!.resourceType).toBe("spell_slot");
+    expect(smite!.range).toBe(1);
+    expect(smite!.accuracyStat).toBe("str");
+    expect(smite!.effect).toMatchObject({ type: "damage", formula: "2d8" });
+  });
+
+  it("paladin Lay on Hands is a limited-charge heal for adjacent targets", () => {
+    const loh = repo.getAction("action.paladin.lay_on_hands");
+    expect(loh).toBeDefined();
+    expect(loh!.charges).toBeGreaterThan(0);
+    expect(loh!.range).toBe(1);
+    expect(loh!.effect).toMatchObject({ type: "heal" });
+  });
+
+  it("paladin Sacred Weapon is a cantrip self-buff that applies a condition", () => {
+    const sw = repo.getAction("action.paladin.sacred_weapon");
+    expect(sw).toBeDefined();
+    expect(sw!.isCantrip).toBe(true);
+    expect(sw!.targetType).toBe("self");
+    expect(sw!.effect).toMatchObject({ type: "applyCondition", conditionId: "sacred_weapon" });
+  });
+
+  it("paladin archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.paladin.devotion"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.paladin.vengeance"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.paladin.devotion_aura"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.paladin.relentless_avenger"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.paladin.loh_pool_extended"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.paladin.extra_slot_l5"]).toBeDefined();
+    expect(repo.getAction("action.paladin.holy_nimbus")).toBeDefined();
+    expect(repo.getAction("action.paladin.vow_of_enmity")).toBeDefined();
+  });
+
+  it("paladin Devotion Aura is a save aura with radius 2", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const aura = PASSIVE_REGISTRY["passive.paladin.devotion_aura"];
+    expect(aura.effect).toMatchObject({ type: "saveAura", bonus: 1, radius: 2 });
+  });
+
+  it("paladin Relentless Avenger is a relentlessAvenger passive", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const passive = PASSIVE_REGISTRY["passive.paladin.relentless_avenger"];
+    expect(passive.effect).toMatchObject({ type: "relentlessAvenger", moveBonus: 1 });
+  });
+
+  it("paladin L2 progression auto-grants loh_pool_extended passive", () => {
+    const { PALADIN_PROGRESSION } = require("./progressionTables.ts");
+    const l2 = PALADIN_PROGRESSION.find((e: { level: number }) => e.level === 2);
+    expect(l2).toBeDefined();
+    expect(l2.featuresGranted).toContain("passive.paladin.loh_pool_extended");
+  });
+
+  it("paladin L5 progression auto-grants extra_attack and extra_slot_l5", () => {
+    const { PALADIN_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = PALADIN_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.extra_attack");
+    expect(l5.featuresGranted).toContain("passive.paladin.extra_slot_l5");
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {
