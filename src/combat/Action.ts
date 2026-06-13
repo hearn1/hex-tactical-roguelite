@@ -846,15 +846,21 @@ function resolvePrimaryPlusAdjacent(
     });
   }
 
-  const adjacentHeroes = state.units.filter(
-    (u) => u.team === "hero" && u.hp > 0 && u.instanceId !== target.instanceId && distance(attacker.pos, u.pos) === 1,
+  // Splash hits the primary target's team — the attacker's opponents — so hero classes never
+  // friendly-fire their own adjacent allies (the original code hardcoded the hero team for the
+  // enemy Ground Slam). A melee strike radiates around the attacker ("all nearby foes"); a
+  // ranged strike arcs out from the primary target, matching Twin Bolt / Chain Lightning /
+  // Swift Quiver, which "arc from the primary target."
+  const splashAnchor = distance(attacker.pos, target.pos) <= 1 ? attacker.pos : target.pos;
+  const adjacentTargets = state.units.filter(
+    (u) => u.team === target.team && u.hp > 0 && u.instanceId !== target.instanceId && distance(splashAnchor, u.pos) === 1,
   );
-  for (const hero of adjacentHeroes) {
+  for (const splash of adjacentTargets) {
     const d20s = Math.floor(rng() * 20) + 1;
     const attTotal = d20s + stat + proficiency;
     const crit = d20s === 20;
     const autoMiss = d20s === 1;
-    const hits = !autoMiss && (crit || attTotal >= hero.stats.armor);
+    const hits = !autoMiss && (crit || attTotal >= splash.stats.armor);
     if (hits) {
       const formula = rewriteFormula(dmgFormula, attacker);
       const res = roll(formula, rng);
@@ -864,20 +870,20 @@ function resolvePrimaryPlusAdjacent(
         const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
         dmg += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (attacker.bonusDamage ?? 0);
       }
-      const before = hero.hp;
-      hero.hp = Math.max(0, hero.hp - dmg);
-      const dealt = before - hero.hp;
+      const before = splash.hp;
+      splash.hp = Math.max(0, splash.hp - dmg);
+      const dealt = before - splash.hp;
       totalDmg += dealt;
       state.log.push({
         kind: "action",
-        text: `[T${round}] Ground Slam hits ${hero.displayName} — ${dealt} dmg.`,
+        text: `[T${round}] ${action.displayName} hits ${splash.displayName} — ${dealt} dmg.`,
         round,
       });
-      hitEntries.push({ targetUnitId: hero.instanceId, previousHp: before, damageAmount: dealt, cause: "adjacent" });
+      hitEntries.push({ targetUnitId: splash.instanceId, previousHp: before, damageAmount: dealt, cause: "adjacent" });
     } else {
       state.log.push({
         kind: "action",
-        text: `[T${round}] Ground Slam misses ${hero.displayName}.`,
+        text: `[T${round}] ${action.displayName} misses ${splash.displayName}.`,
         round,
       });
     }
