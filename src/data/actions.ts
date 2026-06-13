@@ -27,6 +27,8 @@ export interface ActionDef {
   spellLevel?: number;
   /** Sorcery Points consumed per cast (Sorcerer Metamagic actions). */
   sorceryPointCost?: number;
+  /** Ki points consumed per cast (Monk actions). */
+  kiPointCost?: number;
   effect:
     | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number; bonusDiceOnFlanking?: string; pushDistance?: number }
     | { type: "heal"; formula: string; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
@@ -1132,6 +1134,50 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     accuracyStat: "cha",
     isCantrip: true,
     effect: { type: "damage", formula: "1d10 + cha" },
+  },
+  // ── Monk starting actions ─────────────────────────────────────────────
+  "action.monk.flurry_of_blows": {
+    id: "action.monk.flurry_of_blows",
+    displayName: "Flurry of Blows",
+    description: "Spend 1 Ki point to strike twice in rapid succession — each unarmed strike deals 1d4 + DEX damage.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "dex",
+    kiPointCost: 1,
+    effect: { type: "damage", formula: "1d4 + dex", targetMode: "primary_plus_adjacent" },
+  },
+  "action.monk.stunning_strike": {
+    id: "action.monk.stunning_strike",
+    displayName: "Stunning Strike",
+    description: "Spend 1 Ki point after a melee hit to channel your ki into the blow — the target must make a CON save (DC 13) or be stunned until your next turn.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "dex",
+    kiPointCost: 1,
+    effect: { type: "damage", formula: "1d6 + dex", applyCondition: { id: "stunned", duration: 1, save: { stat: "con", dc: 13 } } },
+  },
+  "action.monk.step_of_wind": {
+    id: "action.monk.step_of_wind",
+    displayName: "Step of the Wind",
+    description: "Spend 1 Ki point to weave through the battlefield — gain +2 movement this turn and ignore opportunity attacks.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    kiPointCost: 1,
+    effect: { type: "applyCondition", conditionId: "step_of_wind", duration: 1 },
+  },
+  // ── Monk archetype actions ────────────────────────────────────────────
+  "action.monk.shadow_step": {
+    id: "action.monk.shadow_step",
+    displayName: "Shadow Step",
+    description: "Spend 2 Ki points to melt into shadow — teleport to any hex within 3 in dim light or darkness; your next attack this turn has advantage.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    kiPointCost: 2,
+    effect: { type: "applyCondition", conditionId: "shadow_step", duration: 1 },
   },
   // ── Sorcerer archetype actions ────────────────────────────────────────
   "action.sorcerer.tides_of_chaos": {

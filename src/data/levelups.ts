@@ -912,6 +912,64 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.monk": {
+    2: [
+      {
+        id: "monk.patient_defense",
+        name: "Patient Defense",
+        description: "Spend 1 Ki point to take the Dodge action — all attackers have disadvantage against you until your next turn.",
+        upgrade: { kind: "passive", passiveId: "passive.monk.patient_defense" },
+      },
+      {
+        id: "monk.deflect_missiles",
+        name: "Deflect Missiles",
+        description: "Spend 1 Ki point when hit by a ranged attack to reduce incoming damage by 1d10 + DEX.",
+        upgrade: { kind: "passive", passiveId: "passive.monk.deflect_missiles" },
+      },
+    ],
+    3: [
+      {
+        id: "monk.archetype.open_hand",
+        name: "Way of the Open Hand",
+        description: "Master unarmed strikes — after Flurry of Blows, push the target or knock them prone.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.monk.open_hand" },
+      },
+      {
+        id: "monk.archetype.shadow",
+        name: "Way of Shadow",
+        description: "Weave through darkness — teleport to dim hexes and silence enemies.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.monk.shadow" },
+      },
+    ],
+    4: [
+      {
+        id: "monk.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "monk.ki_bonus_l4",
+        name: "Deeper Ki Reservoir",
+        description: "Your ki pool expands — gain 1 additional Ki point.",
+        upgrade: { kind: "passive", passiveId: "passive.monk.ki_bonus_l4" },
+      },
+    ],
+    5: [
+      {
+        id: "monk.ki_bonus_l5",
+        name: "Ki Mastery",
+        description: "Your ki pool expands again — gain 1 additional Ki point.",
+        upgrade: { kind: "passive", passiveId: "passive.monk.ki_bonus_l5" },
+      },
+      {
+        id: "monk.mind_body_unity",
+        name: "Mind and Body Unity",
+        description: "Permanent +1 Dexterity and +1 Wisdom.",
+        upgrade: { kind: "stat", stats: { dex: 1, wis: 1 } },
+      },
+    ],
+  },
 };
 
 /**

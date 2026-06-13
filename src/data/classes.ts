@@ -16,6 +16,7 @@ import {
   PALADIN_PROGRESSION,
   BARBARIAN_PROGRESSION,
   SORCERER_PROGRESSION,
+  MONK_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -53,6 +54,8 @@ export interface ClassDef {
   pactMagic?: boolean;
   /** Sorcery Point pool refreshed each Long Rest (Sorcerer only). */
   sorceryPointsMax?: number;
+  /** Ki point pool restored on Short Rest (Monk only). */
+  kiPointsMax?: number;
   /** Per-level progression data: stat gains, features granted, spell slots. */
   progressionTable: ClassProgressionTable;
 }
@@ -290,6 +293,21 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     weaponProficiencies: ["simple", "martial"],
     progressionTable: BARBARIAN_PROGRESSION,
   },
+  "class.monk": {
+    id: "class.monk",
+    displayName: "Monk",
+    baseStats: { maxHp: 13, armor: 14, move: 4, str: 1, dex: 3, con: 1, int: 1, wis: 3, cha: 1 },
+    hitDieSize: 8,
+    actionIds: ["action.monk.flurry_of_blows", "action.monk.stunning_strike", "action.monk.step_of_wind"],
+    startingItems: [],
+    defaultBackgroundId: "background.caravan_guard",
+    primaryAbility: "dex",
+    savingThrowProficiencies: ["str", "dex"],
+    armorProficiencies: ["none"],
+    weaponProficiencies: ["simple"],
+    kiPointsMax: 2,
+    progressionTable: MONK_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -308,4 +326,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.sorcerer": "Zara",
   "class.paladin": "Vael",
   "class.barbarian": "Krag",
+  "class.monk": "Zhen",
 };

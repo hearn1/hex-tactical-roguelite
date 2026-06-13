@@ -133,3 +133,11 @@ export const SORCERER_PROGRESSION: ClassProgressionTable = [
   { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, cha: 1 } },
   { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, cha: 1 }, featuresGranted: ["passive.sorcerer.extra_slot_l5", "passive.sorcerer.extra_sp_l5"] },
 ];
+
+export const MONK_PROGRESSION: ClassProgressionTable = [
+  { level: 1, proficiencyBonus: 2 },
+  { level: 2, proficiencyBonus: 2, statGain: { maxHp: 1, dex: 1 }, featuresGranted: ["passive.monk.ki_bonus_l2"] },
+  { level: 3, proficiencyBonus: 2, statGain: { maxHp: 1, dex: 1 } },
+  { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, wis: 1 }, featuresGranted: ["passive.slow_fall"] },
+  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, dex: 1 }, featuresGranted: ["passive.extra_attack"] },
+];

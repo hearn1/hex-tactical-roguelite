@@ -89,6 +89,8 @@ export const FLAIR_OVERLAYS: Record<string, FlairOverlayDef> = {
   "overlay.flair.totem_bear": { id: "overlay.flair.totem_bear", kind: "aura", color: "#8b5e3c" },
   "overlay.flair.draconic": { id: "overlay.flair.draconic", kind: "aura", color: "#ff8c42" },
   "overlay.flair.wild_magic": { id: "overlay.flair.wild_magic", kind: "aura", color: "#d060ff" },
+  "overlay.flair.open_hand": { id: "overlay.flair.open_hand", kind: "aura", color: "#c8e8ff" },
+  "overlay.flair.shadow": { id: "overlay.flair.shadow", kind: "cloak", color: "#1a1a2e" },
 };
 
 /** Weapon/armor item id → overlay id. Trinkets have no appearance layer. */
@@ -139,6 +141,8 @@ export const ARCHETYPE_FLAIR: Record<string, string> = {
   "archetype.barbarian.totem_bear": "overlay.flair.totem_bear",
   "archetype.sorcerer.draconic": "overlay.flair.draconic",
   "archetype.sorcerer.wild_magic": "overlay.flair.wild_magic",
+  "archetype.monk.open_hand": "overlay.flair.open_hand",
+  "archetype.monk.shadow": "overlay.flair.shadow",
 };
 
 /** Look a hero shows when the corresponding slot is empty, keyed by class id (= hero `defId`). */
@@ -158,6 +162,7 @@ export const CLASS_DEFAULT_WEAPON: Record<string, string> = {
   "class.paladin": "overlay.weapon.sword",
   "class.barbarian": "overlay.weapon.sword",
   "class.sorcerer": "overlay.weapon.wand",
+  "class.monk": "overlay.weapon.dagger",
 };
 
 export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
@@ -176,6 +181,7 @@ export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
   "class.paladin": "overlay.armor.heavy",
   "class.barbarian": "overlay.armor.medium",
   "class.sorcerer": "overlay.armor.light",
+  "class.monk": "overlay.armor.light",
 };
 
 /** Gear shown for enemies that visibly carry a weapon (best-effort per the AC). */
