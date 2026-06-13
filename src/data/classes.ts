@@ -12,6 +12,7 @@ import {
   RANGER_PROGRESSION,
   DRUID_PROGRESSION,
   BARD_PROGRESSION,
+  WARLOCK_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -220,6 +221,23 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellcastingAbility: "cha",
     progressionTable: BARD_PROGRESSION,
   },
+  "class.warlock": {
+    id: "class.warlock",
+    displayName: "Warlock",
+    baseStats: { maxHp: 13, armor: 12, move: 3, str: 1, dex: 1, con: 1, int: 1, wis: 2, cha: 3 },
+    hitDieSize: 8,
+    actionIds: ["action.warlock.eldritch_blast", "action.warlock.hex", "action.warlock.armor_of_agathys"],
+    startingItems: [],
+    spellSlotsMax: 1,
+    pactMagic: true,
+    defaultBackgroundId: "background.hedge_scholar",
+    primaryAbility: "cha",
+    savingThrowProficiencies: ["wis", "cha"],
+    armorProficiencies: ["light"],
+    weaponProficiencies: ["simple"],
+    spellcastingAbility: "cha",
+    progressionTable: WARLOCK_PROGRESSION,
+  },
 };
 
 export const HERO_DEFAULT_NAMES: Record<string, string> = {
@@ -234,4 +252,5 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.ranger": "Kael",
   "class.druid": "Fern",
   "class.bard": "Lyric",
+  "class.warlock": "Vex",
 };

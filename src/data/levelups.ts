@@ -668,6 +668,76 @@ export const LEVELUP_CHOICES: Record<string, Record<number, LevelUpOption[]>> = 
       },
     ],
   },
+  "class.warlock": {
+    2: [
+      {
+        id: "warlock.agonizing_blast",
+        name: "Agonizing Blast",
+        description: "Add your Charisma modifier to Eldritch Blast's damage on every hit.",
+        upgrade: { kind: "passive", passiveId: "passive.warlock.agonizing_blast" },
+      },
+      {
+        id: "warlock.devils_sight",
+        name: "Devil's Sight",
+        description: "Your patron's dark gift: ignore darkness and stealth penalties. +1 to all skill checks.",
+        upgrade: { kind: "passive", passiveId: "passive.warlock.devils_sight" },
+      },
+    ],
+    3: [
+      {
+        id: "warlock.archetype.fiend",
+        name: "The Fiend",
+        description: "Pact with a lord of the lower planes — gain temp HP on kill and Hellish Rebuke.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.warlock.fiend" },
+      },
+      {
+        id: "warlock.archetype.great_old_one",
+        name: "The Great Old One",
+        description: "Pact with an alien mind — gain psychic interference and Entropic Ward.",
+        upgrade: { kind: "archetype", archetypeId: "archetype.warlock.great_old_one" },
+      },
+      {
+        id: "warlock.pact_of_blade",
+        name: "Pact of the Blade",
+        description: "Bind a weapon to your patron's power — your melee attacks draw on your Charisma.",
+        upgrade: { kind: "passive", passiveId: "passive.warlock.pact_of_blade" },
+      },
+      {
+        id: "warlock.pact_of_tome",
+        name: "Pact of the Tome",
+        description: "Your patron gifts a Book of Shadows — learn 2 additional cantrips.",
+        upgrade: { kind: "passive", passiveId: "passive.warlock.pact_of_tome" },
+      },
+    ],
+    4: [
+      {
+        id: "warlock.ability_score_improvement",
+        name: "Ability Score Improvement",
+        description: "Distribute +2 points across your ability scores.",
+        upgrade: { kind: "abilityScoreImprovement", points: 2 },
+      },
+      {
+        id: "warlock.repelling_blast",
+        name: "Repelling Blast",
+        description: "Eldritch Blast pushes its target 1 hex away from you on a hit.",
+        upgrade: { kind: "passive", passiveId: "passive.warlock.repelling_blast" },
+      },
+    ],
+    5: [
+      {
+        id: "warlock.agonizing_blast_l5",
+        name: "Agonizing Blast",
+        description: "Learn Agonizing Blast — add your Charisma modifier to Eldritch Blast damage.",
+        upgrade: { kind: "passive", passiveId: "passive.warlock.agonizing_blast" },
+      },
+      {
+        id: "warlock.eldritch_mastery",
+        name: "Eldritch Mastery",
+        description: "Permanent +1 Charisma and +2 max HP.",
+        upgrade: { kind: "stat", stats: { cha: 1, maxHp: 2 } },
+      },
+    ],
+  },
 };
 
 /**

@@ -101,3 +101,11 @@ export const BARD_PROGRESSION: ClassProgressionTable = [
   { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, cha: 1 } },
   { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, cha: 1 }, featuresGranted: ["passive.bard.font_of_inspiration"] },
 ];
+
+export const WARLOCK_PROGRESSION: ClassProgressionTable = [
+  { level: 1, proficiencyBonus: 2 },
+  { level: 2, proficiencyBonus: 2, statGain: { maxHp: 1, cha: 1 } },
+  { level: 3, proficiencyBonus: 2, statGain: { maxHp: 1, cha: 1 } },
+  { level: 4, proficiencyBonus: 2, statGain: { maxHp: 1, cha: 1 } },
+  { level: 5, proficiencyBonus: 3, statGain: { maxHp: 1, cha: 1 }, featuresGranted: ["passive.warlock.extra_pact_slot"] },
+];

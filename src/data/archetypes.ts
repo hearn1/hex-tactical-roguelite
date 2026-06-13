@@ -8,6 +8,8 @@ export const ARCHETYPE_PASSIVE_DRUID_COMBAT_WILD_SHAPE = "passive.druid.combat_w
 export const ARCHETYPE_PASSIVE_DRUID_NATURAL_RECOVERY = "passive.druid.natural_recovery";
 export const ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS = "passive.bard.additional_magical_secrets";
 export const ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION = "passive.bard.combat_inspiration";
+export const ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING = "passive.warlock.dark_ones_blessing";
+export const ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND = "passive.warlock.awakened_mind";
 export const ARCHETYPE_PASSIVE_SHIELDBEARER_ADJACENCY_ARMOR = "archetype_passive.shieldbearer_adjacency_armor";
 export const ARCHETYPE_PASSIVE_VINDICATOR_BELOW_50_ATTACK = "archetype_passive.vindicator_below_50_attack";
 export const ARCHETYPE_PASSIVE_BEACON_SAVE_AURA = "archetype_passive.beacon_save_aura";
@@ -218,6 +220,24 @@ export const ARCHETYPE_REGISTRY: Record<string, ArchetypeDef> = {
     description: "Draws power from the terrain; recovers a spell slot after each combat.",
     grantedActionId: "action.druid.land_stride",
     passiveId: ARCHETYPE_PASSIVE_DRUID_NATURAL_RECOVERY,
+  },
+  "archetype.warlock.fiend": {
+    id: "archetype.warlock.fiend",
+    classId: "class.warlock",
+    chosenAtLevel: 3,
+    displayName: "The Fiend",
+    description: "Patron from the lower planes; gains temporary HP when slaying enemies.",
+    grantedActionId: "action.warlock.hellish_rebuke",
+    passiveId: ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING,
+  },
+  "archetype.warlock.great_old_one": {
+    id: "archetype.warlock.great_old_one",
+    classId: "class.warlock",
+    chosenAtLevel: 3,
+    displayName: "The Great Old One",
+    description: "Alien patron grants psychic defenses and unsettling awareness.",
+    grantedActionId: "action.warlock.entropic_ward",
+    passiveId: ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND,
   },
 };
 
