@@ -375,6 +375,73 @@ describe("DataRepository", () => {
     expect(lore).toBeDefined();
     expect(lore.grantedActionId).toBe("action.bard.cutting_words");
   });
+
+  it("warlock class registers with correct starting actions, stats, and pact magic flag", () => {
+    const warlock = repo.getClass("class.warlock");
+    expect(warlock).toBeDefined();
+    expect(warlock!.hitDieSize).toBe(8);
+    expect(warlock!.spellSlotsMax).toBe(1);
+    expect(warlock!.pactMagic).toBe(true);
+    expect(warlock!.primaryAbility).toBe("cha");
+    expect(warlock!.spellcastingAbility).toBe("cha");
+    expect(warlock!.actionIds).toContain("action.warlock.eldritch_blast");
+    expect(warlock!.actionIds).toContain("action.warlock.hex");
+    expect(warlock!.actionIds).toContain("action.warlock.armor_of_agathys");
+    expect(repo.getAction("action.warlock.eldritch_blast")).toBeDefined();
+    expect(repo.getAction("action.warlock.hex")).toBeDefined();
+    expect(repo.getAction("action.warlock.armor_of_agathys")).toBeDefined();
+  });
+
+  it("warlock Eldritch Blast is a CHA cantrip at range 4; Hex applies a curse condition", () => {
+    const eb = repo.getAction("action.warlock.eldritch_blast");
+    expect(eb).toBeDefined();
+    expect(eb!.isCantrip).toBe(true);
+    expect(eb!.accuracyStat).toBe("cha");
+    expect(eb!.range).toBe(4);
+    expect(eb!.effect).toMatchObject({ type: "damage", formula: "1d10 + cha" });
+
+    const hex = repo.getAction("action.warlock.hex");
+    expect(hex!.isCantrip).toBe(true);
+    expect(hex!.effect).toMatchObject({ type: "applyCondition", conditionId: "hexed" });
+  });
+
+  it("warlock Armor of Agathys is a spell-slot self-buff", () => {
+    const aoa = repo.getAction("action.warlock.armor_of_agathys");
+    expect(aoa).toBeDefined();
+    expect(aoa!.resourceType).toBe("spell_slot");
+    expect(aoa!.targetType).toBe("self");
+    expect(aoa!.effect).toMatchObject({ type: "applyCondition", conditionId: "armor_of_agathys" });
+  });
+
+  it("warlock archetypes and passives are all registered", () => {
+    const { ARCHETYPE_REGISTRY } = require("./archetypes.ts");
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    expect(ARCHETYPE_REGISTRY["archetype.warlock.fiend"]).toBeDefined();
+    expect(ARCHETYPE_REGISTRY["archetype.warlock.great_old_one"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.warlock.dark_ones_blessing"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.warlock.awakened_mind"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.warlock.agonizing_blast"]).toBeDefined();
+    expect(PASSIVE_REGISTRY["passive.warlock.extra_pact_slot"]).toBeDefined();
+    expect(repo.getAction("action.warlock.hellish_rebuke")).toBeDefined();
+    expect(repo.getAction("action.warlock.entropic_ward")).toBeDefined();
+  });
+
+  it("warlock L5 progression auto-grants extra_pact_slot passive", () => {
+    const { WARLOCK_PROGRESSION } = require("./progressionTables.ts");
+    const l5 = WARLOCK_PROGRESSION.find((e: { level: number }) => e.level === 5);
+    expect(l5).toBeDefined();
+    expect(l5.featuresGranted).toContain("passive.warlock.extra_pact_slot");
+  });
+
+  it("warlock archetype passive effect types are correct", () => {
+    const { PASSIVE_REGISTRY } = require("./passives.ts");
+    const darkBlessing = PASSIVE_REGISTRY["passive.warlock.dark_ones_blessing"];
+    expect(darkBlessing.effect).toMatchObject({ type: "onKillTempHp", stat: "cha" });
+    const awakenedMind = PASSIVE_REGISTRY["passive.warlock.awakened_mind"];
+    expect(awakenedMind.effect).toMatchObject({ type: "forceReroll", usesPerCombat: 1 });
+    const agonizing = PASSIVE_REGISTRY["passive.warlock.agonizing_blast"];
+    expect(agonizing.effect).toMatchObject({ type: "empoweredEvocation", stat: "cha" });
+  });
 });
 
 describe("DataRepository validation rejects broken references", () => {

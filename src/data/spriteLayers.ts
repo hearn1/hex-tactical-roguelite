@@ -81,6 +81,8 @@ export const FLAIR_OVERLAYS: Record<string, FlairOverlayDef> = {
   "overlay.flair.circle_of_land": { id: "overlay.flair.circle_of_land", kind: "cloak", color: "#7fd17a" },
   "overlay.flair.college_of_lore": { id: "overlay.flair.college_of_lore", kind: "aura", color: "#d4a8ff" },
   "overlay.flair.college_of_valor": { id: "overlay.flair.college_of_valor", kind: "aura", color: "#ffe066" },
+  "overlay.flair.fiend": { id: "overlay.flair.fiend", kind: "aura", color: "#ff4a1a" },
+  "overlay.flair.great_old_one": { id: "overlay.flair.great_old_one", kind: "aura", color: "#9a60ff" },
 };
 
 /** Weapon/armor item id → overlay id. Trinkets have no appearance layer. */
@@ -123,6 +125,8 @@ export const ARCHETYPE_FLAIR: Record<string, string> = {
   "archetype.druid.circle_of_land": "overlay.flair.circle_of_land",
   "archetype.bard.college_of_lore": "overlay.flair.college_of_lore",
   "archetype.bard.college_of_valor": "overlay.flair.college_of_valor",
+  "archetype.warlock.fiend": "overlay.flair.fiend",
+  "archetype.warlock.great_old_one": "overlay.flair.great_old_one",
 };
 
 /** Look a hero shows when the corresponding slot is empty, keyed by class id (= hero `defId`). */
@@ -138,6 +142,7 @@ export const CLASS_DEFAULT_WEAPON: Record<string, string> = {
   "class.ranger": "overlay.weapon.bow",
   "class.druid": "overlay.weapon.staff",
   "class.bard": "overlay.weapon.wand",
+  "class.warlock": "overlay.weapon.wand",
 };
 
 export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
@@ -152,6 +157,7 @@ export const CLASS_DEFAULT_ARMOR: Record<string, string> = {
   "class.ranger": "overlay.armor.medium",
   "class.druid": "overlay.armor.medium",
   "class.bard": "overlay.armor.light",
+  "class.warlock": "overlay.armor.light",
 };
 
 /** Gear shown for enemies that visibly carry a weapon (best-effort per the AC). */

@@ -126,6 +126,12 @@ export const SPRITE_REGISTRY: Record<string, SpriteDef> = {
     accent: "#f4d03f",
     shadow: "#1a0a24",
   }),
+  "class.warlock": sprite("class.warlock", "Warlock", {
+    primary: "#4a2a7a",
+    secondary: "#1a0a2e",
+    accent: "#c060ff",
+    shadow: "#0d0618",
+  }),
   "enemy.goblin_skirmisher": sprite("enemy.goblin_skirmisher", "Goblin Skirmisher", {
     primary: "#7ac86b",
     secondary: "#31572b",

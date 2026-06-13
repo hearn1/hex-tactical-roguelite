@@ -10,6 +10,8 @@ import {
   ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
   ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS,
   ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION,
+  ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING,
+  ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND,
 } from "./archetypes.ts";
 
 export type PassiveEffect =
@@ -41,7 +43,12 @@ export type PassiveEffect =
   | { type: "naturalRecovery"; slotsAfterCombat: number }
   | { type: "jackOfAllTrades"; bonus: number }
   | { type: "fontOfInspiration" }
-  | { type: "combatInspiration" };
+  | { type: "combatInspiration" }
+  | { type: "onKillTempHp"; stat: AbilityKey }
+  | { type: "forceReroll"; usesPerCombat: number }
+  | { type: "repellingBlast" }
+  | { type: "pactBlade" }
+  | { type: "pactTome"; cantripsGranted: number };
 
 export interface PassiveDef {
   id: string;
@@ -274,5 +281,54 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Natural Recovery",
     description: "After each combat, recover 1 expended spell slot from the land's ambient magic.",
     effect: { type: "naturalRecovery", slotsAfterCombat: 1 },
+  },
+  // ── Warlock passives ──────────────────────────────────────────────────
+  "passive.warlock.extra_pact_slot": {
+    id: "passive.warlock.extra_pact_slot",
+    displayName: "Expanded Pact Magic (L5)",
+    description: "Grants one additional Pact Magic slot that recovers on a Short Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  "passive.warlock.agonizing_blast": {
+    id: "passive.warlock.agonizing_blast",
+    displayName: "Agonizing Blast",
+    description: "Add your Charisma modifier to the damage of Eldritch Blast on a hit.",
+    effect: { type: "empoweredEvocation", stat: "cha" },
+  },
+  "passive.warlock.devils_sight": {
+    id: "passive.warlock.devils_sight",
+    displayName: "Devil's Sight",
+    description: "Your patron's dark gift lets you see through magical darkness and ignore stealth penalties. +1 to all skill checks.",
+    effect: { type: "statCheckBonus", bonus: 1 },
+  },
+  "passive.warlock.repelling_blast": {
+    id: "passive.warlock.repelling_blast",
+    displayName: "Repelling Blast",
+    description: "When Eldritch Blast hits, push the target 1 hex away from you.",
+    effect: { type: "repellingBlast" },
+  },
+  "passive.warlock.pact_of_blade": {
+    id: "passive.warlock.pact_of_blade",
+    displayName: "Pact of the Blade",
+    description: "Your patron binds a spectral weapon to your hand; melee attacks draw on your Charisma rather than Strength.",
+    effect: { type: "pactBlade" },
+  },
+  "passive.warlock.pact_of_tome": {
+    id: "passive.warlock.pact_of_tome",
+    displayName: "Pact of the Tome",
+    description: "Your Book of Shadows expands your magical repertoire — learn 2 additional cantrips.",
+    effect: { type: "pactTome", cantripsGranted: 2 },
+  },
+  [ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING]: {
+    id: ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING,
+    displayName: "Dark One's Blessing",
+    description: "On kill, gain temporary HP equal to your Charisma modifier + Warlock level.",
+    effect: { type: "onKillTempHp", stat: "cha" },
+  },
+  [ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND]: {
+    id: ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND,
+    displayName: "Awakened Mind",
+    description: "Once per combat, force an enemy to reroll an attack roll targeting you (psychic interference).",
+    effect: { type: "forceReroll", usesPerCombat: 1 },
   },
 };
