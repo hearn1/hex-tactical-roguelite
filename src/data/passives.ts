@@ -53,7 +53,14 @@ export type PassiveEffect =
   | { type: "pactTome"; cantripsGranted: number }
   | { type: "relentlessAvenger"; moveBonus: number }
   | { type: "dangerSense" }
-  | { type: "frenziedAttack"; usesPerCombat: number };
+  | { type: "frenziedAttack"; usesPerCombat: number }
+  | { type: "sorceryPointBonus"; amount: number }
+  | { type: "empoweredSpell"; usesPerCast: number }
+  | { type: "quickenedSpell"; spCost: number }
+  | { type: "heightenedSpell"; spCost: number }
+  | { type: "draconicResilience" }
+  | { type: "elementalAffinity"; stat: AbilityKey }
+  | { type: "wildMagicSurge"; chance: number };
 
 export interface PassiveDef {
   id: string;
@@ -391,5 +398,60 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
     displayName: "Expanded Divine Power (L5)",
     description: "Grants one additional spell slot per Long Rest.",
     effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  // ── Sorcerer passives ─────────────────────────────────────────────────
+  "passive.sorcerer.extra_sp_l2": {
+    id: "passive.sorcerer.extra_sp_l2",
+    displayName: "Font of Magic (L2)",
+    description: "Your inner magic deepens — your Sorcery Point pool grows by 2.",
+    effect: { type: "sorceryPointBonus", amount: 2 },
+  },
+  "passive.sorcerer.extra_sp_l5": {
+    id: "passive.sorcerer.extra_sp_l5",
+    displayName: "Font of Magic (L5)",
+    description: "Your inner magic deepens further — your Sorcery Point pool grows by 2.",
+    effect: { type: "sorceryPointBonus", amount: 2 },
+  },
+  "passive.sorcerer.extra_slot_l5": {
+    id: "passive.sorcerer.extra_slot_l5",
+    displayName: "Expanded Spellcasting (L5)",
+    description: "Grants one additional spell slot per Long Rest.",
+    effect: { type: "spellSlotBonus", amount: 1 },
+  },
+  "passive.sorcerer.empowered_spell": {
+    id: "passive.sorcerer.empowered_spell",
+    displayName: "Empowered Spell",
+    description: "Metamagic: spend 1 Sorcery Point to reroll up to 3 damage dice from a spell, keeping the new result.",
+    effect: { type: "empoweredSpell", usesPerCast: 1 },
+  },
+  "passive.sorcerer.quickened_spell": {
+    id: "passive.sorcerer.quickened_spell",
+    displayName: "Quickened Spell",
+    description: "Metamagic: spend 2 Sorcery Points to cast a 1-action spell as a free action this turn.",
+    effect: { type: "quickenedSpell", spCost: 2 },
+  },
+  "passive.sorcerer.heightened_spell": {
+    id: "passive.sorcerer.heightened_spell",
+    displayName: "Heightened Spell",
+    description: "Metamagic: spend 3 Sorcery Points to impose disadvantage on a target's first saving throw against your spell.",
+    effect: { type: "heightenedSpell", spCost: 3 },
+  },
+  "passive.sorcerer.draconic_resilience": {
+    id: "passive.sorcerer.draconic_resilience",
+    displayName: "Draconic Resilience",
+    description: "Dragon blood toughens your form — gain +1 AC and +1 max HP per Sorcerer level when not wearing armor.",
+    effect: { type: "draconicResilience" },
+  },
+  "passive.sorcerer.elemental_affinity": {
+    id: "passive.sorcerer.elemental_affinity",
+    displayName: "Elemental Affinity",
+    description: "Add your Charisma modifier to damage rolls of spells matching your draconic damage type.",
+    effect: { type: "elementalAffinity", stat: "cha" },
+  },
+  "passive.sorcerer.wild_magic_surge": {
+    id: "passive.sorcerer.wild_magic_surge",
+    displayName: "Wild Magic Surge",
+    description: "After casting a spell, a 1-in-6 chance triggers a random surge (push all, heal 1d4, deal 2d6 to self, invisible for 1 turn, etc.).",
+    effect: { type: "wildMagicSurge", chance: 1 },
   },
 };

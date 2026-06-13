@@ -15,6 +15,7 @@ import {
   WARLOCK_PROGRESSION,
   PALADIN_PROGRESSION,
   BARBARIAN_PROGRESSION,
+  SORCERER_PROGRESSION,
 } from "./progressionTables.ts";
 
 export type ArmorProficiency = "none" | "light" | "medium" | "heavy" | "shield";
@@ -50,6 +51,8 @@ export interface ClassDef {
   spellcastingAbility?: keyof UnitStats;
   /** True for classes that recover spell slots on a Short Rest (Warlock-style). */
   pactMagic?: boolean;
+  /** Sorcery Point pool refreshed each Long Rest (Sorcerer only). */
+  sorceryPointsMax?: number;
   /** Per-level progression data: stat gains, features granted, spell slots. */
   progressionTable: ClassProgressionTable;
 }
@@ -240,6 +243,23 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     spellcastingAbility: "cha",
     progressionTable: WARLOCK_PROGRESSION,
   },
+  "class.sorcerer": {
+    id: "class.sorcerer",
+    displayName: "Sorcerer",
+    baseStats: { maxHp: 11, armor: 11, move: 3, str: 1, dex: 1, con: 1, int: 1, wis: 1, cha: 4 },
+    hitDieSize: 6,
+    actionIds: ["action.sorcerer.chromatic_orb", "action.sorcerer.twin_bolt", "action.sorcerer.wild_surge"],
+    startingItems: [],
+    spellSlotsMax: 2,
+    sorceryPointsMax: 2,
+    defaultBackgroundId: "background.hedge_scholar",
+    primaryAbility: "cha",
+    savingThrowProficiencies: ["con", "cha"],
+    armorProficiencies: ["none"],
+    weaponProficiencies: ["simple"],
+    spellcastingAbility: "cha",
+    progressionTable: SORCERER_PROGRESSION,
+  },
   "class.paladin": {
     id: "class.paladin",
     displayName: "Paladin",
@@ -285,6 +305,7 @@ export const HERO_DEFAULT_NAMES: Record<string, string> = {
   "class.druid": "Fern",
   "class.bard": "Lyric",
   "class.warlock": "Vex",
+  "class.sorcerer": "Zara",
   "class.paladin": "Vael",
   "class.barbarian": "Krag",
 };

@@ -25,6 +25,8 @@ export interface ActionDef {
   slotCost?: number;
   /** Nominal spell level, metadata for display/future scaling. */
   spellLevel?: number;
+  /** Sorcery Points consumed per cast (Sorcerer Metamagic actions). */
+  sorceryPointCost?: number;
   effect:
     | { type: "damage"; formula: string; applyCondition?: ConditionApply; targetMode?: "single" | "primary_plus_adjacent" | "aoe_around_caster" | "aoe_radius"; radius?: number; bonusDiceOnFlanking?: string; pushDistance?: number }
     | { type: "heal"; formula: string; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
@@ -1093,5 +1095,53 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     range: 4,
     isCantrip: true,
     effect: { type: "applyCondition", conditionId: "vow_of_enmity", duration: 99 },
+  },
+  // ── Sorcerer starting actions ─────────────────────────────────────────
+  "action.sorcerer.chromatic_orb": {
+    id: "action.sorcerer.chromatic_orb",
+    displayName: "Chromatic Orb",
+    description: "Hurl a sphere of energy — choose a damage type (fire, cold, lightning, or acid) and deal 3d8 + CHA of that type to one target at range 3.",
+    source: "class",
+    targetType: "enemy",
+    range: 3,
+    accuracyStat: "cha",
+    resourceType: "spell_slot",
+    slotCost: 1,
+    spellLevel: 1,
+    effect: { type: "damage", formula: "3d8 + cha" },
+  },
+  "action.sorcerer.twin_bolt": {
+    id: "action.sorcerer.twin_bolt",
+    displayName: "Twin Bolt",
+    description: "Spend 1 Sorcery Point to apply a cantrip's effect to two targets simultaneously — deals 1d8 + CHA to the primary target and one adjacent enemy.",
+    source: "class",
+    targetType: "enemy",
+    range: 3,
+    accuracyStat: "cha",
+    isCantrip: true,
+    sorceryPointCost: 1,
+    effect: { type: "damage", formula: "1d8 + cha", targetMode: "primary_plus_adjacent" },
+  },
+  "action.sorcerer.wild_surge": {
+    id: "action.sorcerer.wild_surge",
+    displayName: "Wild Surge",
+    description: "Unleash raw magical chaos — CHA attack at range 3 dealing 1d10 of a random damage type. Roll d6 for a bonus surge effect (push, stun, minor heal, etc.).",
+    source: "class",
+    targetType: "enemy",
+    range: 3,
+    accuracyStat: "cha",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d10 + cha" },
+  },
+  // ── Sorcerer archetype actions ────────────────────────────────────────
+  "action.sorcerer.tides_of_chaos": {
+    id: "action.sorcerer.tides_of_chaos",
+    displayName: "Tides of Chaos",
+    description: "Once per long rest — harness primal chaos to gain advantage on one attack, ability check, or saving throw this turn. Triggers a wild magic surge afterwards.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    charges: 1,
+    effect: { type: "applyCondition", conditionId: "tides_of_chaos", duration: 1 },
   },
 };

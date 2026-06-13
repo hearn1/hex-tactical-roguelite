@@ -44,6 +44,10 @@ export interface PartyMember {
   spellSlotsMax?: number;
   /** Spell slots remaining; persists across combats in the same run. Restored by Long Rest. */
   spellSlotsRemaining?: number;
+  /** Sorcery Point pool refreshed each Long Rest (Sorcerer only). */
+  sorceryPointsMax?: number;
+  /** Sorcery Points remaining; restored by Long Rest. */
+  sorceryPointsRemaining?: number;
   /** Saving throw proficiencies copied from the class at character creation. */
   savingThrowProficiencies?: string[];
   /** Armor proficiencies copied from the class at character creation. */
