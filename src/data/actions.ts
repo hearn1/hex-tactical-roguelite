@@ -1026,6 +1026,18 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     isCantrip: true,
     effect: { type: "applyCondition", conditionId: "sacred_weapon", duration: 1 },
   },
+  // ── Barbarian archetype actions ───────────────────────────────────────
+  "action.barbarian.frenzied_strike": {
+    id: "action.barbarian.frenzied_strike",
+    displayName: "Frenzied Strike",
+    description: "A wild bonus attack fueled by frenzy — deals 1d12 + STR damage. Only usable while raging.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    accuracyStat: "str",
+    isCantrip: true,
+    effect: { type: "damage", formula: "1d12 + str" },
+  },
   // ── Barbarian starting actions ────────────────────────────────────────
   "action.barbarian.rage": {
     id: "action.barbarian.rage",
