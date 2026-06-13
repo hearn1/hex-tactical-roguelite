@@ -148,6 +148,26 @@ describe("validateMapTemplate — all canonical templates pass (#347)", () => {
   });
 });
 
+describe("validateMapTemplate — every campaign template (incl. alt routes) is graph-valid (#496)", () => {
+  const campaignTemplateIds = Object.entries(MAP_TEMPLATES)
+    .filter(([, t]) => t.campaignId === "campaign.verdant_dark")
+    .map(([id]) => id);
+
+  it("covers the alternate-route templates", () => {
+    expect(campaignTemplateIds).toEqual(
+      expect.arrayContaining([
+        "act_2_map_deserter_route",
+        "act_3_map_prisoner_rescue",
+        "act_4_map_planar_anchor",
+      ]),
+    );
+  });
+
+  it.each(campaignTemplateIds)("%s validates without errors", (id) => {
+    expect(validateMapTemplate(MAP_TEMPLATES[id])).toEqual([]);
+  });
+});
+
 describe("validateMapTemplate — structural error cases (#347)", () => {
   function base(): MapTemplate {
     return {
