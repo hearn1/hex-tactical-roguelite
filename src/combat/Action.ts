@@ -1,5 +1,6 @@
 import type { ActionDef, ConditionApply } from "../data/actions.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
+import { payActionCosts } from "./ActionEconomy.ts";
 import type { AbilityKey } from "../data/abilities.ts";
 import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus, ActionResult, ActionElement } from "../state/types.ts";
 import { distance, hexKey } from "../core/hex.ts";
@@ -124,7 +125,7 @@ export function resolveAction(
   const el = actionElement(action.id);
   const round = state.round;
 
-  // Consume per-encounter charge if the action has a charge limit.
+  // Guard: check charge and resource availability before paying any costs.
   if (action.charges !== undefined && action.charges > 0) {
     const used = state.perEncounterUses[action.id] ?? 0;
     if (used >= action.charges) {
@@ -133,13 +134,10 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} tries to use ${action.displayName} but has no remaining charges this encounter.`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
     }
-    state.perEncounterUses[action.id] = used + 1;
   }
 
-  // Consume a spell slot if the action requires one (#118). Cantrips and martial actions are free.
   if (action.resourceType === "spell_slot") {
     const cost = action.slotCost ?? 1;
     const remaining = attacker.spellSlotsRemaining ?? 0;
@@ -149,10 +147,13 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} tries to cast ${action.displayName} but has no spell slots remaining.`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
     }
-    attacker.spellSlotsRemaining = remaining - cost;
+  }
+
+  // Pay all costs (timing economy + charges + spell slots + ki + sorcery) as one atomic step.
+  if (!skipHasActed) {
+    payActionCosts(attacker, action, state);
   }
 
   // ── removeConditions (Cleanse) ──
@@ -163,7 +164,6 @@ export function resolveAction(
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — all conditions removed.`,
       round,
     });
-    attacker.hasActed = true;
     return { amount: 0, isCrit: false, kind: "heal", actionElement: "heal" };
   }
 
@@ -180,7 +180,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} Counterspells ${target.displayName}'s ${actionName} — the windup fizzles.`,
         round,
       });
-      attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "heal", actionElement: el };
     }
     // No telegraph to counter (or out of range) — fall back to applying the counterspelled condition.
@@ -190,7 +189,6 @@ export function resolveAction(
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — no telegraph to counter.`,
       round,
     });
-    attacker.hasActed = true;
     return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
   }
 
@@ -233,7 +231,6 @@ export function resolveAction(
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — hits ${hitCount} enemies for ${totalDmg} total damage (d20=${d20}).`,
       round,
     });
-    attacker.hasActed = true;
     const lineCategory: PostDamageCategory = (atkStat === "int" || atkStat === "wis" || atkStat === "cha") ? "spell" : "weapon";
     let lineShouldCheckCombatEnd = false;
     for (const h of lineHits) {
@@ -254,7 +251,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — taunted! ${target.displayName} must target ${attacker.displayName}.`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
     if (action.effect.targetMode === "aoe_around_caster") {
@@ -272,7 +268,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — ${condName} applied to ${affected.length} target(s).`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
     if (action.effect.targetMode === "aoe_radius") {
@@ -290,7 +285,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — ${action.effect.conditionId} applied to ${affected.length} target(s).`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
     const condDuration = action.effect.duration + (actionBonus(attacker, action.id).conditionDurationBonus ?? 0);
@@ -300,7 +294,6 @@ export function resolveAction(
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} on ${target.displayName} — ${action.effect.conditionId} applied.`,
       round,
     });
-    if (!skipHasActed) attacker.hasActed = true;
     return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
   }
 
@@ -321,7 +314,6 @@ export function resolveAction(
           text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — no injured allies in range.`,
           round,
         });
-        if (!skipHasActed) attacker.hasActed = true;
         return { amount: 0, isCrit: false, kind: "heal", actionElement: "heal" };
       }
       const formula = rewriteFormula(action.effect.formula, attacker);
@@ -345,7 +337,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — heals ${affected.length} allies for ${totalHealed} total.`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: totalHealed, isCrit: false, kind: "heal", actionElement: "heal" };
     }
     if (action.effect.targetMode === "aoe_around_caster") {
@@ -378,7 +369,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — heals ${affected.length} allies for ${totalHealed} total.`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: totalHealed, isCrit: false, kind: "heal", actionElement: "heal" };
     }
 
@@ -426,7 +416,6 @@ export function resolveAction(
       round,
     });
     if (actual > 0) clearDeathSavesOnHealing(target, state);
-    if (!skipHasActed) attacker.hasActed = true;
     return { amount: actual, isCrit: false, kind: "heal", actionElement: "heal" };
   }
 
@@ -440,7 +429,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — no enemies in range.`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
     const atkStat = action.accuracyStat ?? "str";
@@ -476,7 +464,6 @@ export function resolveAction(
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — hits ${hitCount} enemies for ${totalDmg} total damage (d20=${d20}).`,
       round,
     });
-    if (!skipHasActed) attacker.hasActed = true;
     const aoeAroundCategory: PostDamageCategory = (atkStat === "int" || atkStat === "wis" || atkStat === "cha") ? "spell" : "weapon";
     let aoeAroundShouldCheckCombatEnd = false;
     for (const h of aoeAroundHits) {
@@ -499,7 +486,6 @@ export function resolveAction(
         text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — no targets in radius.`,
         round,
       });
-      if (!skipHasActed) attacker.hasActed = true;
       return { amount: 0, isCrit: false, kind: "damage", actionElement: el };
     }
     const atkStat = action.accuracyStat ?? "str";
@@ -531,7 +517,6 @@ export function resolveAction(
       text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — hits ${hitCount} targets for ${totalDmg} total damage (d20=${d20}).`,
       round,
     });
-    if (!skipHasActed) attacker.hasActed = true;
     const aoeRadiusCategory: PostDamageCategory = (atkStat === "int" || atkStat === "wis" || atkStat === "cha") ? "spell" : "weapon";
     let aoeRadiusShouldCheckCombatEnd = false;
     for (const h of aoeRadiusHits) {
@@ -542,7 +527,7 @@ export function resolveAction(
   }
 
   if (action.effect.type === "damage" && action.effect.targetMode === "primary_plus_adjacent") {
-    return resolvePrimaryPlusAdjacent(action, attacker, target, state, rng, skipHasActed);
+    return resolvePrimaryPlusAdjacent(action, attacker, target, state, rng);
   }
 
   const attackStat = action.accuracyStat ?? "str";
@@ -586,7 +571,6 @@ export function resolveAction(
       text: `[T${round}] ${target.displayName}'s Sanctuary wards off ${attacker.displayName}'s attack!`,
       round,
     });
-    if (!skipHasActed) attacker.hasActed = true;
     return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
   }
 
@@ -622,7 +606,6 @@ export function resolveAction(
         round,
       });
     }
-    if (!skipHasActed) attacker.hasActed = true;
     return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
   }
 
@@ -782,7 +765,6 @@ export function resolveAction(
     previousHp: beforeHp,
   });
 
-  if (!skipHasActed) attacker.hasActed = true;
   return {
     amount: dealt,
     isCrit,
@@ -799,7 +781,6 @@ function resolvePrimaryPlusAdjacent(
   target: UnitInstance,
   state: CombatState,
   rng: () => number,
-  skipHasActed?: boolean,
 ): ActionResult {
   const round = state.round;
   const el = actionElement(action.id);
@@ -895,7 +876,6 @@ function resolvePrimaryPlusAdjacent(
     if (ar.shouldCheckCombatEnd) shouldCheckCombatEnd = true;
   }
 
-  if (!skipHasActed) attacker.hasActed = true;
   return { amount: totalDmg, isCrit, kind: "damage", actionElement: el, shouldCheckCombatEnd };
 }
 

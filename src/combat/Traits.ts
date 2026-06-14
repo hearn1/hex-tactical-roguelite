@@ -261,6 +261,7 @@ export function checkEnemyThresholdTraits(
         conditions: [],
         movePointsRemaining: 0,
         hasActed: false,
+        turnEconomy: { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 },
         equippedItemIds: { weapon: null, armor: null, trinket: null },
         bonusStats: {},
       };

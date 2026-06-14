@@ -14,7 +14,8 @@ import { heroLifeState, resolveDeathSaveTurn } from "../../combat/DeathSaves.ts"
 import { takeEnemyTurn } from "../../combat/EnemyAI.ts";
 import { processTurnStart } from "../../combat/Condition.ts";
 import { resolveOncePerCombatBonus } from "../../combat/ItemHooks.ts";
-import { getHeroActionIds, chargesRemaining, isChargeExhausted } from "../../combat/ActionBar.ts";
+import { getHeroActionIds, chargesRemaining } from "../../combat/ActionBar.ts";
+import { canUseAction } from "../../combat/ActionEconomy.ts";
 import { ITEM_REGISTRY } from "../../data/items.ts";
 import { BACKGROUND_REGISTRY, describeBackgroundEffect } from "../../data/backgrounds.ts";
 import { ENEMY_REGISTRY } from "../../data/enemies.ts";
@@ -694,6 +695,13 @@ export class CombatScreen {
     active.movePointsRemaining = active.stats.move;
     active.hasActed = false;
     active.reactionUsedThisTurn = false;
+    if (active.turnEconomy) {
+      active.turnEconomy.actionUsed = false;
+      active.turnEconomy.bonusActionUsed = false;
+      active.turnEconomy.reactionUsed = false;
+    } else {
+      active.turnEconomy = { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 };
+    }
     if (cs.round === 1 && active.team === "hero") {
       const turnResult = resolveOncePerCombatBonus(active, "firstTurn", cs);
       if (turnResult.moveBonus) {
@@ -1074,60 +1082,57 @@ export class CombatScreen {
       if (!actionDef) continue;
       const btn = document.createElement("button");
       btn.className = "action-btn";
-      btn.textContent = actionDef.displayName;
 
-      const rangeInfo = actionDef.targetType === "self" ? "Self" : `Range ${actionDef.range}`;
-      btn.title = `${actionDef.displayName} — ${rangeInfo}. ${actionDef.description}`;
+      const timing = actionDef.timing ?? "action";
+      const timingLabel = timing === "bonus_action" ? "[BA]"
+        : timing === "reaction" ? "[R]"
+        : timing === "free" ? "[Free]"
+        : "";
 
       const isSpellSlot = actionDef.resourceType === "spell_slot";
       const slotCost = actionDef.slotCost ?? 1;
       const slotsLeft = activeUnit.spellSlotsRemaining ?? 0;
-      const noSlots = isSpellSlot && slotsLeft < slotCost;
-      if (isSpellSlot) {
-        btn.textContent = `${actionDef.displayName} (${slotsLeft})`;
-      }
 
       const remaining = chargesRemaining(actionId, cs.perEncounterUses as Record<string, number>);
-      if (remaining !== null) {
-        btn.textContent = `${actionDef.displayName} (${remaining}/${actionDef.charges})`;
-      }
+
+      let label = actionDef.displayName;
+      if (timingLabel) label = `${timingLabel} ${label}`;
+      if (isSpellSlot) label = `${label} (${slotsLeft})`;
+      if (remaining !== null) label = `${actionDef.displayName}${timingLabel ? ` ${timingLabel}` : ""} (${remaining}/${actionDef.charges})`;
+      btn.textContent = label;
+
+      const rangeInfo = actionDef.targetType === "self" ? "Self" : `Range ${actionDef.range}`;
+      btn.title = `${actionDef.displayName} — ${rangeInfo}. ${actionDef.description}`;
 
       if (cs.targetingActionId === actionId) {
         btn.classList.add("targeting");
       }
 
-      const noCharges = isChargeExhausted(actionId, cs);
-
       if (this.animationBlocking || this.enemyProcessing) {
         btn.disabled = true;
         btn.title = "Animation playing";
-      } else if (activeUnit.hasActed) {
-        btn.classList.add("disabled");
-        btn.disabled = true;
-        btn.title = "Already acted this turn";
-      } else if (noCharges) {
-        btn.classList.add("disabled");
-        btn.disabled = true;
-        btn.title = "No charges remaining this encounter";
-      } else if (noSlots) {
-        btn.classList.add("disabled");
-        btn.disabled = true;
-        btn.title = "No spell slots remaining — Long Rest to recover.";
       } else {
-        const targets = validTargets(actionDef, activeUnit, cs);
-        if (targets.length === 0) {
+        const check = canUseAction(activeUnit, actionDef, cs);
+        if (!check.canUse) {
           btn.classList.add("disabled");
-          btn.title = "No valid targets";
+          btn.disabled = true;
+          btn.title = check.reason ?? "Cannot use this action";
         } else {
-          btn.addEventListener("click", () => {
-            if (cs.targetingActionId === actionId) {
-              cs.targetingActionId = null;
-            } else {
-              cs.targetingActionId = actionId;
-            }
-            this.updateActionBar();
-            this.drawCanvas();
-          });
+          const targets = validTargets(actionDef, activeUnit, cs);
+          if (targets.length === 0) {
+            btn.classList.add("disabled");
+            btn.title = "No valid targets";
+          } else {
+            btn.addEventListener("click", () => {
+              if (cs.targetingActionId === actionId) {
+                cs.targetingActionId = null;
+              } else {
+                cs.targetingActionId = actionId;
+              }
+              this.updateActionBar();
+              this.drawCanvas();
+            });
+          }
         }
       }
 

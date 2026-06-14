@@ -76,12 +76,17 @@ function createHeroInstance(instanceId: string, classId: ClassId, name: string, 
     conditions: [],
     movePointsRemaining: 0,
     hasActed: false,
+    turnEconomy: { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 },
     equippedItemIds: { weapon: null, armor: null, trinket: null },
     bonusStats: {},
     spellsKnown: [],
     preparedActionIds: [],
     spellSlotsMax: classSpellSlotsMax(classId),
     spellSlotsRemaining: classSpellSlotsMax(classId),
+    kiPointsMax: def.kiPointsMax,
+    kiPointsRemaining: def.kiPointsMax,
+    sorceryPointsMax: def.sorceryPointsMax,
+    sorceryPointsRemaining: def.sorceryPointsMax,
   };
   equipStartingItems(unit);
   unit.stats = computeStats(unit);
@@ -105,6 +110,7 @@ function createEnemyInstance(instanceId: string, enemyId: EnemyId, name: string,
     conditions: [],
     movePointsRemaining: 0,
     hasActed: false,
+    turnEconomy: { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 },
     equippedItemIds: { weapon: null, armor: null, trinket: null },
     bonusStats: {},
     spellsKnown: [],
@@ -217,6 +223,7 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     conditions: [],
     movePointsRemaining: 0,
     hasActed: false,
+    turnEconomy: { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 },
     equippedItemIds: { ...pm.equippedItemIds },
     bonusStats: { ...pm.bonusStats },
     abilityScores: pm.abilityScores ? { ...pm.abilityScores } : undefined,
@@ -229,6 +236,10 @@ function createHeroFromPartyMember(pm: PartyMember, pos: Hex): UnitInstance {
     preparedActionIds: pm.preparedActionIds ? [...pm.preparedActionIds] : [],
     spellSlotsMax: pm.spellSlotsMax ?? classSpellSlotsMax(pm.classId),
     spellSlotsRemaining: pm.spellSlotsRemaining ?? pm.spellSlotsMax ?? classSpellSlotsMax(pm.classId),
+    kiPointsMax: pm.kiPointsMax ?? def.kiPointsMax,
+    kiPointsRemaining: pm.kiPointsRemaining ?? pm.kiPointsMax ?? def.kiPointsMax,
+    sorceryPointsMax: pm.sorceryPointsMax ?? def.sorceryPointsMax,
+    sorceryPointsRemaining: pm.sorceryPointsRemaining ?? pm.sorceryPointsMax ?? def.sorceryPointsMax,
     heroLifeState: "standing",
   };
   unit.stats = computeStats(unit);
@@ -385,6 +396,8 @@ export function syncPartyFromCombat(combat: CombatState, run: RunState): void {
     pm.bonusStats = { ...(unit.bonusStats ?? {}) };
     pm.equippedItemIds = { ...unit.equippedItemIds };
     if (unit.spellSlotsRemaining !== undefined) pm.spellSlotsRemaining = unit.spellSlotsRemaining;
+    if (unit.kiPointsRemaining !== undefined) pm.kiPointsRemaining = unit.kiPointsRemaining;
+    if (unit.sorceryPointsRemaining !== undefined) pm.sorceryPointsRemaining = unit.sorceryPointsRemaining;
 
     if (unit.heroLifeState === "dead") {
       pm.deadForRun = true;

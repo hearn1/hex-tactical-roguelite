@@ -1,5 +1,26 @@
 import type { AbilityKey } from "./abilities.ts";
 
+export type ActionTiming =
+  | "action"
+  | "bonus_action"
+  | "reaction"
+  | "free"
+  | "passive"
+  | "triggered_passive"
+  | "attack_action_modifier"
+  | "monster_special";
+
+export const VALID_ACTION_TIMINGS: ReadonlySet<ActionTiming> = new Set([
+  "action",
+  "bonus_action",
+  "reaction",
+  "free",
+  "passive",
+  "triggered_passive",
+  "attack_action_modifier",
+  "monster_special",
+]);
+
 export interface ConditionApply {
   id: string;
   duration: number;
@@ -13,6 +34,11 @@ export interface ActionDef {
   source: "class" | "item" | "enemy";
   targetType: "enemy" | "ally" | "self" | "ally_or_self";
   range: number;
+  /**
+   * When this action can be used in the turn structure. Omitted entries default to "action"
+   * for backward compatibility (#503).
+   */
+  timing?: ActionTiming;
   accuracyStat?: AbilityKey;
   isCantrip?: boolean;
   charges?: number;
@@ -103,6 +129,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "self",
     range: 0,
+    timing: "bonus_action",
     charges: 1,
     effect: { type: "applyCondition", conditionId: "hasted", duration: 1 },
   },
@@ -694,6 +721,7 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     source: "class",
     targetType: "ally",
     range: 3,
+    timing: "bonus_action",
     accuracyStat: "wis",
     resourceType: "spell_slot",
     slotCost: 1,
