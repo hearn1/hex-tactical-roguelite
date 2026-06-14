@@ -133,6 +133,59 @@ describe("Action", () => {
     });
   });
 
+  describe("ki & sorcery point costs (#493)", () => {
+    function castState(caster: UnitInstance, target: UnitInstance): CombatState {
+      return { round: 1, activeIndex: 0, turnQueue: ["a1", "a2"], units: [caster, target], log: [], status: "active", gridKeys: ["0,0", "1,0"], targetingActionId: null, perEncounterUses: {} };
+    }
+
+    it("spending a ki action decrements the monk's ki pool", () => {
+      const rng = createRng(42);
+      const monk = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.monk", kiPointsMax: 2, kiPointsRemaining: 2, stats: { maxHp: 16, armor: 13, move: 4, str: 1, dex: 5, con: 0, int: 0, wis: 1, cha: 0 } });
+      const enemy = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, team: "enemy", hp: 12, stats: { maxHp: 18, armor: 5, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      resolveAction(ACTION_REGISTRY["action.monk.flurry_of_blows"], monk, enemy, castState(monk, enemy), rng);
+      expect(monk.kiPointsRemaining).toBe(1);
+    });
+
+    it("a 2-ki action deducts the full cost", () => {
+      const rng = createRng(42);
+      const monk = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.monk", kiPointsMax: 3, kiPointsRemaining: 3, stats: { maxHp: 16, armor: 13, move: 4, str: 1, dex: 5, con: 0, int: 0, wis: 1, cha: 0 } });
+      resolveAction(ACTION_REGISTRY["action.monk.shadow_step"], monk, monk, castState(monk, monk), rng);
+      expect(monk.kiPointsRemaining).toBe(1);
+    });
+
+    it("blocks a ki action and leaves the target unchanged when no ki remains", () => {
+      const rng = createRng(42);
+      const monk = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.monk", kiPointsMax: 2, kiPointsRemaining: 0, stats: { maxHp: 16, armor: 13, move: 4, str: 1, dex: 5, con: 0, int: 0, wis: 1, cha: 0 } });
+      const enemy = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, team: "enemy", hp: 12, stats: { maxHp: 18, armor: 5, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const state = castState(monk, enemy);
+      const result = resolveAction(ACTION_REGISTRY["action.monk.flurry_of_blows"], monk, enemy, state, rng);
+      expect(result.kind).toBe("miss");
+      expect(enemy.hp).toBe(12);
+      expect(monk.kiPointsRemaining).toBe(0);
+      expect(state.log.some((e) => e.text.includes("no Ki points remaining"))).toBe(true);
+    });
+
+    it("a sorcery-point cantrip decrements sorcery points without touching spell slots", () => {
+      const rng = createRng(42);
+      const sorcerer = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.sorcerer", spellSlotsMax: 2, spellSlotsRemaining: 2, sorceryPointsMax: 2, sorceryPointsRemaining: 2, stats: { maxHp: 12, armor: 12, move: 3, str: 0, dex: 1, con: 0, int: 0, wis: 0, cha: 5 } });
+      const enemy = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, team: "enemy", hp: 12, stats: { maxHp: 18, armor: 5, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      resolveAction(ACTION_REGISTRY["action.sorcerer.twin_bolt"], sorcerer, enemy, castState(sorcerer, enemy), rng);
+      expect(sorcerer.sorceryPointsRemaining).toBe(1);
+      expect(sorcerer.spellSlotsRemaining).toBe(2);
+    });
+
+    it("blocks a sorcery action when no sorcery points remain", () => {
+      const rng = createRng(42);
+      const sorcerer = makeUnit({ instanceId: "a1", pos: { q: 0, r: 0 }, defId: "class.sorcerer", sorceryPointsMax: 2, sorceryPointsRemaining: 0, stats: { maxHp: 12, armor: 12, move: 3, str: 0, dex: 1, con: 0, int: 0, wis: 0, cha: 5 } });
+      const enemy = makeUnit({ instanceId: "a2", pos: { q: 1, r: 0 }, team: "enemy", hp: 12, stats: { maxHp: 18, armor: 5, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
+      const state = castState(sorcerer, enemy);
+      const result = resolveAction(ACTION_REGISTRY["action.sorcerer.twin_bolt"], sorcerer, enemy, state, rng);
+      expect(result.kind).toBe("miss");
+      expect(enemy.hp).toBe(12);
+      expect(state.log.some((e) => e.text.includes("no Sorcery Points remaining"))).toBe(true);
+    });
+  });
+
   describe("cover terrain (#121)", () => {
     function coverState(attacker: UnitInstance, target: UnitInstance, terrain?: Record<string, "cover" | "difficult" | "hazard" | "normal">): CombatState {
       return {

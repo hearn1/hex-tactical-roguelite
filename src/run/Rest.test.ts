@@ -116,6 +116,45 @@ describe("rest mechanics", () => {
     expect(acolyte.spellSlotsRemaining).toBe(2);
   });
 
+  function monkSorcererRun() {
+    const specs = defaultPartySpecs();
+    specs[0].classId = "class.monk";
+    specs[0].name = "Zhen";
+    specs[1].classId = "class.sorcerer";
+    specs[1].name = "Zara";
+    return createRunState(buildParty(specs), "normal", "short");
+  }
+
+  it("initializes ki and sorcery point pools from class on new runs (#493)", () => {
+    const run = monkSorcererRun();
+    const monk = run.party[0];
+    const sorcerer = run.party[1];
+    expect(monk.kiPointsMax).toBe(2);
+    expect(monk.kiPointsRemaining).toBe(2);
+    expect(sorcerer.sorceryPointsMax).toBe(2);
+    expect(sorcerer.sorceryPointsRemaining).toBe(2);
+    // Non-casters get no ki/sorcery pool.
+    expect(run.party[2].kiPointsMax ?? 0).toBe(0);
+    expect(run.party[2].sorceryPointsMax ?? 0).toBe(0);
+  });
+
+  it("long rest restores spent ki and sorcery points to max (#493)", () => {
+    const run = monkSorcererRun();
+    run.campSupplies = 5;
+    const monk = run.party[0];
+    const sorcerer = run.party[1];
+    monk.kiPointsRemaining = 0;
+    sorcerer.sorceryPointsRemaining = 0;
+
+    const result = applyLongRest(run);
+
+    expect(result.ok).toBe(true);
+    expect(monk.kiPointsRemaining).toBe(monk.kiPointsMax);
+    expect(monk.kiPointsRemaining).toBe(2);
+    expect(sorcerer.sorceryPointsRemaining).toBe(sorcerer.sorceryPointsMax);
+    expect(sorcerer.sorceryPointsRemaining).toBe(2);
+  });
+
   it("long rest gracefully recharges optional per-encounter use fields", () => {
     const run = freshRun() as ReturnType<typeof freshRun> & { perEncounterUses: Record<string, number> };
     run.perEncounterUses = { "action.test": 1 };

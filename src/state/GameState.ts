@@ -26,7 +26,7 @@ import { resetLevelUpScreenState } from "../ui/screens/LevelUpScreen.ts";
 import { resetInventoryScreenState } from "../ui/screens/InventoryScreen.ts";
 import { resetEventScreenState } from "../ui/screens/EventScreen.ts";
 import { resetRecruitScreenState } from "../ui/screens/RecruitScreen.ts";
-import { syncHitDiceForPartyMember, classSpellSlotsMax } from "../run/Rest.ts";
+import { syncHitDiceForPartyMember, classSpellSlotsMax, classSorceryPointsMax, classKiPointsMax } from "../run/Rest.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;

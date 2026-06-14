@@ -151,6 +151,30 @@ export function resolveAction(
     }
   }
 
+  if (action.sorceryPointCost !== undefined && action.sorceryPointCost > 0) {
+    const remaining = attacker.sorceryPointsRemaining ?? 0;
+    if (remaining < action.sorceryPointCost) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} tries to use ${action.displayName} but has no Sorcery Points remaining.`,
+        round,
+      });
+      return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
+    }
+  }
+
+  if (action.kiPointCost !== undefined && action.kiPointCost > 0) {
+    const remaining = attacker.kiPointsRemaining ?? 0;
+    if (remaining < action.kiPointCost) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] ${attacker.displayName} tries to use ${action.displayName} but has no Ki points remaining.`,
+        round,
+      });
+      return { amount: 0, isCrit: false, kind: "miss", actionElement: el };
+    }
+  }
+
   // Pay all costs (timing economy + charges + spell slots + ki + sorcery) as one atomic step.
   if (!skipHasActed) {
     payActionCosts(attacker, action, state);

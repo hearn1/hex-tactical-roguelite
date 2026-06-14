@@ -58,7 +58,7 @@ describe("M1 contract regression — later-milestone primary_plus_adjacent targe
   it("Monk Flurry of Blows hits adjacent enemies and never friendly-fires adjacent allies", () => {
     // Monk strikes a primary enemy; a second enemy adjacent to the primary must be hit,
     // while an allied hero adjacent to the primary must be untouched.
-    const monk = makeUnit({ instanceId: "monk", pos: { q: 0, r: 0 }, defId: "class.monk" });
+    const monk = makeUnit({ instanceId: "monk", pos: { q: 0, r: 0 }, defId: "class.monk", kiPointsRemaining: 2, kiPointsMax: 2 });
     const primary = makeUnit({ instanceId: "e1", pos: { q: 1, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 8, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
     const adjEnemy = makeUnit({ instanceId: "e2", pos: { q: 1, r: -1 }, team: "enemy", hp: 1, stats: { maxHp: 8, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
     const ally = makeUnit({ instanceId: "ally", pos: { q: 0, r: 1 }, team: "hero", hp: 20 });
@@ -108,7 +108,7 @@ describe("M1 contract regression — later-milestone AoE aftermath (#495)", () =
 describe("M1 contract regression — later-milestone boss reinforcement (#495)", () => {
   it("Ogre Warlord spawns a unique reinforcement exactly once when a class action crosses its threshold", () => {
     const def = ENEMY_REGISTRY["enemy.ogre_warlord"];
-    const hero = makeUnit({ instanceId: "sorc", pos: { q: 0, r: 0 }, defId: "class.sorcerer", spellSlotsRemaining: 0, spellSlotsMax: 0 });
+    const hero = makeUnit({ instanceId: "sorc", pos: { q: 0, r: 0 }, defId: "class.sorcerer", spellSlotsRemaining: 0, spellSlotsMax: 0, sorceryPointsRemaining: 2, sorceryPointsMax: 2 });
     // maxHp 52, reinforcement threshold = floor(52 * 0.5) = 26. Start above it.
     const boss = makeUnit({
       instanceId: "boss",
@@ -141,7 +141,7 @@ describe("M1 contract regression — later-milestone boss reinforcement (#495)",
 
 describe("M1 contract regression — later-milestone elite encounter rally (#495)", () => {
   it("first elite death from a class action triggers Rally exactly once", () => {
-    const hero = makeUnit({ instanceId: "sorc", pos: { q: 0, r: 0 }, defId: "class.sorcerer" });
+    const hero = makeUnit({ instanceId: "sorc", pos: { q: 0, r: 0 }, defId: "class.sorcerer", sorceryPointsRemaining: 2, sorceryPointsMax: 2 });
     const e1 = makeUnit({ instanceId: "e1", pos: { q: 2, r: 0 }, team: "enemy", hp: 1, stats: { maxHp: 8, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
     const e2 = makeUnit({ instanceId: "e2", pos: { q: -2, r: 0 }, team: "enemy", hp: 20, stats: { maxHp: 20, armor: 1, move: 3, str: 0, dex: 0, con: 0, int: 0, wis: 0, cha: 0 } });
     const state = makeState([hero, e1, e2], { encounterId: "encounter.long_iron_sergeant_elite" });
