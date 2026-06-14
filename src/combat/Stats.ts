@@ -2,6 +2,7 @@ import type { UnitInstance, UnitStats } from "../state/types.ts";
 import { ITEM_REGISTRY } from "../data/items.ts";
 import { CLASS_REGISTRY } from "../data/classes.ts";
 import { abilityMod } from "../data/abilities.ts";
+import { PASSIVE_REGISTRY } from "../data/passives.ts";
 
 export function computeStats(unit: UnitInstance): UnitStats {
   const baseDef = CLASS_REGISTRY[unit.defId];
@@ -37,6 +38,13 @@ export function computeStats(unit: UnitInstance): UnitStats {
     bonuses.cha += abilityMod(scores.cha);
     if (scores.dex > 10) bonuses.armor += 1;
     bonuses.maxHp += abilityMod(scores.con) * Math.max(1, unit.level);
+  }
+
+  for (const pid of unit.passives ?? []) {
+    const def = PASSIVE_REGISTRY[pid];
+    if (!def) continue;
+    if (def.effect.type === "fastMovement") bonuses.move += def.effect.bonus;
+    if (def.effect.type === "draconicResilience") bonuses.armor += 1;
   }
 
   return {

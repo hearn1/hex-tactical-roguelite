@@ -27,6 +27,8 @@ import { resetInventoryScreenState } from "../ui/screens/InventoryScreen.ts";
 import { resetEventScreenState } from "../ui/screens/EventScreen.ts";
 import { resetRecruitScreenState } from "../ui/screens/RecruitScreen.ts";
 import { syncHitDiceForPartyMember, classSpellSlotsMax, classSorceryPointsMax, classKiPointsMax } from "../run/Rest.ts";
+import { computeActionChargeBonuses, getDreadAmbusherInitiativeBonus } from "../combat/Passives.ts";
+import { PASSIVE_REGISTRY } from "../data/passives.ts";
 
 export type ClassId = keyof typeof CLASS_REGISTRY;
 export type EnemyId = keyof typeof ENEMY_REGISTRY;
@@ -145,7 +147,7 @@ export function scatterEnemyPositions(count: number): Hex[] {
 function buildTurnQueue(units: UnitInstance[], rng: () => number): string[] {
   const rolls = units.map((u) => ({
     id: u.instanceId,
-    value: Math.floor(rng() * 20) + 1 + u.stats.dex,
+    value: Math.floor(rng() * 20) + 1 + u.stats.dex + getDreadAmbusherInitiativeBonus(u),
   }));
   rolls.sort((a, b) => {
     if (b.value !== a.value) return b.value - a.value;
@@ -362,6 +364,9 @@ export function createCombatFromRun(
     }
   }
 
+  const heroUnits = units.filter((u) => u.team === "hero");
+  const perEncounterChargeBonus = computeActionChargeBonuses(heroUnits);
+
   return {
     round: 1,
     activeIndex: 0,
@@ -372,6 +377,7 @@ export function createCombatFromRun(
     gridKeys,
     targetingActionId: null,
     perEncounterUses: {},
+    perEncounterChargeBonus: Object.keys(perEncounterChargeBonus).length > 0 ? perEncounterChargeBonus : undefined,
     traitState: { actionRotationIndex: {}, triggered: {} },
     bossTelegraph: null,
     encounterId,
@@ -384,6 +390,7 @@ export function createCombatFromRun(
 }
 
 export function syncPartyFromCombat(combat: CombatState, run: RunState): void {
+  const isVictory = combat.status === "victory";
   for (const pm of run.party) {
     const unit = combat.units.find((u) => u.instanceId === pm.instanceId);
     if (!unit) {
@@ -398,6 +405,18 @@ export function syncPartyFromCombat(combat: CombatState, run: RunState): void {
     if (unit.spellSlotsRemaining !== undefined) pm.spellSlotsRemaining = unit.spellSlotsRemaining;
     if (unit.kiPointsRemaining !== undefined) pm.kiPointsRemaining = unit.kiPointsRemaining;
     if (unit.sorceryPointsRemaining !== undefined) pm.sorceryPointsRemaining = unit.sorceryPointsRemaining;
+
+    if (isVictory) {
+      for (const pid of unit.passives ?? []) {
+        const def = PASSIVE_REGISTRY[pid];
+        if (def?.effect.type === "naturalRecovery") {
+          pm.spellSlotsRemaining = Math.min(
+            pm.spellSlotsMax ?? 0,
+            (pm.spellSlotsRemaining ?? 0) + def.effect.slotsAfterCombat,
+          );
+        }
+      }
+    }
 
     if (unit.heroLifeState === "dead") {
       pm.deadForRun = true;
