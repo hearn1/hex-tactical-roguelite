@@ -15,6 +15,7 @@ import { checkEnemyThresholdTraits, setTelegraphLastResolvedRound } from "./Trai
 import { resolvePostDamageAftermath } from "./PostDamage.ts";
 import type { PostDamageCategory, PostDamageCause } from "./PostDamage.ts";
 import { coverArmorBonusForTarget } from "./Terrain.ts";
+import { isReactionAvailable, markReactionUsed, trySpendReactionResource } from "./ReactionResolver.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
@@ -758,10 +759,10 @@ export function resolveAction(
 
   // Vindicator Retributive Strike reaction: when a Vindicator is hit by melee, strike back.
   let retribAftermath: import("./PostDamage.ts").PostDamageResult | null = null;
-  if (target.team === "hero" && !target.reactionUsedThisTurn && target.passives?.includes("archetype_passive.vindicator_below_50_attack")) {
+  if (target.team === "hero" && isReactionAvailable(target) && target.passives?.includes("archetype_passive.vindicator_below_50_attack")) {
     const isMelee = distance(attacker.pos, target.pos) <= 1;
     if (isMelee && attacker.hp > 0) {
-      target.reactionUsedThisTurn = true;
+      markReactionUsed(target);
       const retribAction = ACTION_REGISTRY["action.archetype_retributive_strike"];
       if (retribAction) {
         const retribFormula = rewriteFormula("1d6 + str", target);
