@@ -1,5 +1,5 @@
 import type { ActionDef } from "./actions.ts";
-import { ACTION_REGISTRY } from "./actions.ts";
+import { ACTION_REGISTRY, VALID_ACTION_TIMINGS } from "./actions.ts";
 import type { BackgroundDef } from "./backgrounds.ts";
 import { BACKGROUND_REGISTRY } from "./backgrounds.ts";
 import type { ClassDef } from "./classes.ts";
@@ -254,6 +254,12 @@ export class DataRepository {
     for (const [nodeType, themeId] of Object.entries(getNodeTypeThemeMap())) {
       if (!environmentThemeIds.has(themeId)) {
         errors.push(`Node type "${nodeType}": environment theme "${themeId}" not found`);
+      }
+    }
+
+    for (const [id, def] of this.actions) {
+      if (def.timing !== undefined && !VALID_ACTION_TIMINGS.has(def.timing)) {
+        errors.push(`Action "${id}": timing "${def.timing}" is not a valid ActionTiming`);
       }
     }
 
