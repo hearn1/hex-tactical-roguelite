@@ -298,7 +298,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     displayName: "Monk",
     baseStats: { maxHp: 13, armor: 14, move: 4, str: 1, dex: 3, con: 1, int: 1, wis: 3, cha: 1 },
     hitDieSize: 8,
-    actionIds: ["action.monk.flurry_of_blows", "action.monk.stunning_strike", "action.monk.step_of_wind"],
+    actionIds: ["action.monk.flurry_of_blows", "action.monk.stunning_strike", "action.monk.step_of_wind", "action.monk.patient_defense"],
     startingItems: [],
     defaultBackgroundId: "background.caravan_guard",
     primaryAbility: "dex",

@@ -34,6 +34,43 @@ describe("ActionTiming (#503)", () => {
   });
 });
 
+describe("B2: Monk and mobility bonus actions (#509)", () => {
+  it("Flurry of Blows is a bonus action with ki cost", () => {
+    const action = ACTION_REGISTRY["action.monk.flurry_of_blows"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.kiPointCost).toBe(1);
+  });
+
+  it("Step of the Wind is a bonus action with ki cost", () => {
+    const action = ACTION_REGISTRY["action.monk.step_of_wind"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.kiPointCost).toBe(1);
+  });
+
+  it("Patient Defense is a bonus action with ki cost", () => {
+    const action = ACTION_REGISTRY["action.monk.patient_defense"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.kiPointCost).toBe(1);
+  });
+
+  it("Shadow Step is a bonus action with ki cost 2", () => {
+    const action = ACTION_REGISTRY["action.monk.shadow_step"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.kiPointCost).toBe(2);
+  });
+
+  it("Misty Step is a bonus action spell slot cost", () => {
+    const action = ACTION_REGISTRY["action.wizard.misty_step"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.resourceType).toBe("spell_slot");
+  });
+
+  it("Monk bonus actions do not target enemies without a target (mobility)", () => {
+    expect(ACTION_REGISTRY["action.monk.step_of_wind"].targetType).toBe("self");
+    expect(ACTION_REGISTRY["action.monk.patient_defense"].targetType).toBe("self");
+  });
+});
+
 describe("B1: Low-risk bonus action reclassification (#508)", () => {
   it("Second Wind is a bonus action (self heal)", () => {
     expect(ACTION_REGISTRY["action.second_wind"].timing).toBe("bonus_action");
