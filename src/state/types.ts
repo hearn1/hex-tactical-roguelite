@@ -30,7 +30,7 @@ export interface DeathSaveState {
   failures: number;
 }
 
-export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed" | "rallied" | "warded" | "empowered" | "taunted" | "mesmerized" | "reckless" | "armored" | "sanctuary" | "hasted" | "counterspelled" | "divinely_inspired" | "rooted" | "hunters_mark" | "umbral_sight";
+export type ConditionId = "guarded" | "weakened" | "blessed" | "slowed" | "rallied" | "warded" | "empowered" | "taunted" | "mesmerized" | "reckless" | "armored" | "sanctuary" | "hasted" | "counterspelled" | "divinely_inspired" | "rooted" | "hunters_mark" | "umbral_sight" | "rattled" | "armor_of_agathys" | "wild_shape" | "land_stride" | "hexed" | "entropic_ward" | "stunned" | "vow_of_enmity" | "raged" | "step_of_wind";
 
 /** Element type for VFX tinting (fire, frost, arcane, heal, physical, dark). */
 export type ActionElement = "fire" | "frost" | "arcane" | "heal" | "physical" | "dark";

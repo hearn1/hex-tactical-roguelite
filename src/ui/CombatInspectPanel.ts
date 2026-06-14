@@ -45,6 +45,16 @@ const CONDITION_DESCRIPTIONS: Record<ConditionId, string> = {
   rooted: "Held fast — cannot move.",
   hunters_mark: "Marked prey takes extra damage.",
   umbral_sight: "Sees clearly through the dark.",
+  rattled: "−2 to next attack roll.",
+  armor_of_agathys: "Shrouded in icy magic; melee attackers take cold damage.",
+  wild_shape: "Transformed into a beast form.",
+  land_stride: "Ignores difficult terrain.",
+  hexed: "Cursed by a Hex.",
+  entropic_ward: "Psychic interference; next attack against bearer may be rerolled.",
+  stunned: "Cannot act or move.",
+  vow_of_enmity: "Sworn foe — all attacks against it have advantage.",
+  raged: "In a battle rage; bonus damage and damage resistance.",
+  step_of_wind: "Moving with ki — ignores opportunity attacks.",
 };
 
 export function aiBehaviorHint(aiTag: EnemyDef["aiTag"]): string {
