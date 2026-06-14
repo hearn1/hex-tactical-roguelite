@@ -258,4 +258,45 @@ describe("ActionEconomy — core timing model (#507)", () => {
       expect(eco.extraActionsRemaining).toBe(0);
     });
   });
+
+  describe("reaction timing on reaction action defs (#522)", () => {
+    it("action.archetype_retributive_strike has timing 'reaction'", () => {
+      const def = ACTION_REGISTRY["action.archetype_retributive_strike"];
+      expect(def).toBeDefined();
+      expect(def.timing).toBe("reaction");
+    });
+
+    it("action.warlock.hellish_rebuke has timing 'reaction'", () => {
+      const def = ACTION_REGISTRY["action.warlock.hellish_rebuke"];
+      expect(def).toBeDefined();
+      expect(def.timing).toBe("reaction");
+    });
+
+    it("action.bard.cutting_words has timing 'reaction'", () => {
+      const def = ACTION_REGISTRY["action.bard.cutting_words"];
+      expect(def).toBeDefined();
+      expect(def.timing).toBe("reaction");
+    });
+
+    it("payActionCosts for a reaction action marks reactionUsed, not actionUsed", () => {
+      const hero = makeUnit({ instanceId: "h1", pos: { q: 0, r: 0 } });
+      const state = makeState([hero]);
+      const rebukeAction = ACTION_REGISTRY["action.archetype_retributive_strike"];
+      payActionCosts(hero, rebukeAction, state);
+      expect(getTurnEconomy(hero).reactionUsed).toBe(true);
+      expect(hero.reactionUsedThisTurn).toBe(true);
+      expect(getTurnEconomy(hero).actionUsed).toBe(false);
+    });
+
+    it("canUseAction blocks a reaction action when reactionUsed is true", () => {
+      const hero = makeUnit({ instanceId: "h1", pos: { q: 0, r: 0 } });
+      hero.turnEconomy!.reactionUsed = true;
+      hero.reactionUsedThisTurn = true;
+      const state = makeState([hero]);
+      const rebukeAction = ACTION_REGISTRY["action.archetype_retributive_strike"];
+      const check = canUseAction(hero, rebukeAction, state);
+      expect(check.canUse).toBe(false);
+      expect(check.reason).toMatch(/no reaction remaining/i);
+    });
+  });
 });

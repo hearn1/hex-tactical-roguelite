@@ -699,6 +699,7 @@ export class CombatScreen {
       active.turnEconomy.actionUsed = false;
       active.turnEconomy.bonusActionUsed = false;
       active.turnEconomy.reactionUsed = false;
+      active.turnEconomy.extraActionsRemaining = 0;
     } else {
       active.turnEconomy = { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 };
     }
