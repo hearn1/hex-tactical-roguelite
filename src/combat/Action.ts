@@ -807,6 +807,27 @@ export function resolveAction(
     }
   }
 
+  // Armor of Agathys: triggered passive — melee attacker takes 5 cold damage (no reaction slot used).
+  let agathysAftermath: import("./PostDamage.ts").PostDamageResult | null = null;
+  if (target.conditions.some((c) => c.id === "armor_of_agathys") && distance(attacker.pos, target.pos) <= 1 && attacker.hp > 0) {
+    const agathysDmg = 5;
+    const agathysPrevHp = attacker.hp;
+    attacker.hp = Math.max(0, attacker.hp - agathysDmg);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] [PASSIVE] ${target.displayName}'s Armor of Agathys retaliates for ${agathysDmg} cold damage!`,
+      round,
+    });
+    agathysAftermath = resolvePostDamageAftermath({
+      state,
+      targetUnitId: attacker.instanceId,
+      sourceUnitId: target.instanceId,
+      cause: "retaliation",
+      category: "spell",
+      previousHp: agathysPrevHp,
+    });
+  }
+
   // Vindicator Retributive Strike reaction: when a Vindicator is hit by melee, strike back.
   let retribAftermath: import("./PostDamage.ts").PostDamageResult | null = null;
   if (target.team === "hero" && isReactionAvailable(target) && target.passives?.includes("archetype_passive.vindicator_below_50_attack")) {
@@ -922,8 +943,8 @@ export function resolveAction(
     isCrit,
     kind: "damage",
     actionElement: el,
-    shouldCheckCombatEnd: aftermath.shouldCheckCombatEnd || (retribAftermath?.shouldCheckCombatEnd ?? false) || (hellishRebukeAftermath?.shouldCheckCombatEnd ?? false),
-    shouldStopCaller: (retribAftermath?.shouldStopCaller ?? false) || (hellishRebukeAftermath?.shouldStopCaller ?? false),
+    shouldCheckCombatEnd: aftermath.shouldCheckCombatEnd || (retribAftermath?.shouldCheckCombatEnd ?? false) || (hellishRebukeAftermath?.shouldCheckCombatEnd ?? false) || (agathysAftermath?.shouldCheckCombatEnd ?? false),
+    shouldStopCaller: (retribAftermath?.shouldStopCaller ?? false) || (hellishRebukeAftermath?.shouldStopCaller ?? false) || (agathysAftermath?.shouldStopCaller ?? false),
   };
 }
 

@@ -57,7 +57,7 @@ export function resolveOncePerCombatBonus(
         result.damageReduction = (result.damageReduction ?? 0) + eff.value;
         state.log.push({
           kind: "action",
-          text: `[T${state.round}] ${itemDef.displayName} absorbs — reduces damage by ${eff.value}.`,
+          text: `[T${state.round}] [PASSIVE] ${itemDef.displayName} absorbs — reduces damage by ${eff.value}.`,
           round: state.round,
         });
         break;
