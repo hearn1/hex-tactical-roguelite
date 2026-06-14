@@ -5,7 +5,13 @@ import { DEFAULT_MAP_TEMPLATE_ID, getMapTemplate } from "../data/nodes.ts";
 import { abilityMod, createDefaultAbilityScores, isCompleteAbilityScores } from "../data/abilities.ts";
 import type { AbilityScores } from "../data/abilities.ts";
 import { createInventory } from "./Inventory.ts";
-import { STARTING_CAMP_SUPPLIES, syncHitDiceForPartyMember, syncSpellSlotsForPartyMember } from "./Rest.ts";
+import {
+  STARTING_CAMP_SUPPLIES,
+  syncHitDiceForPartyMember,
+  syncSpellSlotsForPartyMember,
+  syncSorceryPointsForPartyMember,
+  syncKiPointsForPartyMember,
+} from "./Rest.ts";
 import { DEFAULT_CAMPAIGN, getActDefinition } from "../data/campaigns.ts";
 
 /**
@@ -125,6 +131,8 @@ export function buildParty(specs: PartySpec[]): PartyMember[] {
     };
     syncHitDiceForPartyMember(member);
     syncSpellSlotsForPartyMember(member);
+    syncSorceryPointsForPartyMember(member);
+    syncKiPointsForPartyMember(member);
     return member;
   });
 }

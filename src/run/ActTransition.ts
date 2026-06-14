@@ -2,7 +2,12 @@ import type { CampaignState, CompletedActSummary } from "../state/CampaignState.
 import type { PartyMember, RunState } from "../state/RunState.ts";
 import type { RunModifier } from "../state/types.ts";
 import { createRunState } from "./PartySetup.ts";
-import { syncHitDiceForPartyMember, syncSpellSlotsForPartyMember } from "./Rest.ts";
+import {
+  syncHitDiceForPartyMember,
+  syncSpellSlotsForPartyMember,
+  syncSorceryPointsForPartyMember,
+  syncKiPointsForPartyMember,
+} from "./Rest.ts";
 import { DEFAULT_MAP_TEMPLATE_ID } from "../data/nodes.ts";
 import { DEFAULT_CAMPAIGN, getActDefinition, selectActMapTemplate } from "../data/campaigns.ts";
 import { snapshotQuestOutcomesForAct } from "./QuestState.ts";
@@ -56,6 +61,10 @@ export function applyBetweenActReset(party: PartyMember[]): void {
     pm.hitDiceRemaining = pm.hitDiceTotal ?? pm.level;
     syncSpellSlotsForPartyMember(pm);
     pm.spellSlotsRemaining = pm.spellSlotsMax ?? 0;
+    syncSorceryPointsForPartyMember(pm);
+    pm.sorceryPointsRemaining = pm.sorceryPointsMax ?? 0;
+    syncKiPointsForPartyMember(pm);
+    pm.kiPointsRemaining = pm.kiPointsMax ?? 0;
   }
 }
 

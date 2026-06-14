@@ -1093,11 +1093,19 @@ export class CombatScreen {
       const slotCost = actionDef.slotCost ?? 1;
       const slotsLeft = activeUnit.spellSlotsRemaining ?? 0;
 
+      const sorceryCost = actionDef.sorceryPointCost ?? 0;
+      const sorceryLeft = activeUnit.sorceryPointsRemaining ?? 0;
+
+      const kiCost = actionDef.kiPointCost ?? 0;
+      const kiLeft = activeUnit.kiPointsRemaining ?? 0;
+
       const remaining = chargesRemaining(actionId, cs.perEncounterUses as Record<string, number>);
 
       let label = actionDef.displayName;
       if (timingLabel) label = `${timingLabel} ${label}`;
       if (isSpellSlot) label = `${label} (${slotsLeft})`;
+      if (sorceryCost > 0) label = `${label} (${sorceryLeft} SP)`;
+      if (kiCost > 0) label = `${label} (${kiLeft} Ki)`;
       if (remaining !== null) label = `${actionDef.displayName}${timingLabel ? ` ${timingLabel}` : ""} (${remaining}/${actionDef.charges})`;
       btn.textContent = label;
 

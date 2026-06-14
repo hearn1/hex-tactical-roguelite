@@ -72,12 +72,48 @@ export function syncSpellSlotsForPartyMember(pm: PartyMember): void {
   pm.spellSlotsRemaining = Math.min(pm.spellSlotsMax, pm.spellSlotsRemaining ?? pm.spellSlotsMax);
 }
 
+export function classSorceryPointsMax(classId: string): number {
+  return CLASS_REGISTRY[classId]?.sorceryPointsMax ?? 0;
+}
+
+export function classKiPointsMax(classId: string): number {
+  return CLASS_REGISTRY[classId]?.kiPointsMax ?? 0;
+}
+
+function passiveSorceryPointBonus(passiveIds: string[]): number {
+  return passiveIds.reduce((sum, id) => {
+    const effect = PASSIVE_REGISTRY[id]?.effect;
+    return effect?.type === "sorceryPointBonus" ? sum + effect.amount : sum;
+  }, 0);
+}
+
+function passiveKiPointBonus(passiveIds: string[]): number {
+  return passiveIds.reduce((sum, id) => {
+    const effect = PASSIVE_REGISTRY[id]?.effect;
+    return effect?.type === "kiPointBonus" ? sum + effect.amount : sum;
+  }, 0);
+}
+
+/** Initializes a hero's Sorcery Point pool from their class, preserving any remaining points. */
+export function syncSorceryPointsForPartyMember(pm: PartyMember): void {
+  pm.sorceryPointsMax = classSorceryPointsMax(pm.classId) + passiveSorceryPointBonus(pm.passives ?? []);
+  pm.sorceryPointsRemaining = Math.min(pm.sorceryPointsMax, pm.sorceryPointsRemaining ?? pm.sorceryPointsMax);
+}
+
+/** Initializes a hero's Ki point pool from their class, preserving any remaining points. */
+export function syncKiPointsForPartyMember(pm: PartyMember): void {
+  pm.kiPointsMax = classKiPointsMax(pm.classId) + passiveKiPointBonus(pm.passives ?? []);
+  pm.kiPointsRemaining = Math.min(pm.kiPointsMax, pm.kiPointsRemaining ?? pm.kiPointsMax);
+}
+
 export function ensureRunRestState(run: RunState): void {
   run.campSupplies ??= STARTING_CAMP_SUPPLIES;
   run.shortRestsSinceLongRest ??= 0;
   for (const pm of run.party) {
     syncHitDiceForPartyMember(pm);
     syncSpellSlotsForPartyMember(pm);
+    syncSorceryPointsForPartyMember(pm);
+    syncKiPointsForPartyMember(pm);
   }
 }
 
@@ -225,6 +261,10 @@ export function applyLongRest(run: RunState): RestResult {
     pm.hitDiceRemaining = pm.hitDiceTotal ?? pm.level;
     syncSpellSlotsForPartyMember(pm);
     pm.spellSlotsRemaining = pm.spellSlotsMax;
+    syncSorceryPointsForPartyMember(pm);
+    pm.sorceryPointsRemaining = pm.sorceryPointsMax;
+    syncKiPointsForPartyMember(pm);
+    pm.kiPointsRemaining = pm.kiPointsMax;
     hooksRecharged = rechargeOptionalUseHooks(pm) || hooksRecharged;
     heroes.push({
       instanceId: pm.instanceId,
