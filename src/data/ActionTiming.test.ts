@@ -34,6 +34,33 @@ describe("ActionTiming (#503)", () => {
   });
 });
 
+describe("B5: On-hit riders conversion (#512)", () => {
+  it("Divine Smite is tagged triggered_passive (on-hit rider, not standalone action)", () => {
+    expect(ACTION_REGISTRY["action.paladin.divine_smite"].timing).toBe("triggered_passive");
+  });
+
+  it("Stunning Strike is tagged triggered_passive (on-hit rider, not standalone action)", () => {
+    expect(ACTION_REGISTRY["action.monk.stunning_strike"].timing).toBe("triggered_passive");
+  });
+
+  it("Divine Smite still has its spell slot cost", () => {
+    expect(ACTION_REGISTRY["action.paladin.divine_smite"].resourceType).toBe("spell_slot");
+    expect(ACTION_REGISTRY["action.paladin.divine_smite"].slotCost).toBe(1);
+  });
+
+  it("Stunning Strike still has its ki point cost", () => {
+    expect(ACTION_REGISTRY["action.monk.stunning_strike"].kiPointCost).toBe(1);
+  });
+
+  it("triggered_passive timing does not consume action economy slots", () => {
+    // triggered_passive falls through payActionCosts without setting actionUsed or bonusActionUsed
+    const divineTiming = ACTION_REGISTRY["action.paladin.divine_smite"].timing;
+    expect(divineTiming).not.toBe("action");
+    expect(divineTiming).not.toBe("bonus_action");
+    expect(divineTiming).not.toBe("free");
+  });
+});
+
 describe("B4: Extra action and attack-action modifier support (#511)", () => {
   it("Action Surge is a free-timing action with charges and grantExtraAction effect", () => {
     const action = ACTION_REGISTRY["action.fighter.action_surge"];
