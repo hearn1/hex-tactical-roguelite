@@ -9,6 +9,7 @@ import {
   applyBetweenActReset,
   advanceToNextAct,
   completeCampaign,
+  isPersistentModifier,
 } from "./ActTransition.ts";
 
 function freshRun() {
@@ -185,6 +186,97 @@ describe("advanceToNextAct carry-forward (#316)", () => {
     advanceToNextAct(campaign, run);
     expect(campaign.completedActs).toHaveLength(1);
     expect(campaign.currentActNumber).toBe(2);
+  });
+});
+
+// ── #528: Run modifier cross-act persistence ──────────────────────────────────
+
+describe("isPersistentModifier (#528)", () => {
+  it("returns true for campaign-persistent kinds", () => {
+    expect(isPersistentModifier({ kind: "gold_multiplier", value: 1.5 })).toBe(true);
+    expect(isPersistentModifier({ kind: "shop_discount", value: 10 })).toBe(true);
+    expect(isPersistentModifier({ kind: "global_stat", stat: "str", value: 2 })).toBe(true);
+    expect(isPersistentModifier({ kind: "first_hit_bonus_damage", amount: 3 })).toBe(true);
+    expect(isPersistentModifier({ kind: "reward_xp_multiplier", value: 1.2 })).toBe(true);
+    expect(isPersistentModifier({ kind: "enemy_hp_multiplier", value: 1.3 })).toBe(true);
+    expect(isPersistentModifier({ kind: "enemy_damage_bonus", value: 2 })).toBe(true);
+    expect(isPersistentModifier({ kind: "event_dc_bonus", value: 1 })).toBe(true);
+    expect(isPersistentModifier({ kind: "event_reward_multiplier", value: 1.5 })).toBe(true);
+    expect(isPersistentModifier({ kind: "elite_reward_multiplier", value: 2 })).toBe(true);
+  });
+
+  it("returns false for next_combat_blessing (per-act one-shot)", () => {
+    expect(isPersistentModifier({ kind: "next_combat_blessing" })).toBe(false);
+  });
+
+  it("returns false for boss_encounter_modifier (per-encounter, not cross-act)", () => {
+    expect(isPersistentModifier({ kind: "boss_encounter_modifier", encounterId: "encounter.act1_boss", hpMultiplier: 1.5 })).toBe(false);
+  });
+});
+
+describe("advanceToNextAct run modifier persistence (#528)", () => {
+  it("seeds next run's runModifiers from persistent campaign modifiers", () => {
+    const campaign = freshCampaign(1);
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    run.runModifiers = [{ kind: "gold_multiplier", value: 1.5 }];
+    const nextRun = advanceToNextAct(campaign, run);
+    expect(nextRun.runModifiers).toEqual([{ kind: "gold_multiplier", value: 1.5 }]);
+  });
+
+  it("does not carry next_combat_blessing into the next act", () => {
+    const campaign = freshCampaign(1);
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    run.runModifiers = [{ kind: "next_combat_blessing" }];
+    const nextRun = advanceToNextAct(campaign, run);
+    expect(nextRun.runModifiers).toEqual([]);
+  });
+
+  it("does not carry boss_encounter_modifier into the next act", () => {
+    const campaign = freshCampaign(1);
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    run.runModifiers = [{ kind: "boss_encounter_modifier", encounterId: "encounter.act1_boss" }];
+    const nextRun = advanceToNextAct(campaign, run);
+    expect(nextRun.runModifiers).toEqual([]);
+  });
+
+  it("keeps persistent modifiers and drops one-shot modifiers in the same run", () => {
+    const campaign = freshCampaign(1);
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    run.runModifiers = [
+      { kind: "gold_multiplier", value: 1.5 },
+      { kind: "next_combat_blessing" },
+      { kind: "global_stat", stat: "str", value: 2 },
+      { kind: "boss_encounter_modifier", encounterId: "encounter.act1_boss" },
+    ];
+    const nextRun = advanceToNextAct(campaign, run);
+    expect(nextRun.runModifiers).toEqual([
+      { kind: "gold_multiplier", value: 1.5 },
+      { kind: "global_stat", stat: "str", value: 2 },
+    ]);
+  });
+
+  it("campaign.runModifiers after transition holds only persistent modifiers", () => {
+    const campaign = freshCampaign(1);
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    run.runModifiers = [
+      { kind: "shop_discount", value: 15 },
+      { kind: "next_combat_blessing" },
+    ];
+    advanceToNextAct(campaign, run);
+    expect(campaign.runModifiers).toEqual([{ kind: "shop_discount", value: 15 }]);
+  });
+
+  it("next run starts with empty runModifiers when completed run had none", () => {
+    const campaign = freshCampaign(1);
+    const run = freshRun();
+    run.mapState.bossDefeated = true;
+    const nextRun = advanceToNextAct(campaign, run);
+    expect(nextRun.runModifiers).toEqual([]);
   });
 });
 
