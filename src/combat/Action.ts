@@ -10,7 +10,7 @@ import { applyCondition } from "./Condition.ts";
 import { DIFFICULTY_CONFIG } from "../data/difficulty.ts";
 import { LEVELUP_PASSIVE_FIRST_HEAL_BONUS, FIRST_HEAL_BONUS_AMOUNT } from "../data/levelups.ts";
 import { resolveOncePerCombatBonus, resolveAttackBonus } from "./ItemHooks.ts";
-import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus } from "./Passives.ts";
+import { getCritFloor, getVindicatorAttackBonus, getEnchanterAttackPenalty, getCloisteredHealBonus, getBeaconSaveBonus, getBrutalCriticalExtraDamage, getColossusSlayerBonus, getFirstAttackBonusDice, hasAllResistanceWhileRaged, getSpellDamageStatBonus } from "./Passives.ts";
 import { heroLifeState, clearDeathSavesOnHealing, isTargetableByEnemies } from "./DeathSaves.ts";
 import { checkEnemyThresholdTraits, setTelegraphLastResolvedRound } from "./Traits.ts";
 import { resolvePostDamageAftermath } from "./PostDamage.ts";
@@ -666,7 +666,22 @@ export function resolveAction(
   const formula = rewriteFormula(action.effect.formula, attacker);
   const result = roll(formula, rng);
   let damage = result.total;
-  if (isCrit) damage *= 2;
+  if (isCrit) {
+    damage *= 2;
+    // Brutal Critical: roll one extra weapon damage die on a melee crit.
+    const isSpellAttackForCrit = attackStat === "int" || attackStat === "wis" || attackStat === "cha";
+    if (!isSpellAttackForCrit && attacker.team === "hero") {
+      const extraCritDmg = getBrutalCriticalExtraDamage(attacker, rng);
+      if (extraCritDmg > 0) {
+        damage += extraCritDmg;
+        state.log.push({
+          kind: "action",
+          text: `[T${round}] [PASSIVE] Brutal Critical — +${extraCritDmg} extra damage.`,
+          round,
+        });
+      }
+    }
+  }
   if (attacker.team === "enemy") {
     const dc = DIFFICULTY_CONFIG[state.difficulty ?? "normal"];
     damage += dc.enemyDamageBonus + (state.modifierDamageBonus ?? 0) + (attacker.bonusDamage ?? 0);
@@ -687,6 +702,38 @@ export function resolveAction(
   if (firstAttackTrigger) {
     const onceResult = resolveOncePerCombatBonus(attacker, firstAttackTrigger, state);
     if (onceResult.damageBonus) damage += onceResult.damageBonus;
+  }
+
+  // Passive: Colossus Slayer — once-per-turn +1d8 on a wounded target.
+  if (attacker.team === "hero") {
+    const colossusBonus = getColossusSlayerBonus(attacker, target, state, rng);
+    if (colossusBonus > 0) {
+      damage += colossusBonus;
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] [PASSIVE] Colossus Slayer — +${colossusBonus} bonus damage.`,
+        round,
+      });
+    }
+  }
+
+  // Passive: Assassinate first-attack bonus (firstAttackBonusDice).
+  if (attacker.team === "hero") {
+    const assassinBonus = getFirstAttackBonusDice(attacker, target, state, rng);
+    if (assassinBonus > 0) {
+      damage += assassinBonus;
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] [PASSIVE] Assassinate — +${assassinBonus} bonus damage on first strike.`,
+        round,
+      });
+    }
+  }
+
+  // Passive: Empowered Evocation / Elemental Affinity / Agonizing Blast — add stat modifier to spell damage.
+  if (attacker.team === "hero" && itemAttackType === "spell") {
+    const spellStatBonus = getSpellDamageStatBonus(attacker);
+    if (spellStatBonus > 0) damage += spellStatBonus;
   }
 
   // Check for Empowered condition: consume it to add +1d6 damage.
@@ -718,6 +765,19 @@ export function resolveAction(
   const hitReduction = resolveOncePerCombatBonus(target, "firstHitTaken", state);
   if (hitReduction.damageReduction) {
     damage = Math.max(0, damage - hitReduction.damageReduction);
+  }
+
+  // Passive: Bear Totem resistance — halve all damage while raging.
+  if (target.team === "hero" && hasAllResistanceWhileRaged(target)) {
+    const before = damage;
+    damage = Math.max(0, Math.floor(damage / 2));
+    if (damage < before) {
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] [PASSIVE] Bear Totem Resistance halves incoming damage: ${before} → ${damage}.`,
+        round,
+      });
+    }
   }
 
   // Defensive reactions on hit.

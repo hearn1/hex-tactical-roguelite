@@ -7,6 +7,7 @@ import {
   markTraitTriggered,
 } from "./Traits.ts";
 export type { ThresholdTraitResult, EncounterDeathTraitResult } from "./Traits.ts";
+import { getOnKillHpGain } from "./Passives.ts";
 
 export type PostDamageCause =
   | "single_target"
@@ -158,6 +159,26 @@ export function resolvePostDamageAftermath(input: PostDamageInput): PostDamageRe
           text: `[T${state.round}] ${target.displayName} is defeated.`,
           round: state.round,
         });
+      }
+    }
+  }
+
+  // Step 4b: On-kill HP gain (Dark One's Blessing / onKillTempHp passive).
+  if (newlyDroppedToZero && target.team === "enemy" && input.sourceUnitId) {
+    const attacker = state.units.find((u) => u.instanceId === input.sourceUnitId);
+    if (attacker && attacker.team === "hero" && attacker.hp > 0) {
+      const gain = getOnKillHpGain(attacker);
+      if (gain > 0) {
+        const before = attacker.hp;
+        attacker.hp = Math.min(attacker.hp + gain, attacker.stats.maxHp);
+        const actual = attacker.hp - before;
+        if (actual > 0) {
+          state.log.push({
+            kind: "action",
+            text: `[T${state.round}] [PASSIVE] ${attacker.displayName}'s Dark One's Blessing restores ${actual} HP.`,
+            round: state.round,
+          });
+        }
       }
     }
   }
