@@ -132,7 +132,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.extra_attack": {
     id: "passive.extra_attack",
     displayName: "Extra Attack",
-    description: "You can attack twice whenever you take the Attack action on your turn.",
+    description: "Class identity — grants the Extra Attack action in your action bar.",
     effect: { type: "extraAttack" },
   },
   "passive.fighter.improved_critical": {
@@ -144,13 +144,13 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.fighter.remarkable_athlete": {
     id: "passive.fighter.remarkable_athlete",
     displayName: "Remarkable Athlete",
-    description: "+1 bonus to all Strength, Dexterity, and Constitution checks.",
+    description: "Class identity — marks your athletic training. Out-of-combat check bonuses pending.",
     effect: { type: "statCheckBonus", bonus: 1 },
   },
   "passive.fighter.combat_superiority": {
     id: "passive.fighter.combat_superiority",
     displayName: "Combat Superiority",
-    description: "You have a pool of 3 superiority dice (d8). Spend one die to fuel combat maneuvers.",
+    description: "Class identity — marks your Combat Superiority training. Maneuver system pending.",
     effect: { type: "superiorityDice", dieSize: 8, count: 3 },
   },
   "passive.uncanny_dodge": {
@@ -162,13 +162,13 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.evasion": {
     id: "passive.evasion",
     displayName: "Evasion",
-    description: "When an AoE effect allows a DEX save, you take no damage on a success and half on a failure.",
+    description: "Class identity — marks your Evasion training. AoE save-negation system pending.",
     effect: { type: "evasion" },
   },
   "passive.rogue.second_story_work": {
     id: "passive.rogue.second_story_work",
     displayName: "Second-Story Work",
-    description: "Climbing costs no extra movement — traverse elevated terrain without penalty.",
+    description: "Class identity — marks your Second-Story Work training. Climb-cost system pending.",
     effect: { type: "climbCostReduction" },
   },
   "passive.rogue.assassinate": {
@@ -204,13 +204,13 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.cleric.war_priest": {
     id: "passive.cleric.war_priest",
     displayName: "War Priest",
-    description: "Twice per combat, you may make a weapon attack as a bonus action after casting a cantrip.",
+    description: "Class identity — marks your War Priest training. Post-cantrip bonus attack system pending.",
     effect: { type: "bonusAttackAfterCantrip", usesPerCombat: 2 },
   },
   "passive.wizard.arcane_recovery": {
     id: "passive.wizard.arcane_recovery",
     displayName: "Arcane Recovery",
-    description: "Once per combat, regain 1 expended spell slot as a free action.",
+    description: "Class identity — marks your Arcane Recovery. In-combat slot recovery system pending.",
     effect: { type: "arcaneRecovery", slotsPerCombat: 1 },
   },
   "passive.wizard.extra_slot_l5": {
@@ -222,7 +222,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.wizard.sculpt_spells": {
     id: "passive.wizard.sculpt_spells",
     displayName: "Sculpt Spells",
-    description: "Allied targets within an AoE spell automatically succeed the saving throw, taking no damage.",
+    description: "Class identity — marks your Sculpt Spells. AoE ally-exclusion system pending.",
     effect: { type: "sculptSpells" },
   },
   "passive.wizard.empowered_evocation": {
@@ -234,7 +234,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.wizard.ward_regain": {
     id: "passive.wizard.ward_regain",
     displayName: "Arcane Ward Regain",
-    description: "Your Arcane Ward regains HP equal to twice the spell slot level each time you cast a spell.",
+    description: "Class identity — marks your Arcane Ward regeneration. Ward HP recovery system pending.",
     effect: { type: "arcaneWardRegain", multiplier: 2 },
   },
   "passive.ranger.extra_slot_l5": {
@@ -252,20 +252,20 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   [ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER]: {
     id: ARCHETYPE_PASSIVE_RANGER_DREAD_AMBUSHER,
     displayName: "Dread Ambusher",
-    description: "+1 to initiative. On the first round of combat, make one additional attack.",
+    description: "+1 to initiative rolls. First-round bonus attack system pending.",
     effect: { type: "dreadAmbusher", initiativeBonus: 1 },
   },
   // ── Bard passives ─────────────────────────────────────────────────────
   "passive.jack_of_all_trades": {
     id: "passive.jack_of_all_trades",
     displayName: "Jack of All Trades",
-    description: "Add +1 to any ability check you aren't proficient in.",
+    description: "Class identity — marks your broad skill training. Out-of-combat check bonus pending.",
     effect: { type: "jackOfAllTrades", bonus: 1 },
   },
   "passive.bard.font_of_inspiration": {
     id: "passive.bard.font_of_inspiration",
     displayName: "Font of Inspiration",
-    description: "Bardic Inspiration recharges after a short rest (post-combat).",
+    description: "Class identity — marks your Font of Inspiration feature. Bardic Inspiration is an unlimited cantrip.",
     effect: { type: "fontOfInspiration" },
   },
   [ARCHETYPE_PASSIVE_BARD_ADDITIONAL_MAGICAL_SECRETS]: {
@@ -277,7 +277,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   [ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION]: {
     id: ARCHETYPE_PASSIVE_BARD_COMBAT_INSPIRATION,
     displayName: "Combat Inspiration",
-    description: "Allies may use Bardic Inspiration to add to a damage roll instead of an attack roll.",
+    description: "Class identity — marks your Combat Inspiration training. Inspiration damage-rider system pending.",
     effect: { type: "combatInspiration" },
   },
   "passive.bard.extra_attack": {
@@ -290,7 +290,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.druid.wild_shape": {
     id: "passive.druid.wild_shape",
     displayName: "Wild Shape",
-    description: "Twice per combat, assume a beast form: gain +4 temporary HP and +1 AC for 3 turns.",
+    description: "Class identity — marks your Wild Shape feature. Beast-form system pending.",
     effect: { type: "wildShapeGrant", chargesPerCombat: 2 },
   },
   "passive.druid.extra_slot_l5": {
@@ -302,7 +302,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.druid.combat_wild_shape": {
     id: "passive.druid.combat_wild_shape",
     displayName: "Combat Wild Shape",
-    description: "While Wild Shape is active, gain an additional +2 AC and +2 STR.",
+    description: "Class identity — marks your Combat Wild Shape training. Beast-form system pending.",
     effect: { type: "wildShapeBonus", acBonus: 2, strBonus: 2 },
   },
   "passive.druid.natural_recovery": {
@@ -333,19 +333,19 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.warlock.repelling_blast": {
     id: "passive.warlock.repelling_blast",
     displayName: "Repelling Blast",
-    description: "When Eldritch Blast hits, push the target 1 hex away from you.",
+    description: "Class identity — marks your Repelling Blast invocation. Forced-movement system pending.",
     effect: { type: "repellingBlast" },
   },
   "passive.warlock.pact_of_blade": {
     id: "passive.warlock.pact_of_blade",
     displayName: "Pact of the Blade",
-    description: "Your patron binds a spectral weapon to your hand; melee attacks draw on your Charisma rather than Strength.",
+    description: "Class identity — marks your Pact of the Blade. Stat-substitution system pending.",
     effect: { type: "pactBlade" },
   },
   "passive.warlock.pact_of_tome": {
     id: "passive.warlock.pact_of_tome",
     displayName: "Pact of the Tome",
-    description: "Your Book of Shadows expands your magical repertoire — learn 2 additional cantrips.",
+    description: "Class identity — marks your Pact of the Tome. Additional cantrips granted at character creation.",
     effect: { type: "pactTome", cantripsGranted: 2 },
   },
   [ARCHETYPE_PASSIVE_WARLOCK_DARK_ONES_BLESSING]: {
@@ -357,14 +357,14 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   [ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND]: {
     id: ARCHETYPE_PASSIVE_WARLOCK_AWAKENED_MIND,
     displayName: "Awakened Mind",
-    description: "Once per combat, force an enemy to reroll an attack roll targeting you (psychic interference).",
+    description: "Class identity — marks your psychic patron gift. Attack-reroll system pending.",
     effect: { type: "forceReroll", usesPerCombat: 1 },
   },
   // ── Barbarian passives ────────────────────────────────────────────────
   [ARCHETYPE_PASSIVE_BARBARIAN_FRENZY]: {
     id: ARCHETYPE_PASSIVE_BARBARIAN_FRENZY,
     displayName: "Frenzy",
-    description: "While raging, make one bonus melee attack per turn. After combat ends, suffer exhaustion (−1 to attack rolls) until a long rest.",
+    description: "Class identity — marks your Frenzy. Rage-conditional bonus-attack system pending.",
     effect: { type: "frenziedAttack", usesPerCombat: 1 },
   },
   [ARCHETYPE_PASSIVE_BARBARIAN_BEAR_TOTEM]: {
@@ -376,7 +376,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.barbarian.danger_sense": {
     id: "passive.barbarian.danger_sense",
     displayName: "Danger Sense",
-    description: "Your primal instincts alert you to hidden threats — gain advantage on Dexterity saving throws.",
+    description: "Class identity — marks your Danger Sense. DEX save advantage system pending.",
     effect: { type: "dangerSense" },
   },
   "passive.barbarian.extra_rage_l2": {
@@ -401,7 +401,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.paladin.relentless_avenger": {
     id: "passive.paladin.relentless_avenger",
     displayName: "Relentless Avenger",
-    description: "When you hit a target cursed by Vow of Enmity, gain +1 movement for the rest of your turn.",
+    description: "Class identity — marks your Relentless Avenger training. Conditional movement bonus system pending.",
     effect: { type: "relentlessAvenger", moveBonus: 1 },
   },
   "passive.paladin.loh_pool_extended": {
@@ -438,19 +438,19 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.sorcerer.empowered_spell": {
     id: "passive.sorcerer.empowered_spell",
     displayName: "Empowered Spell",
-    description: "Metamagic: spend 1 Sorcery Point to reroll up to 3 damage dice from a spell, keeping the new result.",
+    description: "Class identity — marks your Empowered Spell metamagic. Sorcery Point dice-reroll system pending.",
     effect: { type: "empoweredSpell", usesPerCast: 1 },
   },
   "passive.sorcerer.quickened_spell": {
     id: "passive.sorcerer.quickened_spell",
     displayName: "Quickened Spell",
-    description: "Metamagic: spend 2 Sorcery Points to cast a 1-action spell as a free action this turn.",
+    description: "Class identity — marks your Quickened Spell metamagic. Sorcery Point action-conversion system pending.",
     effect: { type: "quickenedSpell", spCost: 2 },
   },
   "passive.sorcerer.heightened_spell": {
     id: "passive.sorcerer.heightened_spell",
     displayName: "Heightened Spell",
-    description: "Metamagic: spend 3 Sorcery Points to impose disadvantage on a target's first saving throw against your spell.",
+    description: "Class identity — marks your Heightened Spell metamagic. Sorcery Point save-disadvantage system pending.",
     effect: { type: "heightenedSpell", spCost: 3 },
   },
   "passive.sorcerer.draconic_resilience": {
@@ -468,7 +468,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.sorcerer.wild_magic_surge": {
     id: "passive.sorcerer.wild_magic_surge",
     displayName: "Wild Magic Surge",
-    description: "After casting a spell, a 1-in-6 chance triggers a random surge (push all, heal 1d4, deal 2d6 to self, invisible for 1 turn, etc.).",
+    description: "Class identity — marks your Wild Magic Surge. Post-cast surge table system pending.",
     effect: { type: "wildMagicSurge", chance: 1 },
   },
   // ── Monk passives ─────────────────────────────────────────────────────
@@ -493,13 +493,13 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.slow_fall": {
     id: "passive.slow_fall",
     displayName: "Slow Fall",
-    description: "Your body moves with practiced grace — you take only half damage from falling.",
+    description: "Class identity — marks your Slow Fall training. Fall-damage reduction system pending.",
     effect: { type: "slowFall" },
   },
   "passive.monk.patient_defense": {
     id: "passive.monk.patient_defense",
     displayName: "Patient Defense",
-    description: "Spend 1 Ki point to assume a Dodge stance — attackers have disadvantage against you until your next turn.",
+    description: "Class identity — marks your Patient Defense training. Ki-powered dodge system pending.",
     effect: { type: "patientDefense" },
   },
   "passive.monk.deflect_missiles": {
@@ -511,38 +511,38 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.monk.open_hand_technique": {
     id: "passive.monk.open_hand_technique",
     displayName: "Open Hand Technique",
-    description: "After landing a Flurry of Blows, choose one: push the target 1 hex, or force a CON save or the target falls prone.",
+    description: "Class identity — marks your Open Hand Technique. Post-Flurry push/prone system pending.",
     effect: { type: "openHandTechnique" },
   },
   "passive.monk.wholeness_of_body": {
     id: "passive.monk.wholeness_of_body",
     displayName: "Wholeness of Body",
-    description: "Once per long rest, flood your body with healing ki as a free action — restore HP equal to 3× your Monk level.",
+    description: "Class identity — marks your Wholeness of Body. Ki-powered self-healing system pending.",
     effect: { type: "wholenessOfBody" },
   },
   "passive.monk.shadow_arts": {
     id: "passive.monk.shadow_arts",
     displayName: "Shadow Arts",
-    description: "Spend 2 Ki points to weave shadow into a spell-like effect — cast Darkness or Silence centered on yourself.",
+    description: "Class identity — marks your Shadow Arts. Ki-powered darkness/silence system pending.",
     effect: { type: "shadowArts" },
   },
   // ── Fighter feature pool passives (epic #190) ─────────────────────────
   "passive.fighter.second_wind": {
     id: "passive.fighter.second_wind",
     displayName: "Second Wind",
-    description: "Once per combat, use a bonus action to heal yourself for 1d10 + Fighter level HP.",
+    description: "Class identity — marks your Second Wind feature. Use the Second Wind action in your action bar.",
     effect: { type: "secondWind" },
   },
   "passive.fighter.action_surge": {
     id: "passive.fighter.action_surge",
     displayName: "Action Surge",
-    description: "Once per combat, take one additional action on your turn.",
+    description: "Class identity — marks your Action Surge feature. Use the Action Surge action in your action bar.",
     effect: { type: "actionSurge", usesPerCombat: 1 },
   },
   "passive.fighter.indomitable": {
     id: "passive.fighter.indomitable",
     displayName: "Indomitable",
-    description: "Once per long rest, reroll a failed saving throw, using the new roll.",
+    description: "Class identity — marks your Indomitable feature. Save reroll system pending.",
     effect: { type: "indomitable", usesPerCombat: 1 },
   },
   // ── Paladin feature pool passives (epic #190) ─────────────────────────
@@ -555,7 +555,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.paladin.divine_health": {
     id: "passive.paladin.divine_health",
     displayName: "Divine Health",
-    description: "Divine magic flowing through you makes you immune to disease and resistant to poison.",
+    description: "Class identity — marks your Divine Health. Disease immunity and poison resistance system pending.",
     effect: { type: "divineHealth" },
   },
   // ── Barbarian feature pool passives (epic #190) ───────────────────────
@@ -575,7 +575,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.monk.stillness_of_mind": {
     id: "passive.monk.stillness_of_mind",
     displayName: "Stillness of Mind",
-    description: "As an action, end one effect causing you to be Charmed or Frightened.",
+    description: "Class identity — marks your Stillness of Mind. Condition-cleanse system pending.",
     effect: { type: "stillnessOfMind" },
   },
   "passive.monk.fast_movement": {
@@ -588,7 +588,7 @@ export const PASSIVE_REGISTRY: Record<string, PassiveDef> = {
   "passive.rogue.improved_sneak": {
     id: "passive.rogue.improved_sneak",
     displayName: "Improved Sneak Attack",
-    description: "Your Sneak Attack deals an extra 1d6 bonus damage when conditions are met.",
+    description: "Class identity — marks your improved Sneak Attack training. Conditional sneak dice system pending.",
     effect: { type: "improvedSneakAttack", dice: "1d6" },
   },
 };

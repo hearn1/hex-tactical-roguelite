@@ -56,7 +56,8 @@ export function canUseAction(unit: UnitInstance, action: ActionDef, cs: CombatSt
 
   if (action.charges !== undefined) {
     const used = (cs.perEncounterUses as Record<string, number>)[action.id] ?? 0;
-    if (used >= action.charges) {
+    const bonus = (cs.perEncounterChargeBonus ?? {})[action.id] ?? 0;
+    if (used >= action.charges + bonus) {
       return { canUse: false, reason: "No charges remaining this encounter" };
     }
   }

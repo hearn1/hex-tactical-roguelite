@@ -272,4 +272,6 @@ export interface CombatState {
   terrain?: Record<string, TerrainType>;
   /** Monotonic counter for generating unique reinforcement instance IDs. */
   reinforcementCounter?: number;
+  /** Per-action extra charges granted by actionChargeBonus passives, applied at combat init. */
+  perEncounterChargeBonus?: Record<string, number>;
 }

@@ -54,14 +54,20 @@ export function getHeroActionIds(unit: UnitInstance): string[] {
 }
 
 /**
- * Returns remaining charges for a charged action this encounter.
+ * Returns remaining charges for a charged action this encounter, including any
+ * bonus charges from actionChargeBonus passives.
  * `perEncounterUses` stores the number of times an action has been used (not remaining).
  */
-export function chargesRemaining(actionId: string, perEncounterUses: Record<string, number>): number | null {
+export function chargesRemaining(
+  actionId: string,
+  perEncounterUses: Record<string, number>,
+  perEncounterChargeBonus?: Record<string, number>,
+): number | null {
   const actionDef = ACTION_REGISTRY[actionId];
   if (!actionDef || actionDef.charges === undefined) return null;
   const used = perEncounterUses[actionId] ?? 0;
-  return actionDef.charges - used;
+  const bonus = (perEncounterChargeBonus ?? {})[actionId] ?? 0;
+  return actionDef.charges + bonus - used;
 }
 
 /**
@@ -69,6 +75,10 @@ export function chargesRemaining(actionId: string, perEncounterUses: Record<stri
  * Returns false for non-charged actions.
  */
 export function isChargeExhausted(actionId: string, cs: CombatState): boolean {
-  const remaining = chargesRemaining(actionId, cs.perEncounterUses as Record<string, number>);
+  const remaining = chargesRemaining(
+    actionId,
+    cs.perEncounterUses as Record<string, number>,
+    cs.perEncounterChargeBonus,
+  );
   return remaining !== null && remaining <= 0;
 }
