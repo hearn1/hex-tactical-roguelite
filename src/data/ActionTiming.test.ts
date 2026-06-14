@@ -34,6 +34,91 @@ describe("ActionTiming (#503)", () => {
   });
 });
 
+describe("B6: Smoke test — representative classes have timing-sensitive features (#513)", () => {
+  const bonusOrFreeTimings = new Set(["bonus_action", "free", "triggered_passive", "attack_action_modifier"]);
+
+  it("Fighter: Action Surge (free) and Extra Attack (attack_action_modifier) present", () => {
+    expect(ACTION_REGISTRY["action.fighter.action_surge"].timing).toBe("free");
+    expect(ACTION_REGISTRY["action.fighter.extra_attack"].timing).toBe("attack_action_modifier");
+  });
+
+  it("Rogue: Disengage & Dash (bonus_action) and Fast Hands (free) present", () => {
+    expect(ACTION_REGISTRY["action.rogue.disengage_dash"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.rogue.fast_hands"].timing).toBe("free");
+  });
+
+  it("Cleric: Healing Word (bonus_action) and War Priest (bonus_action) present", () => {
+    expect(ACTION_REGISTRY["action.cleric.healing_word"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.cleric.war_priest"].timing).toBe("bonus_action");
+  });
+
+  it("Ranger: Hunter's Mark (bonus_action), Dread Ambusher (bonus_action), Zephyr Strike (bonus_action) present", () => {
+    expect(ACTION_REGISTRY["action.ranger.hunters_mark"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.ranger.dread_ambusher"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.ranger.zephyr_strike"].timing).toBe("bonus_action");
+  });
+
+  it("Warlock: Hex (bonus_action) present", () => {
+    expect(ACTION_REGISTRY["action.warlock.hex"].timing).toBe("bonus_action");
+  });
+
+  it("Barbarian: Rage (bonus_action) and Frenzied Strike (bonus_action) present", () => {
+    expect(ACTION_REGISTRY["action.barbarian.rage"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.barbarian.frenzied_strike"].timing).toBe("bonus_action");
+  });
+
+  it("Monk: Flurry of Blows, Step of Wind, Patient Defense, Shadow Step all bonus_action; Wholeness of Body free", () => {
+    expect(ACTION_REGISTRY["action.monk.flurry_of_blows"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.monk.step_of_wind"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.monk.patient_defense"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.monk.shadow_step"].timing).toBe("bonus_action");
+    expect(ACTION_REGISTRY["action.monk.wholeness_of_body"].timing).toBe("free");
+  });
+
+  it("Sorcerer: Quickened Spell (bonus_action) and Tides of Chaos (action with charges) present", () => {
+    expect(ACTION_REGISTRY["action.sorcerer.quickened_spell"].timing).toBe("bonus_action");
+    const tides = ACTION_REGISTRY["action.sorcerer.tides_of_chaos"];
+    expect(tides.charges).toBe(1);
+    expect(tides.timing === undefined || tides.timing === "action" || tides.timing === "free").toBe(true);
+  });
+
+  it("every migrated feature uses a non-action timing (bonus_action, free, triggered_passive, or attack_action_modifier)", () => {
+    const migrated = [
+      "action.second_wind",
+      "action.rogue.disengage_dash",
+      "action.ranger.hunters_mark",
+      "action.warlock.hex",
+      "action.bard.inspiration",
+      "action.barbarian.rage",
+      "action.paladin.vow_of_enmity",
+      "action.ranger.zephyr_strike",
+      "action.monk.flurry_of_blows",
+      "action.monk.step_of_wind",
+      "action.monk.patient_defense",
+      "action.monk.shadow_step",
+      "action.wizard.misty_step",
+      "action.wizard.arcane_recovery",
+      "action.rogue.fast_hands",
+      "action.ranger.swift_quiver",
+      "action.sorcerer.quickened_spell",
+      "action.monk.wholeness_of_body",
+      "action.fighter.action_surge",
+      "action.fighter.extra_attack",
+      "action.bard.extra_attack",
+      "action.ranger.dread_ambusher",
+      "action.cleric.war_priest",
+      "action.barbarian.frenzied_strike",
+      "action.paladin.divine_smite",
+      "action.monk.stunning_strike",
+    ];
+    for (const id of migrated) {
+      const action = ACTION_REGISTRY[id];
+      expect(action, `${id} should exist in ACTION_REGISTRY`).toBeDefined();
+      expect(bonusOrFreeTimings.has(action.timing ?? ""), `${id} timing="${action.timing}" should be non-action`).toBe(true);
+    }
+  });
+});
+
 describe("B5: On-hit riders conversion (#512)", () => {
   it("Divine Smite is tagged triggered_passive (on-hit rider, not standalone action)", () => {
     expect(ACTION_REGISTRY["action.paladin.divine_smite"].timing).toBe("triggered_passive");
