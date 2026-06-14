@@ -570,6 +570,7 @@ export class SetupScreen {
       conditions: [],
       movePointsRemaining: 0,
       hasActed: false,
+      turnEconomy: { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 },
       equippedItemIds,
       bonusStats,
       abilityScores,

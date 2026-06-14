@@ -694,6 +694,13 @@ export class CombatScreen {
     active.movePointsRemaining = active.stats.move;
     active.hasActed = false;
     active.reactionUsedThisTurn = false;
+    if (active.turnEconomy) {
+      active.turnEconomy.actionUsed = false;
+      active.turnEconomy.bonusActionUsed = false;
+      active.turnEconomy.reactionUsed = false;
+    } else {
+      active.turnEconomy = { actionUsed: false, bonusActionUsed: false, reactionUsed: false, extraActionsRemaining: 0 };
+    }
     if (cs.round === 1 && active.team === "hero") {
       const turnResult = resolveOncePerCombatBonus(active, "firstTurn", cs);
       if (turnResult.moveBonus) {

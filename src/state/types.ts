@@ -103,6 +103,18 @@ export interface ActionUpgradeBonus {
   conditionDurationBonus?: number;
 }
 
+/**
+ * Per-turn action-economy tracking. Optional so saves created before Epic A
+ * remain load-compatible; callers should use getTurnEconomy() instead of
+ * reading the field directly.
+ */
+export interface TurnEconomyState {
+  actionUsed: boolean;
+  bonusActionUsed: boolean;
+  reactionUsed: boolean;
+  extraActionsRemaining: number;
+}
+
 export interface UnitInstance {
   instanceId: string;
   defId: string;
@@ -116,6 +128,8 @@ export interface UnitInstance {
   conditions: Condition[];
   movePointsRemaining: number;
   hasActed: boolean;
+  /** Explicit per-turn action economy state (#504). When absent hasActed is the sole gate. */
+  turnEconomy?: TurnEconomyState;
   equippedItemIds: { weapon: string | null; armor: string | null; trinket: string | null };
   bonusStats: Partial<UnitStats>;
   /** Hero ability scores from run setup. Enemies omit this and keep definition stats. */
@@ -146,6 +160,14 @@ export interface UnitInstance {
   spellSlotsRemaining?: number;
   /** Spell slots refreshed each Long Rest (#118), for display. Copied from the party member. */
   spellSlotsMax?: number;
+  /** Ki points remaining this Short Rest cycle (Monk). Copied from party member; synced back. */
+  kiPointsRemaining?: number;
+  /** Maximum ki points for this hero (Monk). */
+  kiPointsMax?: number;
+  /** Sorcery points remaining this Long Rest cycle (Sorcerer). Copied from party member; synced back. */
+  sorceryPointsRemaining?: number;
+  /** Maximum sorcery points for this hero (Sorcerer). */
+  sorceryPointsMax?: number;
   /**
    * Hero-only combat life state. Undefined normalises to "standing" for save compatibility.
    * Enemies use hp <= 0 as ordinary defeat and never set this field.
