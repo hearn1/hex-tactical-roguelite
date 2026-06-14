@@ -217,6 +217,36 @@ describe("ActionEconomy — core timing model (#507)", () => {
     });
   });
 
+  describe("Action Surge — grantExtraAction (#511)", () => {
+    it("resolving Action Surge increments extraActionsRemaining", () => {
+      const hero = makeUnit({ instanceId: "h1", pos: { q: 0, r: 0 } });
+      const state = makeState([hero]);
+      const rng = createRng(1);
+      const surge = ACTION_REGISTRY["action.fighter.action_surge"];
+      resolveAction(surge, hero, hero, state, rng);
+      expect(getTurnEconomy(hero).extraActionsRemaining).toBe(1);
+    });
+
+    it("Action Surge uses free timing — does not set actionUsed or bonusActionUsed", () => {
+      const hero = makeUnit({ instanceId: "h1", pos: { q: 0, r: 0 } });
+      const state = makeState([hero]);
+      const rng = createRng(1);
+      const surge = ACTION_REGISTRY["action.fighter.action_surge"];
+      resolveAction(surge, hero, hero, state, rng);
+      expect(getTurnEconomy(hero).actionUsed).toBe(false);
+      expect(getTurnEconomy(hero).bonusActionUsed).toBe(false);
+    });
+
+    it("after Action Surge, hero can use a standard action even after actionUsed is true", () => {
+      const hero = makeUnit({ instanceId: "h1", pos: { q: 0, r: 0 } });
+      hero.turnEconomy!.actionUsed = true;
+      hero.turnEconomy!.extraActionsRemaining = 1;
+      const state = makeState([hero]);
+      const check = canUseAction(hero, ACTION_REGISTRY["action.slash"], state);
+      expect(check.canUse).toBe(true);
+    });
+  });
+
   describe("getTurnEconomy", () => {
     it("creates economy state if absent (save compat)", () => {
       const hero = makeUnit({ instanceId: "h1", pos: { q: 0, r: 0 } });

@@ -61,7 +61,11 @@ export interface ActionDef {
     | { type: "applyCondition"; conditionId: string; duration: number; targetMode?: "single" | "aoe_around_caster" | "aoe_radius"; radius?: number }
     | { type: "removeConditions" }
     | { type: "lineDamage"; formula: string; lineRange: number }
-    | { type: "counterTelegraph" };
+    | { type: "counterTelegraph" }
+    /** Grants the caster one additional standard action this turn (e.g. Action Surge). */
+    | { type: "grantExtraAction" }
+    /** Data-level marker for attack_action_modifier features (e.g. Extra Attack). No runtime resolution needed. */
+    | { type: "marker" };
 }
 
 export const ACTION_REGISTRY: Record<string, ActionDef> = {
@@ -579,6 +583,61 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     isCantrip: true,
     effect: { type: "damage", formula: "1d8 + str", applyCondition: { id: "frightened", duration: 1 } },
   },
+  "action.fighter.action_surge": {
+    id: "action.fighter.action_surge",
+    displayName: "Action Surge",
+    description: "Push beyond your limits — gain one additional standard action this turn. Once per combat.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    timing: "free",
+    charges: 1,
+    effect: { type: "grantExtraAction" },
+  },
+  "action.fighter.extra_attack": {
+    id: "action.fighter.extra_attack",
+    displayName: "Extra Attack",
+    description: "Attack twice whenever you take the Attack action. Does not grant additional spellcasting.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    timing: "attack_action_modifier",
+    effect: { type: "marker" },
+  },
+  "action.bard.extra_attack": {
+    id: "action.bard.extra_attack",
+    displayName: "Extra Attack",
+    description: "Attack twice whenever you take the Attack action (Bard version — applies only to weapon attacks).",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    timing: "attack_action_modifier",
+    effect: { type: "marker" },
+  },
+  "action.ranger.dread_ambusher": {
+    id: "action.ranger.dread_ambusher",
+    displayName: "Dread Ambusher",
+    description: "Strike with terrifying speed on the first round — deal 1d8 + Dexterity damage as a bonus action. Once per encounter.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    timing: "bonus_action",
+    accuracyStat: "dex",
+    charges: 1,
+    effect: { type: "damage", formula: "1d8 + dex" },
+  },
+  "action.cleric.war_priest": {
+    id: "action.cleric.war_priest",
+    displayName: "War Priest",
+    description: "Channel divine favor into a swift weapon strike as a bonus action — deals 1d8 + Strength damage. Once per encounter.",
+    source: "class",
+    targetType: "enemy",
+    range: 1,
+    timing: "bonus_action",
+    accuracyStat: "str",
+    charges: 1,
+    effect: { type: "damage", formula: "1d8 + str" },
+  },
   // ── Rogue starting actions ─────────────────────────────────────────────
   "action.rogue.sneak_stab": {
     id: "action.rogue.sneak_stab",
@@ -1069,10 +1128,11 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.barbarian.frenzied_strike": {
     id: "action.barbarian.frenzied_strike",
     displayName: "Frenzied Strike",
-    description: "A wild bonus attack fueled by frenzy — deals 1d12 + STR damage. Only usable while raging.",
+    description: "A wild bonus attack fueled by frenzy — deals 1d12 + STR damage as a bonus action. Only usable while raging.",
     source: "class",
     targetType: "enemy",
     range: 1,
+    timing: "bonus_action",
     accuracyStat: "str",
     isCantrip: true,
     effect: { type: "damage", formula: "1d12 + str" },

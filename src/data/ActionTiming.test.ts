@@ -34,6 +34,48 @@ describe("ActionTiming (#503)", () => {
   });
 });
 
+describe("B4: Extra action and attack-action modifier support (#511)", () => {
+  it("Action Surge is a free-timing action with charges and grantExtraAction effect", () => {
+    const action = ACTION_REGISTRY["action.fighter.action_surge"];
+    expect(action.timing).toBe("free");
+    expect(action.charges).toBe(1);
+    expect(action.effect.type).toBe("grantExtraAction");
+  });
+
+  it("Extra Attack has attack_action_modifier timing (not 'action')", () => {
+    expect(ACTION_REGISTRY["action.fighter.extra_attack"].timing).toBe("attack_action_modifier");
+  });
+
+  it("Bard Extra Attack has attack_action_modifier timing", () => {
+    expect(ACTION_REGISTRY["action.bard.extra_attack"].timing).toBe("attack_action_modifier");
+  });
+
+  it("extra-action vs extra-attack: Action Surge and Extra Attack are distinct mechanics", () => {
+    const surge = ACTION_REGISTRY["action.fighter.action_surge"];
+    const extra = ACTION_REGISTRY["action.fighter.extra_attack"];
+    expect(surge.effect.type).toBe("grantExtraAction");
+    expect(extra.effect.type).toBe("marker");
+    expect(surge.timing).not.toBe("attack_action_modifier");
+    expect(extra.timing).not.toBe("free");
+  });
+
+  it("Dread Ambusher is a bonus action with 1 charge (first-round limit)", () => {
+    const action = ACTION_REGISTRY["action.ranger.dread_ambusher"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.charges).toBe(1);
+  });
+
+  it("War Priest is a bonus action with 1 charge", () => {
+    const action = ACTION_REGISTRY["action.cleric.war_priest"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.charges).toBe(1);
+  });
+
+  it("Frenzied Strike is a bonus action (respects bonus action availability)", () => {
+    expect(ACTION_REGISTRY["action.barbarian.frenzied_strike"].timing).toBe("bonus_action");
+  });
+});
+
 describe("B3: Free and no-action features (#510)", () => {
   it("Arcane Recovery is a free action", () => {
     expect(ACTION_REGISTRY["action.wizard.arcane_recovery"].timing).toBe("free");

@@ -126,7 +126,7 @@ export const CLASS_REGISTRY: Record<string, ClassDef> = {
     displayName: "Fighter",
     baseStats: { maxHp: 17, armor: 14, move: 3, str: 3, dex: 1, con: 2, int: 1, wis: 1, cha: 1 },
     hitDieSize: 10,
-    actionIds: ["action.fighter.precise_strike", "action.fighter.ranged_shot", "action.fighter.brace"],
+    actionIds: ["action.fighter.precise_strike", "action.fighter.ranged_shot", "action.fighter.brace", "action.fighter.action_surge", "action.fighter.extra_attack"],
     startingItems: ["item.iron_sword"],
     defaultBackgroundId: "background.caravan_guard",
     primaryAbility: "str",

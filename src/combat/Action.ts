@@ -1,6 +1,6 @@
 import type { ActionDef, ConditionApply } from "../data/actions.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
-import { payActionCosts } from "./ActionEconomy.ts";
+import { payActionCosts, getTurnEconomy } from "./ActionEconomy.ts";
 import type { AbilityKey } from "../data/abilities.ts";
 import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus, ActionResult, ActionElement } from "../state/types.ts";
 import { distance, hexKey } from "../core/hex.ts";
@@ -178,6 +178,27 @@ export function resolveAction(
   // Pay all costs (timing economy + charges + spell slots + ki + sorcery) as one atomic step.
   if (!skipHasActed) {
     payActionCosts(attacker, action, state);
+  }
+
+  // ── grantExtraAction (Action Surge) ──
+  if (action.effect.type === "grantExtraAction") {
+    getTurnEconomy(attacker).extraActionsRemaining += 1;
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} uses ${action.displayName} — gains an extra action this turn!`,
+      round,
+    });
+    return { amount: 0, isCrit: false, kind: "heal", actionElement: "arcane" };
+  }
+
+  // ── marker (attack_action_modifier data markers, e.g. Extra Attack) ──
+  if (action.effect.type === "marker") {
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] ${attacker.displayName} activates ${action.displayName}.`,
+      round,
+    });
+    return { amount: 0, isCrit: false, kind: "heal", actionElement: "physical" };
   }
 
   // ── removeConditions (Cleanse) ──
