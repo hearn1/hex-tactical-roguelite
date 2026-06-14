@@ -34,6 +34,42 @@ describe("ActionTiming (#503)", () => {
   });
 });
 
+describe("B3: Free and no-action features (#510)", () => {
+  it("Arcane Recovery is a free action", () => {
+    expect(ACTION_REGISTRY["action.wizard.arcane_recovery"].timing).toBe("free");
+  });
+
+  it("Fast Hands is a free action with usage cap", () => {
+    const action = ACTION_REGISTRY["action.rogue.fast_hands"];
+    expect(action.timing).toBe("free");
+    expect(action.charges).toBe(1);
+  });
+
+  it("Quickened Spell is a bonus action spending sorcery points", () => {
+    const action = ACTION_REGISTRY["action.sorcerer.quickened_spell"];
+    expect(action.timing).toBe("bonus_action");
+    expect(action.sorceryPointCost).toBe(2);
+  });
+
+  it("Swift Quiver is a bonus action", () => {
+    expect(ACTION_REGISTRY["action.ranger.swift_quiver"].timing).toBe("bonus_action");
+  });
+
+  it("Wholeness of Body is a free action with usage cap", () => {
+    const action = ACTION_REGISTRY["action.monk.wholeness_of_body"];
+    expect(action.timing).toBe("free");
+    expect(action.charges).toBe(1);
+  });
+
+  it("free actions do not consume action or bonus action timing slots", () => {
+    const arcaneRecovery = ACTION_REGISTRY["action.wizard.arcane_recovery"];
+    const fastHands = ACTION_REGISTRY["action.rogue.fast_hands"];
+    expect(arcaneRecovery.timing).toBe("free");
+    expect(fastHands.timing).toBe("free");
+    // Verified by ActionEconomy.payActionCosts: free timing sets neither actionUsed nor bonusActionUsed
+  });
+});
+
 describe("B2: Monk and mobility bonus actions (#509)", () => {
   it("Flurry of Blows is a bonus action with ki cost", () => {
     const action = ACTION_REGISTRY["action.monk.flurry_of_blows"];

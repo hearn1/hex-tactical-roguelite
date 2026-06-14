@@ -616,11 +616,12 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.rogue.fast_hands": {
     id: "action.rogue.fast_hands",
     displayName: "Fast Hands",
-    description: "Use an equipped consumable item as a free action this turn without spending your main action.",
+    description: "Use an equipped consumable item as a free action this turn without spending your bonus or main action. Once per combat.",
     source: "class",
     targetType: "self",
     range: 0,
-    isCantrip: true,
+    timing: "free",
+    charges: 1,
     effect: { type: "applyCondition", conditionId: "fast_hands", duration: 1 },
   },
   // ── Cleric archetype actions ──────────────────────────────────────────
@@ -696,10 +697,11 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.wizard.arcane_recovery": {
     id: "action.wizard.arcane_recovery",
     displayName: "Arcane Recovery",
-    description: "Channel residual magic to regain 1 expended spell slot. Once per combat.",
+    description: "Channel residual magic as a free action to regain 1 expended spell slot. Once per combat.",
     source: "class",
     targetType: "self",
     range: 0,
+    timing: "free",
     charges: 1,
     effect: { type: "applyCondition", conditionId: "spell_slot_recovered", duration: 1 },
   },
@@ -1216,6 +1218,17 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     kiPointCost: 1,
     effect: { type: "applyCondition", conditionId: "guarded", duration: 1 },
   },
+  "action.monk.wholeness_of_body": {
+    id: "action.monk.wholeness_of_body",
+    displayName: "Wholeness of Body",
+    description: "Tap into ki as a free action to restore health — heal yourself for 2d6 + Wisdom HP. Once per combat.",
+    source: "class",
+    targetType: "self",
+    range: 0,
+    timing: "free",
+    charges: 1,
+    effect: { type: "heal", formula: "2d6 + wis" },
+  },
   // ── Monk archetype actions ────────────────────────────────────────────
   "action.monk.shadow_step": {
     id: "action.monk.shadow_step",
@@ -1227,6 +1240,18 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
     timing: "bonus_action",
     kiPointCost: 2,
     effect: { type: "applyCondition", conditionId: "shadow_step", duration: 1 },
+  },
+  "action.sorcerer.quickened_spell": {
+    id: "action.sorcerer.quickened_spell",
+    displayName: "Quickened Spell",
+    description: "Spend 2 Sorcery Points as a bonus action to cast a spell with the swiftness of thought — deals 2d8 + Charisma force damage at range 3.",
+    source: "class",
+    targetType: "enemy",
+    range: 3,
+    timing: "bonus_action",
+    accuracyStat: "cha",
+    sorceryPointCost: 2,
+    effect: { type: "damage", formula: "2d8 + cha" },
   },
   // ── Sorcerer archetype actions ────────────────────────────────────────
   "action.sorcerer.tides_of_chaos": {
@@ -1532,10 +1557,11 @@ export const ACTION_REGISTRY: Record<string, ActionDef> = {
   "action.ranger.swift_quiver": {
     id: "action.ranger.swift_quiver",
     displayName: "Swift Quiver",
-    description: "Transform your quiver into a magical font of arrows — make two bonus ranged attacks for 1d6 + Dexterity each as a free action this turn.",
+    description: "Transform your quiver into a magical font of arrows — make two bonus ranged attacks for 1d6 + Dexterity each as a bonus action this turn.",
     source: "class",
     targetType: "enemy",
     range: 4,
+    timing: "bonus_action",
     accuracyStat: "dex",
     resourceType: "spell_slot",
     slotCost: 1,
