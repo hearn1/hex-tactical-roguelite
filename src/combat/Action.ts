@@ -712,6 +712,48 @@ export function resolveAction(
     damage = Math.max(0, damage - hitReduction.damageReduction);
   }
 
+  // Defensive reactions on hit.
+  const isSpellAttack = attackStat === "int" || attackStat === "wis" || attackStat === "cha";
+  const isRangedAttack = distance(attacker.pos, target.pos) > 1;
+
+  // Uncanny Dodge: halve weapon damage (melee or ranged) once per reaction window.
+  if (
+    target.team === "hero" &&
+    !isSpellAttack &&
+    target.passives?.includes("passive.uncanny_dodge") &&
+    isReactionAvailable(target)
+  ) {
+    const before = damage;
+    damage = Math.max(0, Math.floor(damage / 2));
+    markReactionUsed(target);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] [REACTION] ${target.displayName}'s Uncanny Dodge halves incoming damage: ${before} → ${damage}.`,
+      round,
+    });
+  }
+
+  // Deflect Missiles: reduce ranged weapon damage by 1d10 + DEX, spending 1 ki point.
+  if (
+    target.team === "hero" &&
+    isRangedAttack &&
+    !isSpellAttack &&
+    target.passives?.includes("passive.monk.deflect_missiles") &&
+    isReactionAvailable(target) &&
+    trySpendReactionResource(target, state, "ki_point", 1)
+  ) {
+    const deflectRoll = roll("1d10", rng);
+    const deflectAmt = deflectRoll.total + target.stats.dex;
+    const before = damage;
+    damage = Math.max(0, damage - deflectAmt);
+    markReactionUsed(target);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] [REACTION] ${target.displayName}'s Deflect Missiles reduces damage by ${deflectAmt} (1d10+DEX): ${before} → ${damage}.`,
+      round,
+    });
+  }
+
   const beforeHp = target.hp;
   target.hp = Math.max(0, target.hp - damage);
   const dealt = beforeHp - target.hp;
