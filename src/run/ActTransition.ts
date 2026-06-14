@@ -1,5 +1,6 @@
 import type { CampaignState, CompletedActSummary } from "../state/CampaignState.ts";
 import type { PartyMember, RunState } from "../state/RunState.ts";
+import type { RunModifier } from "../state/types.ts";
 import { createRunState } from "./PartySetup.ts";
 import { syncHitDiceForPartyMember, syncSpellSlotsForPartyMember } from "./Rest.ts";
 import { DEFAULT_MAP_TEMPLATE_ID } from "../data/nodes.ts";
@@ -7,6 +8,20 @@ import { DEFAULT_CAMPAIGN, getActDefinition, selectActMapTemplate } from "../dat
 import { snapshotQuestOutcomesForAct } from "./QuestState.ts";
 
 export const CAMPAIGN_TOTAL_ACTS = 4;
+
+/**
+ * Returns true for RunModifier kinds that carry forward across act boundaries
+ * (campaign-wide boons). One-shot and per-encounter modifiers return false and
+ * are dropped when seeding the next act's run.
+ *
+ * Classification:
+ *   - next_combat_blessing  → per-act one-shot; does not cross act boundary
+ *   - boss_encounter_modifier → tied to a specific encounter id; irrelevant in future acts
+ *   - everything else        → campaign-persistent; carries forward
+ */
+export function isPersistentModifier(mod: RunModifier): boolean {
+  return mod.kind !== "next_combat_blessing" && mod.kind !== "boss_encounter_modifier";
+}
 
 /**
  * Completed runs that have already been archived by {@link advanceToNextAct}. Guards
@@ -101,7 +116,7 @@ export function advanceToNextAct(
   campaign.completedActs.push(buildActSummary(campaign, completedRun));
 
   campaign.party = completedRun.party.map((pm) => ({ ...pm }));
-  campaign.runModifiers = [...completedRun.runModifiers];
+  campaign.runModifiers = completedRun.runModifiers.filter(isPersistentModifier);
 
   applyBetweenActReset(campaign.party);
 
@@ -112,6 +127,7 @@ export function advanceToNextAct(
   nextRun.gold = completedRun.gold;
   nextRun.shortRestsSinceLongRest = 0;
   nextRun.eventSelections = { ...campaign.eventSelections };
+  nextRun.runModifiers = [...campaign.runModifiers];
 
   return nextRun;
 }
