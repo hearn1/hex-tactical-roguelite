@@ -1044,6 +1044,9 @@ export class CombatScreen {
         const archDef = ARCHETYPE_REGISTRY[unit.archetypeId];
         if (archDef) label = `${unit.displayName} [${archDef.displayName}] (${hpText})`;
       }
+      if (unit.team === "hero") {
+        label += unit.reactionUsedThisTurn ? " [R-]" : " [R]";
+      }
       entry.textContent = label;
       entry.style.textDecoration = (unit.team === "enemy" ? unit.hp <= 0 : heroLifeState(unit) === "dead") ? "line-through" : "none";
       panel.appendChild(entry);
@@ -1153,7 +1156,10 @@ export class CombatScreen {
     if (!panel) return;
     const cs = gameState.combat;
     if (!cs) return;
-    panel.innerHTML = cs.log.slice(-20).map((e) => `<div>${e.text}</div>`).join("");
+    panel.innerHTML = cs.log.slice(-20).map((e) => {
+      const cls = e.text.includes("[REACTION]") ? " style=\"color:#f4c542;\"" : e.text.includes("[PASSIVE]") ? " style=\"color:#7ec8e3;\"" : "";
+      return `<div${cls}>${e.text}</div>`;
+    }).join("");
     panel.scrollTop = panel.scrollHeight;
   }
 
