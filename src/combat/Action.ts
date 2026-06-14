@@ -1,6 +1,7 @@
 import type { ActionDef, ConditionApply } from "../data/actions.ts";
 import { ACTION_REGISTRY } from "../data/actions.ts";
 import { payActionCosts, getTurnEconomy } from "./ActionEconomy.ts";
+import { chargesRemaining } from "./ActionBar.ts";
 import type { AbilityKey } from "../data/abilities.ts";
 import type { UnitInstance, CombatState, ConditionId, ActionUpgradeBonus, ActionResult, ActionElement } from "../state/types.ts";
 import { distance, hexKey } from "../core/hex.ts";
@@ -15,6 +16,7 @@ import { checkEnemyThresholdTraits, setTelegraphLastResolvedRound } from "./Trai
 import { resolvePostDamageAftermath } from "./PostDamage.ts";
 import type { PostDamageCategory, PostDamageCause } from "./PostDamage.ts";
 import { coverArmorBonusForTarget } from "./Terrain.ts";
+import { isReactionAvailable, markReactionUsed, trySpendReactionResource } from "./ReactionResolver.ts";
 
 /** Elite "Rally" to-hit bonus granted to survivors when the first elite member falls. */
 export const RALLY_TO_HIT_BONUS = 2;
@@ -607,6 +609,13 @@ export function resolveAction(
   // Reckless condition: the attacker gets +3 to hit when reckless.
   const recklessAttackBonus = attacker.conditions.some((c) => c.id === "reckless") ? 3 : 0;
 
+  // Rattled condition: attacker suffers -2 to their next attack roll (consumed on use).
+  const rattledIdx = attacker.conditions.findIndex((c) => c.id === "rattled");
+  const rattledPenalty = rattledIdx >= 0 ? 2 : 0;
+  if (rattledIdx >= 0) {
+    attacker.conditions.splice(rattledIdx, 1);
+  }
+
   // Sanctuary condition: negate the first attack against the warded target.
   const sanctuaryIdx = target.conditions.findIndex((c) => c.id === "sanctuary");
   if (sanctuaryIdx >= 0) {
@@ -620,7 +629,7 @@ export function resolveAction(
   }
 
   const d20 = Math.floor(rng() * 20) + 1;
-  const attackTotal = d20 + stat + proficiency - weakenedPenalty + blessedBonus + ralliedBonus - enchanterPenalty + vindicatorBonus + recklessAttackBonus;
+  const attackTotal = d20 + stat + proficiency - weakenedPenalty + blessedBonus + ralliedBonus - enchanterPenalty + vindicatorBonus + recklessAttackBonus - rattledPenalty;
   const critFloor = getCritFloor(attacker);
   const isCrit = d20 >= critFloor;
   const isAutoMiss = d20 === 1;
@@ -711,6 +720,48 @@ export function resolveAction(
     damage = Math.max(0, damage - hitReduction.damageReduction);
   }
 
+  // Defensive reactions on hit.
+  const isSpellAttack = attackStat === "int" || attackStat === "wis" || attackStat === "cha";
+  const isRangedAttack = distance(attacker.pos, target.pos) > 1;
+
+  // Uncanny Dodge: halve weapon damage (melee or ranged) once per reaction window.
+  if (
+    target.team === "hero" &&
+    !isSpellAttack &&
+    target.passives?.includes("passive.uncanny_dodge") &&
+    isReactionAvailable(target)
+  ) {
+    const before = damage;
+    damage = Math.max(0, Math.floor(damage / 2));
+    markReactionUsed(target);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] [REACTION] ${target.displayName}'s Uncanny Dodge halves incoming damage: ${before} → ${damage}.`,
+      round,
+    });
+  }
+
+  // Deflect Missiles: reduce ranged weapon damage by 1d10 + DEX, spending 1 ki point.
+  if (
+    target.team === "hero" &&
+    isRangedAttack &&
+    !isSpellAttack &&
+    target.passives?.includes("passive.monk.deflect_missiles") &&
+    isReactionAvailable(target) &&
+    trySpendReactionResource(target, state, "ki_point", 1)
+  ) {
+    const deflectRoll = roll("1d10", rng);
+    const deflectAmt = deflectRoll.total + target.stats.dex;
+    const before = damage;
+    damage = Math.max(0, damage - deflectAmt);
+    markReactionUsed(target);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] [REACTION] ${target.displayName}'s Deflect Missiles reduces damage by ${deflectAmt} (1d10+DEX): ${before} → ${damage}.`,
+      round,
+    });
+  }
+
   const beforeHp = target.hp;
   target.hp = Math.max(0, target.hp - damage);
   const dealt = beforeHp - target.hp;
@@ -756,12 +807,33 @@ export function resolveAction(
     }
   }
 
+  // Armor of Agathys: triggered passive — melee attacker takes 5 cold damage (no reaction slot used).
+  let agathysAftermath: import("./PostDamage.ts").PostDamageResult | null = null;
+  if (target.conditions.some((c) => c.id === "armor_of_agathys") && distance(attacker.pos, target.pos) <= 1 && attacker.hp > 0) {
+    const agathysDmg = 5;
+    const agathysPrevHp = attacker.hp;
+    attacker.hp = Math.max(0, attacker.hp - agathysDmg);
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] [PASSIVE] ${target.displayName}'s Armor of Agathys retaliates for ${agathysDmg} cold damage!`,
+      round,
+    });
+    agathysAftermath = resolvePostDamageAftermath({
+      state,
+      targetUnitId: attacker.instanceId,
+      sourceUnitId: target.instanceId,
+      cause: "retaliation",
+      category: "spell",
+      previousHp: agathysPrevHp,
+    });
+  }
+
   // Vindicator Retributive Strike reaction: when a Vindicator is hit by melee, strike back.
   let retribAftermath: import("./PostDamage.ts").PostDamageResult | null = null;
-  if (target.team === "hero" && !target.reactionUsedThisTurn && target.passives?.includes("archetype_passive.vindicator_below_50_attack")) {
+  if (target.team === "hero" && isReactionAvailable(target) && target.passives?.includes("archetype_passive.vindicator_below_50_attack")) {
     const isMelee = distance(attacker.pos, target.pos) <= 1;
     if (isMelee && attacker.hp > 0) {
-      target.reactionUsedThisTurn = true;
+      markReactionUsed(target);
       const retribAction = ACTION_REGISTRY["action.archetype_retributive_strike"];
       if (retribAction) {
         const retribFormula = rewriteFormula("1d6 + str", target);
@@ -799,6 +871,62 @@ export function resolveAction(
     }
   }
 
+  // Hellish Rebuke: Fiend Warlock reaction — deal 2d10 + CHA fire damage to the attacker after being hit.
+  let hellishRebukeAftermath: import("./PostDamage.ts").PostDamageResult | null = null;
+  const hellishRebukeId = "action.warlock.hellish_rebuke";
+  if (
+    target.team === "hero" &&
+    target.archetypeId === "archetype.warlock.fiend" &&
+    isReactionAvailable(target) &&
+    attacker.hp > 0 &&
+    (chargesRemaining(hellishRebukeId, state.perEncounterUses as Record<string, number>) ?? 1) > 0 &&
+    trySpendReactionResource(target, state, "spell_slot", 1)
+  ) {
+    const hellishAction = ACTION_REGISTRY[hellishRebukeId];
+    if (hellishAction) {
+      markReactionUsed(target);
+      const uses = state.perEncounterUses as Record<string, number>;
+      uses[hellishRebukeId] = (uses[hellishRebukeId] ?? 0) + 1;
+      const hellishFormula = rewriteFormula("2d10 + cha", target);
+      const hellishResult = roll(hellishFormula, rng);
+      const hellishPrevHp = attacker.hp;
+      attacker.hp = Math.max(0, attacker.hp - hellishResult.total);
+      state.log.push({
+        kind: "action",
+        text: `[T${round}] [REACTION] ${target.displayName}'s Hellish Rebuke retaliates for ${hellishResult.total} fire damage!`,
+        round,
+      });
+      hellishRebukeAftermath = resolvePostDamageAftermath({
+        state,
+        targetUnitId: attacker.instanceId,
+        sourceUnitId: target.instanceId,
+        actionId: hellishRebukeId,
+        cause: "retaliation",
+        category: "spell",
+        previousHp: hellishPrevHp,
+      });
+    }
+  }
+
+  // Cutting Words: College of Lore Bard reaction — apply rattled to the attacker after they hit.
+  if (
+    target.team === "hero" &&
+    target.archetypeId === "archetype.bard.college_of_lore" &&
+    isReactionAvailable(target) &&
+    attacker.hp > 0
+  ) {
+    markReactionUsed(target);
+    const rattledCond = attacker.conditions.findIndex((c) => c.id === "rattled");
+    if (rattledCond < 0) {
+      attacker.conditions.push({ id: "rattled", remainingTurns: 1 });
+    }
+    state.log.push({
+      kind: "action",
+      text: `[T${round}] [REACTION] ${target.displayName}'s Cutting Words rattles ${attacker.displayName} (−2 to next attack).`,
+      round,
+    });
+  }
+
   const category: PostDamageCategory = itemAttackType === "spell" ? "spell" : "weapon";
   const aftermath = resolvePostDamageAftermath({
     state,
@@ -815,8 +943,8 @@ export function resolveAction(
     isCrit,
     kind: "damage",
     actionElement: el,
-    shouldCheckCombatEnd: aftermath.shouldCheckCombatEnd || (retribAftermath?.shouldCheckCombatEnd ?? false),
-    shouldStopCaller: retribAftermath?.shouldStopCaller ?? false,
+    shouldCheckCombatEnd: aftermath.shouldCheckCombatEnd || (retribAftermath?.shouldCheckCombatEnd ?? false) || (hellishRebukeAftermath?.shouldCheckCombatEnd ?? false) || (agathysAftermath?.shouldCheckCombatEnd ?? false),
+    shouldStopCaller: (retribAftermath?.shouldStopCaller ?? false) || (hellishRebukeAftermath?.shouldStopCaller ?? false) || (agathysAftermath?.shouldStopCaller ?? false),
   };
 }
 
